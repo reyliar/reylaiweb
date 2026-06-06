@@ -1,0 +1,12 @@
+openai
+requests
+pdf2image
+Pillow
+flask
+gunicorn
+pypdf
+customtkinter
+sift-stack-py
+python-dotenv
+pywebview
+pyinstaller

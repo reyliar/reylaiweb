@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "reylai-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "ai.reyliar.xyz/api/*",
+      "zone_name": "reyliar.xyz"
+    }
+  ],
+  "vars": {
+    "STATIC_ORIGIN": "https://thejinx1.github.io/reylaiweb/",
+    "BOOKS_REMOTE_BASE_URL": "https://thejinx1.github.io/blupblupreylai-books/",
+    "MISTRAL_CHAT_URL": "https://api.mistral.ai/v1/chat/completions",
+    "MISTRAL_MODEL": "mistral-small-latest",
+    "MISTRAL_VISION_MODEL": "mistral-small-latest"
+  },
+  "secrets": {
+    "required": ["MISTRAL_API_KEY", "GAS_WEB_APP_URL"]
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

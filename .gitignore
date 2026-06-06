@@ -1,0 +1,14 @@
+# Ignore book assets
+reylai_assets/books/
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+build/
+dist/
+node_modules/
+.wrangler/
+reylai_chat_history.json
+reylai_assets/page_images/
+*.log
