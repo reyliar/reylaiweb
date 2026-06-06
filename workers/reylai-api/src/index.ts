@@ -13,7 +13,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const MAX_CONTEXT_PAGES = 8;
 const CONTEXT_CHAR_LIMIT = 24000;
 const FALLBACK_CHAR_LIMIT = 9000;
-const PASSWORD_ITERATIONS = 160000;
+const PASSWORD_ITERATIONS = 100000;
 const SESSION_LONG_DAYS = 30;
 const SESSION_SHORT_HOURS = 12;
 const MAX_CHAT_HISTORY_CHATS = 200;
@@ -554,7 +554,7 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
   const parts = storedHash.split("$");
   if (parts.length !== 4 || parts[0] !== "pbkdf2_sha256") return false;
   const iterations = Number(parts[1]);
-  if (!Number.isFinite(iterations) || iterations < 100000) return false;
+  if (!Number.isFinite(iterations) || iterations < 100000 || iterations > PASSWORD_ITERATIONS) return false;
   const salt = base64UrlToBytes(parts[2]);
   const expected = base64UrlToBytes(parts[3]);
   const actual = await derivePasswordHash(password, salt, iterations);
