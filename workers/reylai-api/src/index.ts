@@ -13,6 +13,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const MAX_CONTEXT_PAGES = 8;
 const CONTEXT_CHAR_LIMIT = 24000;
 const FALLBACK_CHAR_LIMIT = 9000;
+const PASSWORD_ITERATIONS = 160000;
+const SESSION_LONG_DAYS = 30;
+const SESSION_SHORT_HOURS = 12;
+const MAX_CHAT_HISTORY_CHATS = 200;
+const MAX_CHAT_HISTORY_MESSAGES = 120;
+const MAX_CHAT_HISTORY_TEXT_CHARS = 12000;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Book = {
   book_id?: string;
@@ -60,6 +67,46 @@ type MistralMessage = {
   content: string;
 };
 
+type UserRow = {
+  id: string;
+  email: string;
+  display_name: string;
+  password_hash: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type PublicUser = {
+  id: string;
+  email: string;
+  display_name: string;
+  created_at: string;
+};
+
+type AuthPayload = {
+  email?: string;
+  password?: string;
+  display_name?: string;
+  remember_device?: boolean;
+  turnstile_token?: string;
+};
+
+type AuthContext = {
+  user: PublicUser;
+  tokenHash: string;
+};
+
+type ChatStore = {
+  chats: Array<Record<string, unknown>>;
+};
+
+type TurnstileResponse = {
+  success?: boolean;
+  hostname?: string;
+  action?: string;
+  "error-codes"?: string[];
+};
+
 export default {
   async fetch(request, env): Promise<Response> {
     try {
@@ -90,19 +137,47 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     return json({ ok: true, service: "reylai-api" });
   }
 
+  if (path === "/api/auth/config" && request.method === "GET") {
+    return handleAuthConfig(env);
+  }
+
+  if (path === "/api/auth/signup" && request.method === "POST") {
+    return handleSignup(request, env);
+  }
+
+  if (path === "/api/auth/login" && request.method === "POST") {
+    return handleLogin(request, env);
+  }
+
+  if (path === "/api/auth/me" && request.method === "GET") {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+    return json({ success: true, user: auth.user });
+  }
+
+  if (path === "/api/auth/logout" && request.method === "POST") {
+    return handleLogout(request, env);
+  }
+
+  if (path === "/api/auth/profile" && request.method === "PATCH") {
+    return handleProfileUpdate(request, env);
+  }
+
   if (request.method === "GET" && path === "/api/library") {
     return handleLibrary(url, env);
   }
 
   if (path === "/api/chat_history") {
-    if (request.method === "GET") return json({ chats: [] });
-    if (request.method === "POST" || request.method === "PUT") {
-      return json({ success: true, store: { chats: [] }, remote_disabled: true });
-    }
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+    if (request.method === "GET") return handleChatHistoryGet(env, auth.user.id);
+    if (request.method === "POST" || request.method === "PUT") return handleChatHistorySave(request, env, auth.user.id);
   }
 
   if (request.method === "DELETE" && path.startsWith("/api/chat_history/")) {
-    return json({ success: true, store: { chats: [] }, remote_disabled: true });
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+    return handleChatHistoryDelete(env, auth.user.id, path.split("/").pop() || "");
   }
 
   if (path === "/api/config") {
@@ -119,10 +194,14 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   }
 
   if (request.method === "POST" && path === "/api/analyze") {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
     return handleAnalyze(request, env);
   }
 
   if (request.method === "POST" && path === "/api/analyze_start") {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
     const data = await readJson<AnalyzePayload>(request);
     const response = await analyzePayload(data, env);
     return json({ success: !response.error, analysis_id: crypto.randomUUID(), ...response });
@@ -186,6 +265,360 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   }
 
   return json({ error: "API endpoint bulunamadı." }, 404);
+}
+
+function handleAuthConfig(env: Env): Response {
+  const siteKey = optionalEnv(env, "TURNSTILE_SITE_KEY");
+  const secretConfigured = Boolean(optionalEnv(env, "TURNSTILE_SECRET_KEY"));
+  const turnstileRequired = optionalEnv(env, "AUTH_REQUIRE_TURNSTILE") !== "false";
+  return json({
+    turnstile_site_key: siteKey,
+    turnstile_required: turnstileRequired,
+    turnstile_configured: Boolean(siteKey && secretConfigured)
+  });
+}
+
+async function handleSignup(request: Request, env: Env): Promise<Response> {
+  const payload = await readJson<AuthPayload>(request);
+  const turnstileError = await verifyTurnstile(request, env, payload.turnstile_token);
+  if (turnstileError) return turnstileError;
+
+  const email = normalizeEmail(payload.email || "");
+  const password = String(payload.password || "");
+  const displayName = normalizeDisplayName(payload.display_name || "");
+  const validationError = validateAccountInput(email, password, displayName);
+  if (validationError) return json({ success: false, error: validationError }, 400);
+
+  const now = new Date().toISOString();
+  const userId = crypto.randomUUID();
+  const passwordHash = await hashPassword(password);
+
+  try {
+    await env.DB.prepare(
+      "INSERT INTO users (id, email, display_name, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+    ).bind(userId, email, displayName, passwordHash, now, now).run();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.toLowerCase().includes("unique")) {
+      return json({ success: false, error: "Bu e-posta ile zaten bir hesap var." }, 409);
+    }
+    throw error;
+  }
+
+  const user = await getUserById(env, userId);
+  if (!user) return json({ success: false, error: "Hesap oluşturuldu ama oturum açılamadı." }, 500);
+  const session = await createSession(request, env, user, payload.remember_device !== false);
+  return json({ success: true, token: session.token, user: publicUser(user) }, 201);
+}
+
+async function handleLogin(request: Request, env: Env): Promise<Response> {
+  const payload = await readJson<AuthPayload>(request);
+  const turnstileError = await verifyTurnstile(request, env, payload.turnstile_token);
+  if (turnstileError) return turnstileError;
+
+  const email = normalizeEmail(payload.email || "");
+  const password = String(payload.password || "");
+  if (!EMAIL_RE.test(email) || password.length < 1) {
+    return json({ success: false, error: "E-posta veya şifre hatalı." }, 401);
+  }
+
+  const user = await getUserByEmail(env, email);
+  if (!user || !await verifyPassword(password, user.password_hash)) {
+    return json({ success: false, error: "E-posta veya şifre hatalı." }, 401);
+  }
+
+  const session = await createSession(request, env, user, payload.remember_device !== false);
+  return json({ success: true, token: session.token, user: publicUser(user) });
+}
+
+async function handleLogout(request: Request, env: Env): Promise<Response> {
+  const token = bearerToken(request);
+  if (token) {
+    const tokenHash = await sha256Base64Url(token);
+    await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(tokenHash).run();
+  }
+  return json({ success: true });
+}
+
+async function handleProfileUpdate(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const payload = await readJson<{ display_name?: string }>(request);
+  const displayName = normalizeDisplayName(payload.display_name || "");
+  if (!displayName || displayName.length < 2 || displayName.length > 40) {
+    return json({ success: false, error: "Görünen ad 2-40 karakter olmalı." }, 400);
+  }
+  const now = new Date().toISOString();
+  await env.DB.prepare("UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?")
+    .bind(displayName, now, auth.user.id)
+    .run();
+  const user = await getUserById(env, auth.user.id);
+  return json({ success: true, user: user ? publicUser(user) : { ...auth.user, display_name: displayName } });
+}
+
+async function handleChatHistoryGet(env: Env, userId: string): Promise<Response> {
+  const row = await env.DB.prepare("SELECT store_json FROM chat_history WHERE user_id = ?")
+    .bind(userId)
+    .first<{ store_json: string }>();
+  if (!row?.store_json) return json({ chats: [] });
+  try {
+    return json(normalizeServerChatStore(JSON.parse(row.store_json)));
+  } catch {
+    return json({ chats: [] });
+  }
+}
+
+async function handleChatHistorySave(request: Request, env: Env, userId: string): Promise<Response> {
+  const store = normalizeServerChatStore(await readJson<unknown>(request));
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO chat_history (user_id, store_json, updated_at) VALUES (?, ?, ?) " +
+    "ON CONFLICT(user_id) DO UPDATE SET store_json = excluded.store_json, updated_at = excluded.updated_at"
+  ).bind(userId, JSON.stringify(store), now).run();
+  return json({ success: true, store });
+}
+
+async function handleChatHistoryDelete(env: Env, userId: string, rawChatId: string): Promise<Response> {
+  const chatId = decodeURIComponent(rawChatId || "").trim();
+  if (!chatId) return json({ success: false, error: "Sohbet kimliği eksik." }, 400);
+  const row = await env.DB.prepare("SELECT store_json FROM chat_history WHERE user_id = ?")
+    .bind(userId)
+    .first<{ store_json: string }>();
+  const store = normalizeServerChatStore(row?.store_json ? JSON.parse(row.store_json) : { chats: [] });
+  store.chats = store.chats.filter((chat) => String(chat.id || "") !== chatId);
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO chat_history (user_id, store_json, updated_at) VALUES (?, ?, ?) " +
+    "ON CONFLICT(user_id) DO UPDATE SET store_json = excluded.store_json, updated_at = excluded.updated_at"
+  ).bind(userId, JSON.stringify(store), now).run();
+  return json({ success: true, store });
+}
+
+async function requireAuth(request: Request, env: Env): Promise<AuthContext | Response> {
+  const token = bearerToken(request);
+  if (!token) return json({ success: false, auth: false, error: "Oturum gerekli." }, 401);
+  const tokenHash = await sha256Base64Url(token);
+  const now = new Date().toISOString();
+  const row = await env.DB.prepare(
+    "SELECT u.id, u.email, u.display_name, u.password_hash, u.created_at, u.updated_at " +
+    "FROM sessions s JOIN users u ON u.id = s.user_id " +
+    "WHERE s.token_hash = ? AND s.expires_at > ?"
+  ).bind(tokenHash, now).first<UserRow>();
+
+  if (!row) {
+    await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ? OR expires_at <= ?").bind(tokenHash, now).run();
+    return json({ success: false, auth: false, error: "Oturum süresi doldu." }, 401);
+  }
+
+  await env.DB.prepare("UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?").bind(now, tokenHash).run();
+  return { user: publicUser(row), tokenHash };
+}
+
+async function createSession(
+  request: Request,
+  env: Env,
+  user: UserRow,
+  rememberDevice: boolean
+): Promise<{ token: string }> {
+  const token = randomToken(32);
+  const tokenHash = await sha256Base64Url(token);
+  const nowDate = new Date();
+  const expiresDate = new Date(nowDate.getTime() + (rememberDevice ? SESSION_LONG_DAYS * 24 : SESSION_SHORT_HOURS) * 60 * 60 * 1000);
+  await env.DB.prepare(
+    "INSERT INTO sessions (id, user_id, token_hash, created_at, expires_at, last_seen_at, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).bind(
+    crypto.randomUUID(),
+    user.id,
+    tokenHash,
+    nowDate.toISOString(),
+    expiresDate.toISOString(),
+    nowDate.toISOString(),
+    (request.headers.get("user-agent") || "").slice(0, 240)
+  ).run();
+  return { token };
+}
+
+async function verifyTurnstile(request: Request, env: Env, tokenValue: unknown): Promise<Response | null> {
+  if (optionalEnv(env, "AUTH_REQUIRE_TURNSTILE") === "false") return null;
+
+  const siteKey = optionalEnv(env, "TURNSTILE_SITE_KEY");
+  const secret = optionalEnv(env, "TURNSTILE_SECRET_KEY");
+  if (!siteKey || !secret) {
+    return json({
+      success: false,
+      error: "Cloudflare bot doğrulaması henüz yapılandırılmadı."
+    }, 503);
+  }
+
+  const token = String(tokenValue || "").trim();
+  if (!token || token.length > 2048) {
+    return json({ success: false, error: "Cloudflare bot doğrulamasını tamamlayın." }, 400);
+  }
+
+  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      secret,
+      response: token,
+      remoteip: request.headers.get("CF-Connecting-IP") || undefined,
+      idempotency_key: crypto.randomUUID()
+    })
+  });
+
+  if (!response.ok) {
+    return json({ success: false, error: "Cloudflare bot doğrulaması şu an cevap vermiyor." }, 502);
+  }
+
+  const result = await response.json() as TurnstileResponse;
+  if (!result.success) {
+    return json({
+      success: false,
+      error: "Cloudflare bot doğrulaması başarısız oldu.",
+      turnstile_errors: result["error-codes"] || []
+    }, 400);
+  }
+  return null;
+}
+
+async function getUserByEmail(env: Env, email: string): Promise<UserRow | null> {
+  return await env.DB.prepare(
+    "SELECT id, email, display_name, password_hash, created_at, updated_at FROM users WHERE email = ?"
+  ).bind(email).first<UserRow>();
+}
+
+async function getUserById(env: Env, id: string): Promise<UserRow | null> {
+  return await env.DB.prepare(
+    "SELECT id, email, display_name, password_hash, created_at, updated_at FROM users WHERE id = ?"
+  ).bind(id).first<UserRow>();
+}
+
+function publicUser(user: UserRow): PublicUser {
+  return {
+    id: user.id,
+    email: user.email,
+    display_name: user.display_name,
+    created_at: user.created_at
+  };
+}
+
+function normalizeEmail(email: string): string {
+  return String(email || "").trim().toLowerCase();
+}
+
+function normalizeDisplayName(value: string): string {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function validateAccountInput(email: string, password: string, displayName: string): string {
+  if (!EMAIL_RE.test(email) || email.length > 254) return "Geçerli bir e-posta girin.";
+  if (password.length < 8 || password.length > 128) return "Şifre 8-128 karakter olmalı.";
+  if (!displayName || displayName.length < 2 || displayName.length > 40) return "Görünen ad 2-40 karakter olmalı.";
+  return "";
+}
+
+function normalizeServerChatStore(rawStore: unknown): ChatStore {
+  const rawChats = isRecord(rawStore) && Array.isArray(rawStore.chats) ? rawStore.chats : [];
+  const chats = rawChats.filter(isRecord).slice(0, MAX_CHAT_HISTORY_CHATS).map((chat) => {
+    const messages = Array.isArray(chat.messages) ? chat.messages.filter(isRecord).slice(-MAX_CHAT_HISTORY_MESSAGES).map((message) => ({
+      id: String(message.id || crypto.randomUUID()).slice(0, 120),
+      role: message.role === "user" ? "user" : "ai",
+      text: String(message.text || "").slice(0, MAX_CHAT_HISTORY_TEXT_CHARS),
+      created_at: String(message.created_at || new Date().toISOString()).slice(0, 40)
+    })) : [];
+    return {
+      id: String(chat.id || crypto.randomUUID()).slice(0, 120),
+      book_id: String(chat.book_id || "").slice(0, 220),
+      book_title: String(chat.book_title || "Kitap").slice(0, 220),
+      book_cover: String(chat.book_cover || "").slice(0, 1200),
+      drive_id: String(chat.drive_id || "").slice(0, 220),
+      book_grade: String(chat.book_grade || "").slice(0, 12),
+      title: String(chat.title || "Yeni sohbet").slice(0, 120),
+      messages,
+      created_at: String(chat.created_at || new Date().toISOString()).slice(0, 40),
+      updated_at: String(chat.updated_at || new Date().toISOString()).slice(0, 40)
+    };
+  });
+  chats.sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
+  return { chats };
+}
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await derivePasswordHash(password, salt, PASSWORD_ITERATIONS);
+  return `pbkdf2_sha256$${PASSWORD_ITERATIONS}$${bytesToBase64Url(salt)}$${bytesToBase64Url(hash)}`;
+}
+
+async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  const parts = storedHash.split("$");
+  if (parts.length !== 4 || parts[0] !== "pbkdf2_sha256") return false;
+  const iterations = Number(parts[1]);
+  if (!Number.isFinite(iterations) || iterations < 100000) return false;
+  const salt = base64UrlToBytes(parts[2]);
+  const expected = base64UrlToBytes(parts[3]);
+  const actual = await derivePasswordHash(password, salt, iterations);
+  return constantTimeEqual(actual, expected);
+}
+
+async function derivePasswordHash(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
+  const saltBuffer = new ArrayBuffer(salt.byteLength);
+  new Uint8Array(saltBuffer).set(salt);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: saltBuffer, iterations },
+    key,
+    256
+  );
+  return new Uint8Array(bits);
+}
+
+async function sha256Base64Url(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return bytesToBase64Url(new Uint8Array(digest));
+}
+
+function randomToken(byteLength: number): string {
+  return bytesToBase64Url(crypto.getRandomValues(new Uint8Array(byteLength)));
+}
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlToBytes(value: string): Uint8Array {
+  const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  let mismatch = a.length ^ b.length;
+  const maxLength = Math.max(a.length, b.length);
+  for (let index = 0; index < maxLength; index += 1) {
+    mismatch |= (a[index] || 0) ^ (b[index] || 0);
+  }
+  return mismatch === 0;
+}
+
+function bearerToken(request: Request): string {
+  const header = request.headers.get("authorization") || "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : "";
+}
+
+function optionalEnv(env: Env, key: string): string {
+  const value = (env as unknown as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : "";
 }
 
 async function handleLibrary(url: URL, env: Env): Promise<Response> {
@@ -686,7 +1119,7 @@ function corsHeaders(request: Request): Headers {
   const origin = request.headers.get("origin");
   headers.set("access-control-allow-origin", origin || "*");
   headers.set("access-control-allow-methods", "GET,POST,PUT,DELETE,OPTIONS");
-  headers.set("access-control-allow-headers", "content-type,x-auth-token");
+  headers.set("access-control-allow-headers", "content-type,x-auth-token,authorization");
   headers.set("access-control-max-age", "86400");
   return headers;
 }

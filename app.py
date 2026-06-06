@@ -1704,6 +1704,7 @@ HTML = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <style>
 :root {
   --bg-deep:    #07070f;
@@ -1789,6 +1790,446 @@ body::after {
 #analysisScreen        { transform: translateX(56px); opacity: 0; }
 #analysisScreen.active { transform: translateX(0);    opacity: 1; pointer-events: all; }
 #analysisScreen.hidden { transform: translateX(56px); opacity: 0; }
+
+.app-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(7,7,15,0.96), rgba(12,18,28,0.94)),
+    radial-gradient(circle at 50% 30%, rgba(52,211,153,0.14), transparent 44%);
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1), transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-loading.done {
+  opacity: 0;
+  transform: scale(1.025);
+  pointer-events: none;
+}
+
+.loading-core {
+  width: min(420px, 92vw);
+  display: grid;
+  gap: 20px;
+  text-align: center;
+  animation: loadingCoreIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes loadingCoreIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.loading-orbit {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(94,234,212,0.34);
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 18px 64px rgba(0,0,0,0.28), 0 0 42px rgba(94,234,212,0.16);
+  position: relative;
+}
+
+.loading-orbit::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+  border: 2px solid transparent;
+  border-top-color: rgba(94,234,212,0.82);
+  border-right-color: rgba(251,191,36,0.58);
+  animation: loadingSpin 1.35s linear infinite;
+}
+
+@keyframes loadingSpin { to { transform: rotate(360deg); } }
+
+.loading-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  object-fit: contain;
+}
+
+.loading-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.loading-status {
+  min-height: 24px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.loading-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.loading-fill {
+  width: 38%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), #67e8f9, var(--amber));
+  animation: loadingBar 1.45s ease-in-out infinite alternate;
+}
+
+@keyframes loadingBar {
+  from { transform: translateX(-36%); }
+  to { transform: translateX(174%); }
+}
+
+.account-auth-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
+  gap: clamp(24px, 4vw, 56px);
+  align-items: center;
+  padding: clamp(20px, 5vw, 72px);
+  background:
+    linear-gradient(135deg, rgba(7,7,15,0.94), rgba(16,24,32,0.92)),
+    radial-gradient(circle at 20% 20%, rgba(99,102,241,0.14), transparent 42%);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(1.015);
+  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.account-auth-screen.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: scale(1);
+}
+
+.auth-hero {
+  max-width: 560px;
+  display: grid;
+  gap: 18px;
+}
+
+.auth-kicker {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.auth-hero-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(32px, 6vw, 68px);
+  line-height: 0.96;
+  font-weight: 800;
+}
+
+.auth-hero-text {
+  max-width: 520px;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.auth-panel-card {
+  width: min(440px, 100%);
+  justify-self: end;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.13);
+  background: rgba(18,18,30,0.72);
+  backdrop-filter: blur(22px);
+  box-shadow: 0 28px 90px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.08);
+  animation: accountPanelFloat 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes accountPanelFloat {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+
+.auth-tab {
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 800;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.auth-tab.active {
+  color: #071015;
+  background: linear-gradient(135deg, #67e8f9, #5eead4);
+  box-shadow: 0 12px 28px rgba(94,234,212,0.18);
+}
+
+.account-form {
+  display: grid;
+  gap: 12px;
+}
+
+.account-field {
+  display: grid;
+  gap: 7px;
+}
+
+.account-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.account-input {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.07);
+  color: var(--text-primary);
+  padding: 0 14px;
+  outline: none;
+  font: inherit;
+  transition: var(--transition);
+}
+
+.account-input:focus {
+  border-color: rgba(94,234,212,0.56);
+  box-shadow: 0 0 0 4px rgba(94,234,212,0.12);
+}
+
+.account-input::placeholder {
+  color: var(--text-muted);
+}
+
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.remember-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
+}
+
+.turnstile-wrap {
+  min-height: 70px;
+  display: grid;
+  align-items: center;
+  justify-items: start;
+}
+
+.turnstile-note,
+.account-auth-error {
+  color: var(--amber);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.account-auth-error {
+  min-height: 18px;
+  color: var(--red);
+  font-weight: 700;
+}
+
+.account-submit {
+  height: 48px;
+  border: 0;
+  border-radius: 999px;
+  color: #071015;
+  background: linear-gradient(135deg, #5eead4, #67e8f9);
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 16px 36px rgba(94,234,212,0.18);
+  transition: var(--transition);
+}
+
+.account-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 20px 48px rgba(94,234,212,0.24);
+}
+
+.account-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.account-switch-note {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.account-switch-note button {
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.account-chip {
+  display: none;
+  align-items: center;
+  gap: 9px;
+  height: 36px;
+  padding: 0 12px 0 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.account-chip.visible {
+  display: inline-flex;
+}
+
+.account-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #5eead4, #fbbf24);
+  color: #071015;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.account-chip-name {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 20px;
+  width: min(300px, calc(100vw - 28px));
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(14,16,28,0.94);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.36);
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: var(--transition);
+  z-index: 5;
+}
+
+.account-menu.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+}
+
+.account-menu-name {
+  font-weight: 900;
+  margin-bottom: 2px;
+}
+
+.account-menu-email {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+
+.profile-edit-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.profile-save-btn,
+.logout-btn {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0 12px;
+  min-height: 38px;
+}
+
+.logout-btn {
+  width: 100%;
+  color: var(--red);
+}
+
+@media (max-width: 860px) {
+  .account-auth-screen {
+    grid-template-columns: 1fr;
+    align-content: center;
+    overflow-y: auto;
+  }
+  .auth-hero {
+    max-width: none;
+  }
+  .auth-hero-title {
+    font-size: clamp(30px, 10vw, 48px);
+  }
+  .auth-panel-card {
+    justify-self: stretch;
+    width: 100%;
+  }
+}
+
+@media (max-width: 620px) {
+  .account-auth-screen {
+    padding: 18px;
+    gap: 18px;
+  }
+  .auth-hero-text {
+    font-size: 14px;
+  }
+  .account-chip-name {
+    display: none;
+  }
+  .account-chip {
+    padding-right: 6px;
+  }
+  .account-menu {
+    right: 12px;
+  }
+}
 
 /* Navbar */
 .navbar {
@@ -6562,6 +7003,63 @@ body::after {
 </head>
 <body>
 
+<div class="app-loading" id="appLoadingOverlay" aria-live="polite">
+  <div class="loading-core">
+    <div class="loading-orbit">
+      <img src="{{ reylai_icon_src }}" class="loading-logo" alt="ReylAI">
+    </div>
+    <div>
+      <div class="loading-title">ReylAI hazırlanıyor</div>
+      <div class="loading-status" id="loadingStatusText">Güvenli oturum kontrol ediliyor...</div>
+    </div>
+    <div class="loading-track" aria-hidden="true">
+      <div class="loading-fill"></div>
+    </div>
+  </div>
+</div>
+
+<section class="account-auth-screen" id="accountAuthScreen" aria-label="ReylAI hesap girişi">
+  <div class="auth-hero">
+    <div class="auth-kicker">Güvenli çalışma alanı</div>
+    <h1 class="auth-hero-title">ReylAI hesabınla devam et.</h1>
+    <p class="auth-hero-text">Sohbet geçmişin hesabına bağlanır, bu cihazda oturumun saklanabilir ve girişlerde Cloudflare doğrulaması çalışır.</p>
+  </div>
+  <div class="auth-panel-card">
+    <div class="auth-tabs" role="tablist" aria-label="Hesap işlemleri">
+      <button class="auth-tab active" id="loginTabBtn" type="button" onclick="setAccountAuthMode('login')">Log in</button>
+      <button class="auth-tab" id="signupTabBtn" type="button" onclick="setAccountAuthMode('signup')">Sign up</button>
+    </div>
+    <form class="account-form" id="accountAuthForm" onsubmit="submitAccountAuth(event)">
+      <div class="account-field" id="displayNameField" style="display:none">
+        <label class="account-label" for="accountDisplayName">Display name</label>
+        <input class="account-input" id="accountDisplayName" type="text" autocomplete="name" maxlength="40" placeholder="Örn. Reyli">
+      </div>
+      <div class="account-field">
+        <label class="account-label" for="accountEmail">E-posta</label>
+        <input class="account-input" id="accountEmail" type="email" autocomplete="email" maxlength="254" placeholder="sen@example.com" required>
+      </div>
+      <div class="account-field">
+        <label class="account-label" for="accountPassword">Şifre</label>
+        <input class="account-input" id="accountPassword" type="password" autocomplete="current-password" minlength="8" maxlength="128" placeholder="En az 8 karakter" required>
+      </div>
+      <label class="remember-row">
+        <input id="rememberDevice" type="checkbox" checked>
+        <span>Bu cihazda oturumu hatırla</span>
+      </label>
+      <div class="turnstile-wrap">
+        <div id="accountTurnstile"></div>
+        <div class="turnstile-note" id="turnstileNote">Cloudflare doğrulaması hazırlanıyor...</div>
+      </div>
+      <div class="account-auth-error" id="accountAuthError"></div>
+      <button class="account-submit" id="accountSubmitBtn" type="submit">Giriş yap</button>
+      <div class="account-switch-note">
+        <span id="accountSwitchText">Hesabın yok mu?</span>
+        <button type="button" id="accountSwitchBtn" onclick="setAccountAuthMode('signup')">Sign up</button>
+      </div>
+    </form>
+  </div>
+</section>
+
 <!-- ── Library Screen ──────────────────────────────────────────────────────── -->
 <div class="screen" id="libraryScreen">
   <input type="file" id="pdfFileInput" accept=".pdf" multiple>
@@ -6617,9 +7115,22 @@ body::after {
       </div>
     </div>
     <div class="nav-right">
+      <button class="account-chip" id="accountChip" type="button" onclick="toggleAccountMenu()" aria-label="Hesap menüsünü aç">
+        <span class="account-avatar" id="accountAvatar">R</span>
+        <span class="account-chip-name" id="accountChipName">Hesap</span>
+      </button>
       <div class="status-pill" id="libStatus">
         <span class="status-dot"></span>
         <span id="libStatusText">Haz&#305;r</span>
+      </div>
+      <div class="account-menu" id="accountMenu">
+        <div class="account-menu-name" id="accountMenuName">Hesap</div>
+        <div class="account-menu-email" id="accountMenuEmail"></div>
+        <div class="profile-edit-row">
+          <input class="account-input" id="profileDisplayName" type="text" maxlength="40" placeholder="Display name">
+          <button class="profile-save-btn" type="button" onclick="saveAccountProfile()">Kaydet</button>
+        </div>
+        <button class="logout-btn" type="button" onclick="logoutAccount()">Çıkış yap</button>
       </div>
     </div>
   </nav>
@@ -6940,7 +7451,16 @@ let selectedGrade = '9';
 let _pendingDeleteInfo = null;
 let _renameBookId = '';
 let _renameCoverFile = null;
-const CHAT_HISTORY_KEY = 'reylai.chatHistory.v1';
+const APP_AUTH_TOKEN_KEY = 'reylai.accountToken.v1';
+const APP_AUTH_SESSION_KEY = 'reylai.accountSessionToken.v1';
+const CHAT_HISTORY_BASE_KEY = 'reylai.chatHistory.v1';
+let _accountAuthMode = 'login';
+let _accountUser = null;
+let _turnstileSiteKey = '';
+let _turnstileWidgetId = null;
+let _turnstileToken = '';
+let _turnstileReady = false;
+let _appStarted = false;
 let _chatStore = { chats: [] };
 let _chatStoreLoaded = false;
 let _chatStoreLoadPromise = null;
@@ -6954,6 +7474,345 @@ const BOOKS_REMOTE_BASE_URL = {{ books_remote_base_url|tojson }};
 
 const SEND_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
 const STOP_ICON = '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>';
+
+const LOADING_STATUSES = [
+  'Güvenli oturum kontrol ediliyor...',
+  'Kişisel sohbet alanı hazırlanıyor...',
+  'Kitap kütüphanesi bağlanıyor...',
+  'ReylAI cevap motoru ısınıyor...',
+  'Arayüz yumuşak geçişe hazırlanıyor...'
+];
+let _loadingStatusIndex = 0;
+let _loadingStatusTimer = null;
+
+function setLoadingStatus(message) {
+  const el = document.getElementById('loadingStatusText');
+  if (el) el.textContent = message;
+}
+
+function startLoadingStatusCycle(message) {
+  if (message) setLoadingStatus(message);
+  clearInterval(_loadingStatusTimer);
+  _loadingStatusTimer = setInterval(function() {
+    _loadingStatusIndex = (_loadingStatusIndex + 1) % LOADING_STATUSES.length;
+    setLoadingStatus(LOADING_STATUSES[_loadingStatusIndex]);
+  }, 1350);
+}
+
+function showLoadingOverlay(message) {
+  const overlay = document.getElementById('appLoadingOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('done');
+  startLoadingStatusCycle(message || LOADING_STATUSES[0]);
+}
+
+function hideLoadingOverlay() {
+  clearInterval(_loadingStatusTimer);
+  const overlay = document.getElementById('appLoadingOverlay');
+  if (overlay) overlay.classList.add('done');
+}
+
+function getAppAuthToken() {
+  return localStorage.getItem(APP_AUTH_TOKEN_KEY) || sessionStorage.getItem(APP_AUTH_SESSION_KEY) || '';
+}
+
+function setAppAuthToken(token, rememberDevice) {
+  clearAppAuthToken();
+  if (rememberDevice) localStorage.setItem(APP_AUTH_TOKEN_KEY, token);
+  else sessionStorage.setItem(APP_AUTH_SESSION_KEY, token);
+}
+
+function clearAppAuthToken() {
+  localStorage.removeItem(APP_AUTH_TOKEN_KEY);
+  sessionStorage.removeItem(APP_AUTH_SESSION_KEY);
+}
+
+function apiFetch(url, options) {
+  options = options || {};
+  const headers = new Headers(options.headers || {});
+  const token = getAppAuthToken();
+  if (token) headers.set('Authorization', 'Bearer ' + token);
+  return fetch(url, Object.assign({}, options, { headers: headers })).then(function(res) {
+    if (res.status === 401) {
+      clearAppAuthToken();
+      _accountUser = null;
+      updateAccountUI();
+      showAccountAuth();
+      throw new Error('Oturum süresi doldu.');
+    }
+    return res;
+  });
+}
+
+function showAccountAuth() {
+  const screen = document.getElementById('accountAuthScreen');
+  if (screen) screen.classList.add('active');
+  setAccountAuthMode(_accountAuthMode || 'login');
+  renderAccountTurnstile();
+}
+
+function hideAccountAuth() {
+  const screen = document.getElementById('accountAuthScreen');
+  if (screen) screen.classList.remove('active');
+}
+
+function setAccountAuthError(message) {
+  const el = document.getElementById('accountAuthError');
+  if (el) el.textContent = message || '';
+}
+
+function setAccountAuthMode(mode) {
+  _accountAuthMode = mode === 'signup' ? 'signup' : 'login';
+  const signup = _accountAuthMode === 'signup';
+  const display = document.getElementById('displayNameField');
+  const displayInput = document.getElementById('accountDisplayName');
+  const loginTab = document.getElementById('loginTabBtn');
+  const signupTab = document.getElementById('signupTabBtn');
+  const password = document.getElementById('accountPassword');
+  const submit = document.getElementById('accountSubmitBtn');
+  const switchText = document.getElementById('accountSwitchText');
+  const switchBtn = document.getElementById('accountSwitchBtn');
+  if (display) display.style.display = signup ? 'grid' : 'none';
+  if (displayInput) displayInput.required = signup;
+  if (loginTab) loginTab.classList.toggle('active', !signup);
+  if (signupTab) signupTab.classList.toggle('active', signup);
+  if (password) password.autocomplete = signup ? 'new-password' : 'current-password';
+  if (submit) submit.textContent = signup ? 'Hesap oluştur' : 'Giriş yap';
+  if (switchText) switchText.textContent = signup ? 'Zaten hesabın var mı?' : 'Hesabın yok mu?';
+  if (switchBtn) {
+    switchBtn.textContent = signup ? 'Log in' : 'Sign up';
+    switchBtn.onclick = function() { setAccountAuthMode(signup ? 'login' : 'signup'); };
+  }
+  setAccountAuthError('');
+  resetAccountTurnstile();
+}
+
+function updateAccountSubmitState() {
+  const btn = document.getElementById('accountSubmitBtn');
+  if (!btn) return;
+  btn.disabled = !_turnstileSiteKey || !_turnstileReady;
+}
+
+function renderAccountTurnstile() {
+  const target = document.getElementById('accountTurnstile');
+  const note = document.getElementById('turnstileNote');
+  if (!target) return;
+  if (!_turnstileSiteKey) {
+    _turnstileReady = false;
+    if (note) note.textContent = 'Cloudflare doğrulaması için production site key bekleniyor.';
+    updateAccountSubmitState();
+    return;
+  }
+  if (!window.turnstile || typeof window.turnstile.render !== 'function') {
+    if (note) note.textContent = 'Cloudflare doğrulaması yükleniyor...';
+    setTimeout(renderAccountTurnstile, 220);
+    return;
+  }
+  target.innerHTML = '';
+  _turnstileToken = '';
+  _turnstileReady = false;
+  _turnstileWidgetId = window.turnstile.render(target, {
+    sitekey: _turnstileSiteKey,
+    action: 'turnstile-spin-v1',
+    callback: function(token) {
+      _turnstileToken = token || '';
+      _turnstileReady = !!_turnstileToken;
+      if (note) note.textContent = _turnstileReady ? 'Cloudflare doğrulaması tamam.' : 'Cloudflare doğrulaması bekleniyor...';
+      updateAccountSubmitState();
+    },
+    'expired-callback': function() {
+      _turnstileToken = '';
+      _turnstileReady = false;
+      if (note) note.textContent = 'Doğrulama süresi doldu. Yenileniyor...';
+      updateAccountSubmitState();
+      resetAccountTurnstile();
+    },
+    'error-callback': function() {
+      _turnstileToken = '';
+      _turnstileReady = false;
+      if (note) note.textContent = 'Cloudflare doğrulaması tekrar deneniyor...';
+      updateAccountSubmitState();
+    }
+  });
+  if (note) note.textContent = 'Cloudflare doğrulaması bekleniyor...';
+  updateAccountSubmitState();
+}
+
+function resetAccountTurnstile() {
+  _turnstileToken = '';
+  _turnstileReady = false;
+  if (window.turnstile && _turnstileWidgetId !== null) {
+    try { window.turnstile.reset(_turnstileWidgetId); } catch(e) { renderAccountTurnstile(); }
+  } else {
+    renderAccountTurnstile();
+  }
+  updateAccountSubmitState();
+}
+
+async function loadAccountAuthConfig() {
+  try {
+    const res = await fetch('/api/auth/config', { cache: 'no-store' });
+    const data = await res.json();
+    _turnstileSiteKey = data.turnstile_site_key || '';
+  } catch(e) {
+    _turnstileSiteKey = '';
+  }
+  renderAccountTurnstile();
+}
+
+async function submitAccountAuth(event) {
+  if (event) event.preventDefault();
+  const btn = document.getElementById('accountSubmitBtn');
+  if (!_turnstileToken) {
+    setAccountAuthError('Cloudflare bot doğrulamasını tamamlayın.');
+    return;
+  }
+  const email = document.getElementById('accountEmail').value.trim();
+  const password = document.getElementById('accountPassword').value;
+  const displayName = document.getElementById('accountDisplayName').value.trim();
+  const remember = document.getElementById('rememberDevice').checked;
+  const endpoint = _accountAuthMode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
+  const payload = {
+    email: email,
+    password: password,
+    display_name: displayName,
+    remember_device: remember,
+    turnstile_token: _turnstileToken
+  };
+  setAccountAuthError('');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = _accountAuthMode === 'signup' ? 'Hesap oluşturuluyor...' : 'Giriş yapılıyor...';
+  }
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success || !data.token) {
+      throw new Error(data.error || 'Giriş tamamlanamadı.');
+    }
+    setAppAuthToken(data.token, remember);
+    _accountUser = data.user || null;
+    updateAccountUI();
+    showLoadingOverlay('Kişisel alan açılıyor...');
+    hideAccountAuth();
+    _chatStoreLoaded = false;
+    _chatStoreLoadPromise = null;
+    _chatStore = { chats: [] };
+    await startApp();
+    hideLoadingOverlay();
+    showToast('success', 'Hoş geldin', 'ReylAI hesabın hazır.', 2800);
+  } catch(e) {
+    setAccountAuthError(e.message || 'Bağlantı hatası.');
+    resetAccountTurnstile();
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = _accountAuthMode === 'signup' ? 'Hesap oluştur' : 'Giriş yap';
+      updateAccountSubmitState();
+    }
+  }
+}
+
+function updateAccountUI() {
+  const user = _accountUser || {};
+  const name = user.display_name || 'Hesap';
+  const email = user.email || '';
+  const chip = document.getElementById('accountChip');
+  const avatar = document.getElementById('accountAvatar');
+  const chipName = document.getElementById('accountChipName');
+  const menuName = document.getElementById('accountMenuName');
+  const menuEmail = document.getElementById('accountMenuEmail');
+  const profileInput = document.getElementById('profileDisplayName');
+  if (chip) chip.classList.toggle('visible', !!_accountUser);
+  if (avatar) avatar.textContent = name.trim().charAt(0).toUpperCase() || 'R';
+  if (chipName) chipName.textContent = name;
+  if (menuName) menuName.textContent = name;
+  if (menuEmail) menuEmail.textContent = email;
+  if (profileInput) profileInput.value = _accountUser ? name : '';
+}
+
+function toggleAccountMenu() {
+  const menu = document.getElementById('accountMenu');
+  if (menu) menu.classList.toggle('active');
+}
+
+function closeAccountMenu() {
+  const menu = document.getElementById('accountMenu');
+  if (menu) menu.classList.remove('active');
+}
+
+async function saveAccountProfile() {
+  const input = document.getElementById('profileDisplayName');
+  const displayName = input ? input.value.trim() : '';
+  if (displayName.length < 2) {
+    showToast('warning', 'Ad kısa', 'Görünen ad en az 2 karakter olmalı.', 3000);
+    return;
+  }
+  try {
+    const res = await apiFetch('/api/auth/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name: displayName })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Profil kaydedilemedi.');
+    _accountUser = data.user;
+    updateAccountUI();
+    closeAccountMenu();
+    showToast('success', 'Profil güncellendi', 'Görünen ad kaydedildi.', 2600);
+  } catch(e) {
+    showToast('error', 'Profil Kaydedilemedi', e.message || 'Bağlantı hatası.', 4500);
+  }
+}
+
+async function logoutAccount() {
+  try {
+    await apiFetch('/api/auth/logout', { method: 'POST' });
+  } catch(e) {}
+  clearAppAuthToken();
+  _accountUser = null;
+  _appStarted = false;
+  _chatStore = { chats: [] };
+  _chatStoreLoaded = false;
+  _chatStoreLoadPromise = null;
+  _activeChatId = '';
+  closeAccountMenu();
+  updateAccountUI();
+  renderChatHistory();
+  showAccountAuth();
+  showToast('info', 'Çıkış yapıldı', 'Bu cihazdaki oturum kapatıldı.', 2800);
+}
+
+async function bootApp() {
+  showLoadingOverlay('Güvenli oturum kontrol ediliyor...');
+  await loadAccountAuthConfig();
+  const token = getAppAuthToken();
+  if (!token) {
+    showAccountAuth();
+    hideLoadingOverlay();
+    return;
+  }
+  try {
+    const res = await apiFetch('/api/auth/me', { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok || !data.success || !data.user) throw new Error(data.error || 'Oturum doğrulanamadı.');
+    _accountUser = data.user;
+    updateAccountUI();
+    setLoadingStatus('Kütüphane ve sohbet geçmişi yükleniyor...');
+    await startApp();
+    hideLoadingOverlay();
+  } catch(e) {
+    clearAppAuthToken();
+    _accountUser = null;
+    updateAccountUI();
+    showAccountAuth();
+    hideLoadingOverlay();
+  }
+}
 
 function makeClientId(prefix) {
   if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -7008,9 +7867,14 @@ function normalizeClientChatStore(rawStore) {
   };
 }
 
+function getChatHistoryKey() {
+  const owner = _accountUser && (_accountUser.id || _accountUser.email);
+  return CHAT_HISTORY_BASE_KEY + ':' + (owner || 'guest');
+}
+
 function getLocalChatStore() {
   try {
-    const raw = localStorage.getItem(CHAT_HISTORY_KEY);
+    const raw = localStorage.getItem(getChatHistoryKey());
     const parsed = raw ? JSON.parse(raw) : null;
     return normalizeClientChatStore(parsed);
   } catch(e) {
@@ -7026,7 +7890,7 @@ function sortChatStore() {
 
 function writeLocalChatStore() {
   try {
-    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(_chatStore));
+    localStorage.setItem(getChatHistoryKey(), JSON.stringify(_chatStore));
   } catch(e) {}
 }
 
@@ -7059,7 +7923,7 @@ async function loadChatStoreFromServer() {
   const localStore = getLocalChatStore();
   _chatStoreLoadPromise = (async function() {
     try {
-      const res = await fetch('/api/chat_history', { cache: 'no-store' });
+      const res = await apiFetch('/api/chat_history', { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const serverStore = normalizeClientChatStore(await res.json());
       const beforeMerge = JSON.stringify(serverStore);
@@ -7084,7 +7948,7 @@ async function loadChatStoreFromServer() {
 
 function persistChatStoreToServer() {
   const payload = JSON.stringify(_chatStore);
-  fetch('/api/chat_history', {
+  apiFetch('/api/chat_history', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: payload
@@ -7209,13 +8073,13 @@ let _libraryLoadSeq = 0;
 let _gradeSwitchTimer = null;
 
 // ── Auth ────────────────────────────────────────────────────────────────────────
-function getAuthToken() { return sessionStorage.getItem('auth_token') || ''; }
-function isAuthed() { return !!getAuthToken(); }
+function getAdminAuthToken() { return sessionStorage.getItem('admin_auth_token') || ''; }
+function isAdminAuthed() { return !!getAdminAuthToken(); }
 
 var _authCallback = null;
 var _authSubmitting = false;
 function requireAuth(callback) {
-  if (isAuthed()) { callback(); return; }
+  if (isAdminAuthed()) { callback(); return; }
   _abortPrefetches();
   _authCallback = callback;
   _authSubmitting = false;
@@ -7256,7 +8120,7 @@ async function submitAuth() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var data = await res.json();
     if (data.success && data.token) {
-      sessionStorage.setItem('auth_token', data.token);
+      sessionStorage.setItem('admin_auth_token', data.token);
       var cb = _authCallback;
       closeAuth();
       runAuthedCallback(cb);
@@ -7272,10 +8136,10 @@ async function submitAuth() {
   }
 }
 function authHeaders() {
-  return { 'X-Auth-Token': getAuthToken() };
+  return { 'X-Auth-Token': getAdminAuthToken() };
 }
 function authFormHeaders() {
-  return getAuthToken();
+  return getAdminAuthToken();
 }
 
 // ── Rename ──────────────────────────────────────────────────────────────────────
@@ -7347,7 +8211,7 @@ async function uploadRenameCover() {
   var data = await res.json();
   if (!data.success) {
     if (data.auth === false) {
-      sessionStorage.removeItem('auth_token');
+      sessionStorage.removeItem('admin_auth_token');
     }
     throw new Error(data.error || 'Thumbnail güncellenemedi.');
   }
@@ -7366,7 +8230,7 @@ async function submitRename() {
       var data = await res.json();
       if (!data.success) {
         if (data.auth === false) {
-          sessionStorage.removeItem('auth_token');
+          sessionStorage.removeItem('admin_auth_token');
           var savedId = _renameBookId;
           closeRename();
           openRename(savedId, name);
@@ -7893,7 +8757,7 @@ async function syncManual() {
         showToast('warning', 'Baz\u0131 Hatalar', data.errors.slice(0,3).join('; '), 7000);
       }
     } else if (data.auth === false) {
-      sessionStorage.removeItem('auth_token');
+      sessionStorage.removeItem('admin_auth_token');
       setLibStatus('Yetkilendirme gerekli.', 'amber');
       requireAuth(function(){ syncManual(); });
     } else if (data.skipped) {
@@ -7981,7 +8845,7 @@ function uploadFileXHR(file, grade, onProgress) {
     fd.append('file', file);
     fd.append('grade', grade);
     xhr.open('POST', '/api/upload');
-    xhr.setRequestHeader('X-Auth-Token', getAuthToken());
+    xhr.setRequestHeader('X-Auth-Token', getAdminAuthToken());
     xhr.send(fd);
   });
 }
@@ -10589,7 +11453,7 @@ async function analyze() {
   _analysisStopRequested = false;
 
   try {
-    const res = await fetch('/api/analyze', {
+    const res = await apiFetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
@@ -10691,7 +11555,7 @@ async function confirmDelete() {
     if (data.success) {
       setLibStatus('Kitap silindi.', 'green');
     } else if (data.auth === false) {
-      sessionStorage.removeItem('auth_token');
+      sessionStorage.removeItem('admin_auth_token');
       requireAuth(function(){ _pendingDeleteInfo = info; confirmDelete(); });
     } else {
       setLibStatus('Silme hatas\u0131: ' + (data.error || ''), 'red');
@@ -10736,12 +11600,19 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('delOverlay').addEventListener('click', function(e) {
     if (e.target === this) hideDelConfirm();
   });
+  document.addEventListener('click', function(e) {
+    const menu = document.getElementById('accountMenu');
+    const chip = document.getElementById('accountChip');
+    if (!menu || !chip) return;
+    if (!menu.contains(e.target) && !chip.contains(e.target)) closeAccountMenu();
+  });
 });
 
 document.addEventListener('keydown', function(e) {
   var pdfActive = document.getElementById('pdfViewerOverlay').classList.contains('active');
   if (e.key === 'Escape') {
-    if (_activeAnalyzeController) { stopCurrentAnalysis(); }
+    if (document.getElementById('accountMenu') && document.getElementById('accountMenu').classList.contains('active')) { closeAccountMenu(); }
+    else if (_activeAnalyzeController) { stopCurrentAnalysis(); }
     else if (pdfActive) { closePdfViewer(); }
     else { hideDelConfirm(); }
     return;
@@ -10806,7 +11677,7 @@ async function submitAddBook() {
       showToast('success', 'Kitap Eklendi', (data.book.title || fileId) + ' k\u00fct\u00fcphaneye eklendi.', 5000);
       if (grade === selectedGrade) loadLibrary();
     } else if (data.auth === false) {
-      sessionStorage.removeItem('auth_token');
+      sessionStorage.removeItem('admin_auth_token');
       requireAuth(function(){ submitAddBook(); });
     } else {
       showToast('error', 'Eklenemedi', data.error || 'Bilinmeyen hata', 6000);
@@ -10868,6 +11739,11 @@ document.getElementById('cfgOverlay').addEventListener('click', function(e) {
 
 // ── Startup ────────────────────────────────────────────────────────────────────
 async function startApp() {
+  if (_appStarted) {
+    updateNetworkStatus();
+    await loadLibrary();
+    return;
+  }
   loadChatStore();
   renderChatHistory();
   await loadChatStoreFromServer();
@@ -10876,8 +11752,9 @@ async function startApp() {
   await loadLibrary();
   syncSilent();
   setTimeout(prefetchAllGrades, 1000);
+  _appStarted = true;
 }
-startApp();
+bootApp();
 </script>
 </body>
 </html>

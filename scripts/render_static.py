@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 import sys
 
 from flask import render_template_string
@@ -22,6 +23,12 @@ def main():
             pdfjs_worker_url=f"/pdfjs/pdf.worker.min.js?v={pdfjs_version}",
         )
     Path("index.html").write_text(html, encoding="utf-8")
+    pdfjs_dest = ROOT / "pdfjs"
+    pdfjs_dest.mkdir(exist_ok=True)
+    for filename in ("pdf.min.js", "pdf.worker.min.js"):
+        source = ROOT / "static" / "pdfjs" / filename
+        if source.exists():
+            shutil.copy2(source, pdfjs_dest / filename)
 
 
 if __name__ == "__main__":

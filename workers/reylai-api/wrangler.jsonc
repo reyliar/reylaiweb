@@ -16,8 +16,18 @@
     "BOOKS_REMOTE_BASE_URL": "https://thejinx1.github.io/blupblupreylai-books/",
     "MISTRAL_CHAT_URL": "https://api.mistral.ai/v1/chat/completions",
     "MISTRAL_MODEL": "mistral-small-latest",
-    "MISTRAL_VISION_MODEL": "mistral-small-latest"
+    "MISTRAL_VISION_MODEL": "mistral-small-latest",
+    "TURNSTILE_SITE_KEY": "",
+    "AUTH_REQUIRE_TURNSTILE": "true"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "reylai-auth",
+      "database_id": "45f3c5b2-9c8a-4b59-a653-f5bd53ec6d7a",
+      "migrations_dir": "./migrations"
+    }
+  ],
   "secrets": {
     "required": ["MISTRAL_API_KEY", "GAS_WEB_APP_URL"]
   },
