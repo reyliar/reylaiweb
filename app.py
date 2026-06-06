@@ -1895,14 +1895,12 @@ body::after {
   inset: 0;
   z-index: 60;
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 440px);
-  gap: clamp(24px, 5vw, 72px);
-  align-items: center;
-  padding: clamp(18px, 5vw, 72px);
+  grid-template-columns: 1fr;
+  place-items: center;
+  padding: clamp(16px, 4vw, 40px);
   background:
-    linear-gradient(135deg, #05030c 0%, #101127 43%, #061a1a 100%),
-    linear-gradient(155deg, rgba(99,102,241,0.22), transparent 46%),
-    linear-gradient(22deg, transparent 0%, rgba(94,234,212,0.12) 42%, transparent 72%);
+    linear-gradient(135deg, rgba(5, 3, 12, 1) 0%, rgba(16, 9, 31, 0.99) 50%, rgba(5, 4, 14, 1) 100%),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.11), transparent 38%, rgba(45, 212, 191, 0.045));
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
@@ -1912,6 +1910,7 @@ body::after {
     opacity 0.58s cubic-bezier(0.22, 1, 0.36, 1),
     transform 0.58s cubic-bezier(0.22, 1, 0.36, 1),
     visibility 0.58s step-end;
+  isolation: isolate;
 }
 
 .account-auth-screen::before {
@@ -1919,11 +1918,9 @@ body::after {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
-    linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px);
-  background-size: 54px 54px;
-  -webkit-mask-image: linear-gradient(135deg, rgba(0,0,0,0.84), transparent 78%);
-  mask-image: linear-gradient(135deg, rgba(0,0,0,0.84), transparent 78%);
+    repeating-linear-gradient(90deg, rgba(167, 139, 250, 0.04) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(0deg, rgba(167, 139, 250, 0.026) 0 1px, transparent 1px 40px);
+  opacity: 0.38;
   pointer-events: none;
 }
 
@@ -1932,9 +1929,9 @@ body::after {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.09) 34%, transparent 35%),
-    linear-gradient(300deg, transparent 0%, rgba(94,234,212,0.09) 62%, transparent 63%);
-  opacity: 0.65;
+    linear-gradient(135deg, rgba(124, 58, 237, 0.12), transparent 38%),
+    linear-gradient(315deg, transparent 52%, rgba(45, 212, 191, 0.055));
+  opacity: 0.68;
   transform: translate3d(-2%, -1%, 0);
   animation: authLiquidSheen 9s ease-in-out infinite alternate;
   pointer-events: none;
@@ -1975,12 +1972,7 @@ body.app-ready #libraryScreen {
 }
 
 .auth-hero {
-  max-width: 560px;
-  display: grid;
-  gap: 20px;
-  position: relative;
-  z-index: 1;
-  animation: authHeroIn 0.86s cubic-bezier(0.16, 1, 0.3, 1) both;
+  display: none;
 }
 
 .auth-brand-row {
@@ -2078,19 +2070,19 @@ body.app-ready #libraryScreen {
 }
 
 .auth-panel-card {
-  width: min(440px, 100%);
-  justify-self: end;
-  padding: clamp(18px, 3vw, 24px);
-  border-radius: 28px;
-  border: 1px solid rgba(255,255,255,0.16);
+  width: min(404px, calc(100vw - 32px));
+  justify-self: center;
+  align-self: center;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(196, 181, 253, 0.18);
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.07)),
-    rgba(11,12,24,0.76);
-  backdrop-filter: blur(28px) saturate(1.18);
+    linear-gradient(145deg, rgba(36, 26, 61, 0.90), rgba(14, 10, 28, 0.86)),
+    var(--material-glass);
+  backdrop-filter: blur(24px) saturate(1.14);
   box-shadow:
-    0 34px 100px rgba(0,0,0,0.46),
-    0 0 0 1px rgba(94,234,212,0.05),
-    inset 0 1px 0 rgba(255,255,255,0.18);
+    var(--shadow-float),
+    0 0 42px rgba(76, 29, 149, 0.18);
   position: relative;
   z-index: 1;
   overflow: hidden;
@@ -2102,8 +2094,7 @@ body.app-ready #libraryScreen {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(115deg, rgba(255,255,255,0.18), transparent 28%),
-    linear-gradient(305deg, transparent 58%, rgba(94,234,212,0.12));
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 48%, rgba(124, 58, 237, 0.16));
   opacity: 0.72;
   pointer-events: none;
 }
@@ -2126,11 +2117,11 @@ body.app-ready #libraryScreen {
 .auth-panel-top {
   display: grid;
   gap: 5px;
-  margin-bottom: 18px;
+  margin-bottom: 15px;
 }
 
 .auth-panel-label {
-  color: #8ff7e5;
+  color: var(--green);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -2139,14 +2130,14 @@ body.app-ready #libraryScreen {
 
 .auth-panel-title {
   font-family: 'Manrope', sans-serif;
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1.1;
   font-weight: 900;
 }
 
 .auth-panel-lead {
   color: rgba(243,239,255,0.62);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
@@ -2154,16 +2145,16 @@ body.app-ready #libraryScreen {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  min-height: 50px;
-  margin: 0 -24px 18px;
+  min-height: 46px;
+  margin: 0 -18px 16px;
   border-top: 1px solid rgba(255,255,255,0.10);
   border-bottom: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.045);
+  background: rgba(10, 7, 20, 0.46);
 }
 
 .auth-tab {
   position: relative;
-  height: 50px;
+  height: 46px;
   border: 0;
   background: transparent;
   color: rgba(243,239,255,0.48);
@@ -2174,7 +2165,7 @@ body.app-ready #libraryScreen {
 
 .auth-tab.active {
   color: #ffffff;
-  background: rgba(255,255,255,0.045);
+  background: rgba(124, 58, 237, 0.13);
 }
 
 .auth-tab.active::after {
@@ -2185,13 +2176,13 @@ body.app-ready #libraryScreen {
   bottom: -1px;
   height: 3px;
   border-radius: 999px 999px 0 0;
-  background: linear-gradient(90deg, #5eead4, #a78bfa, #fbbf24);
-  box-shadow: 0 0 22px rgba(167,139,250,0.42);
+  background: linear-gradient(90deg, var(--accent), #a78bfa, var(--green));
+  box-shadow: 0 0 22px rgba(139, 92, 246, 0.38);
 }
 
 .account-form {
   display: grid;
-  gap: 13px;
+  gap: 11px;
 }
 
 .account-field {
@@ -2223,7 +2214,7 @@ body.app-ready #libraryScreen {
 
 .account-label {
   color: rgba(243,239,255,0.68);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -2245,12 +2236,12 @@ body.app-ready #libraryScreen {
   grid-template-columns: 22px 1fr;
   align-items: center;
   gap: 12px;
-  min-height: 54px;
-  padding: 0 15px;
+  min-height: 50px;
+  padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.10);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+  border: 1px solid rgba(196, 181, 253, 0.18);
+  background: rgba(12, 9, 24, 0.56);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   transition:
     border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
@@ -2259,9 +2250,9 @@ body.app-ready #libraryScreen {
 }
 
 .account-input-shell:focus-within {
-  border-color: rgba(94,234,212,0.58);
-  background: rgba(255,255,255,0.14);
-  box-shadow: 0 0 0 4px rgba(94,234,212,0.12), inset 0 1px 0 rgba(255,255,255,0.16);
+  border-color: rgba(139, 92, 246, 0.66);
+  background: rgba(18, 12, 36, 0.64);
+  box-shadow: 0 0 0 4px rgba(109, 40, 217, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transform: translateY(-1px);
 }
 
@@ -2278,7 +2269,7 @@ body.app-ready #libraryScreen {
 }
 
 .account-input-shell .account-input {
-  min-height: 52px;
+  min-height: 48px;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -2318,8 +2309,8 @@ body.app-ready #libraryScreen {
 }
 
 .remember-check {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   border-radius: 999px;
@@ -2335,10 +2326,10 @@ body.app-ready #libraryScreen {
 }
 
 .remember-row input:checked + .remember-check {
-  color: #061015;
-  background: linear-gradient(135deg, #34d399, #67e8f9);
+  color: #080512;
+  background: linear-gradient(135deg, var(--green), #a78bfa);
   border-color: rgba(94,234,212,0.70);
-  box-shadow: 0 12px 28px rgba(52,211,153,0.24);
+  box-shadow: 0 12px 28px rgba(139, 92, 246, 0.24);
 }
 
 .auth-field-note {
@@ -2350,15 +2341,15 @@ body.app-ready #libraryScreen {
 }
 
 .turnstile-wrap {
-  min-height: 78px;
+  min-height: 76px;
   display: grid;
   align-items: center;
   justify-items: center;
   gap: 8px;
   padding: 12px;
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.055);
+  border-radius: 16px;
+  border: 1px solid rgba(196, 181, 253, 0.14);
+  background: rgba(12, 9, 24, 0.48);
   overflow: hidden;
 }
 
@@ -2378,20 +2369,21 @@ body.app-ready #libraryScreen {
 }
 
 .account-submit {
-  height: 52px;
+  height: 50px;
   border: 0;
   border-radius: 999px;
-  color: #071015;
-  background: linear-gradient(100deg, #5eead4 0%, #67e8f9 48%, #a78bfa 100%);
+  color: #fff;
+  background: var(--material-stained);
   font-weight: 900;
   cursor: pointer;
-  box-shadow: 0 18px 42px rgba(94,234,212,0.20), inset 0 1px 0 rgba(255,255,255,0.34);
+  box-shadow: var(--shadow-glow);
   transition: var(--transition);
 }
 
 .account-submit:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 24px 54px rgba(94,234,212,0.28), inset 0 1px 0 rgba(255,255,255,0.44);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 1), rgba(59, 7, 100, 0.96));
+  box-shadow: var(--shadow-glow);
 }
 
 .account-submit:disabled {
@@ -2409,7 +2401,7 @@ body.app-ready #libraryScreen {
 .account-switch-note button {
   border: 0;
   background: transparent;
-  color: #8ff7e5;
+  color: var(--green);
   font-weight: 900;
   cursor: pointer;
 }
@@ -2515,9 +2507,10 @@ body.app-ready #libraryScreen {
 @media (max-width: 860px) {
   .account-auth-screen {
     grid-template-columns: 1fr;
-    align-content: start;
+    align-content: center;
+    justify-items: center;
     overflow-y: auto;
-    gap: 22px;
+    gap: 0;
   }
   .auth-hero {
     max-width: none;
@@ -2530,8 +2523,8 @@ body.app-ready #libraryScreen {
     display: none;
   }
   .auth-panel-card {
-    justify-self: stretch;
-    width: 100%;
+    justify-self: center;
+    width: min(404px, 100%);
   }
 }
 
@@ -2573,10 +2566,10 @@ body.app-ready #libraryScreen {
     font-size: clamp(25px, 8vw, 32px);
   }
   .account-auth-screen.signup-mode .auth-panel-card {
-    margin-top: 24px;
+    margin-top: 0;
   }
   .auth-panel-card {
-    border-radius: 22px;
+    border-radius: 20px;
     padding: 16px;
   }
   .auth-tabs {
