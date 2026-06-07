@@ -1811,10 +1811,9 @@ body::after {
 }
 
 .loading-core {
-  width: min(420px, 92vw);
+  width: auto;
   display: grid;
-  gap: 20px;
-  text-align: center;
+  place-items: center;
   animation: loadingCoreIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -1824,8 +1823,8 @@ body::after {
 }
 
 .loading-orbit {
-  width: 104px;
-  height: 104px;
+  width: clamp(168px, 22vw, 220px);
+  height: clamp(168px, 22vw, 220px);
   margin: 0 auto;
   border-radius: 50%;
   display: grid;
@@ -1839,9 +1838,9 @@ body::after {
 .loading-orbit::before {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: -3px;
   border-radius: inherit;
-  border: 1.5px solid rgba(147,197,253,0.14);
+  border: 2px solid rgba(147,197,253,0.14);
   border-top-color: rgba(147,197,253,0.94);
   border-right-color: rgba(37,99,235,0.74);
   animation: loadingSpin 1.18s linear infinite;
@@ -1850,18 +1849,18 @@ body::after {
 .loading-orbit::after {
   content: '';
   position: absolute;
-  inset: 12px;
+  inset: 18%;
   border-radius: inherit;
   background: radial-gradient(circle, rgba(37,99,235,0.18), transparent 66%);
-  filter: blur(10px);
+  filter: blur(18px);
 }
 
 @keyframes loadingSpin { to { transform: rotate(360deg); } }
 
 .loading-logo {
-  width: 66px;
-  height: 66px;
-  border-radius: 18px;
+  width: 58%;
+  height: 58%;
+  border-radius: 28px;
   object-fit: contain;
   animation: loadingLogoPulse 1.45s ease-in-out infinite;
   position: relative;
@@ -1871,40 +1870,6 @@ body::after {
 @keyframes loadingLogoPulse {
   0%, 100% { opacity: 0.62; transform: scale(0.96); filter: drop-shadow(0 0 10px rgba(96,165,250,0.20)); }
   50% { opacity: 1; transform: scale(1.03); filter: drop-shadow(0 0 22px rgba(96,165,250,0.55)); }
-}
-
-.loading-title {
-  font-family: 'Manrope', sans-serif;
-  font-size: 24px;
-  font-weight: 800;
-}
-
-.loading-status {
-  min-height: 24px;
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
-.loading-track {
-  width: 100%;
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-.loading-fill {
-  width: 38%;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #071a3d, #1d4ed8, #bfdbfe);
-  animation: loadingBar 1.45s ease-in-out infinite alternate;
-}
-
-@keyframes loadingBar {
-  from { transform: translateX(-36%); }
-  to { transform: translateX(174%); }
 }
 
 .account-auth-screen {
@@ -8991,13 +8956,6 @@ body::after,
     <div class="loading-orbit">
       <img src="{{ reylai_icon_src }}" class="loading-logo" alt="ReylAI">
     </div>
-    <div>
-      <div class="loading-title">ReylAI hazırlanıyor</div>
-      <div class="loading-status" id="loadingStatusText">Güvenli oturum kontrol ediliyor...</div>
-    </div>
-    <div class="loading-track" aria-hidden="true">
-      <div class="loading-fill"></div>
-    </div>
   </div>
 </div>
 
@@ -9678,14 +9636,6 @@ const BOOKS_REMOTE_BASE_URL = {{ books_remote_base_url|tojson }};
 const SEND_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
 const STOP_ICON = '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>';
 
-const LOADING_STATUSES = [
-  'Güvenli oturum kontrol ediliyor...',
-  'Kişisel sohbet alanı hazırlanıyor...',
-  'Kitap kütüphanesi bağlanıyor...',
-  'ReylAI cevap motoru ısınıyor...',
-  'Arayüz yumuşak geçişe hazırlanıyor...'
-];
-let _loadingStatusIndex = 0;
 let _loadingStatusTimer = null;
 
 function setLoadingStatus(message) {
@@ -9696,10 +9646,7 @@ function setLoadingStatus(message) {
 function startLoadingStatusCycle(message) {
   if (message) setLoadingStatus(message);
   clearInterval(_loadingStatusTimer);
-  _loadingStatusTimer = setInterval(function() {
-    _loadingStatusIndex = (_loadingStatusIndex + 1) % LOADING_STATUSES.length;
-    setLoadingStatus(LOADING_STATUSES[_loadingStatusIndex]);
-  }, 1350);
+  _loadingStatusTimer = null;
 }
 
 function showLoadingOverlay(message) {
@@ -9708,7 +9655,7 @@ function showLoadingOverlay(message) {
   document.body.classList.add('app-loading-active');
   document.body.classList.remove('app-ready');
   overlay.classList.remove('done');
-  startLoadingStatusCycle(message || LOADING_STATUSES[0]);
+  startLoadingStatusCycle(message || '');
 }
 
 function hideLoadingOverlay(revealApp) {
