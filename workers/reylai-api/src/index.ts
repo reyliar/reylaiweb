@@ -175,6 +175,13 @@ type EmailBinding = {
   send: (message: Record<string, unknown>) => Promise<unknown>;
 };
 
+type EmailDeliveryResult = {
+  sent: boolean;
+  configured: boolean;
+  error?: string;
+  error_code?: string;
+};
+
 type DmMessageRow = {
   id: string;
   sender_id: string;
@@ -526,7 +533,9 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
     token: session.token,
     user: publicUser(user),
     verification_email_sent: delivery.sent,
-    email_delivery_configured: delivery.configured
+    email_delivery_configured: delivery.configured,
+    email_delivery_error: delivery.error,
+    email_error_code: delivery.error_code
   }, 201);
 }
 
@@ -642,6 +651,8 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
       user: freshUser ? publicUser(freshUser) : auth.user,
       verification_email_sent: emailChangeDelivery?.sent || false,
       email_delivery_configured: emailChangeDelivery ? emailChangeDelivery.configured : undefined,
+      email_delivery_error: emailChangeDelivery?.error,
+      email_error_code: emailChangeDelivery?.error_code,
       email_change_pending: shouldSendEmailChange,
       pending_email: shouldSendEmailChange ? pendingEmailForVerification : ""
     });
@@ -703,6 +714,7 @@ async function handleVerificationSend(request: Request, env: Env): Promise<Respo
   return json({
     success: delivery.sent,
     email_delivery_configured: delivery.configured,
+    email_error_code: delivery.error_code,
     error: delivery.sent ? undefined : delivery.error || "E-posta gönderilemedi."
   }, delivery.sent ? 200 : 503);
 }
@@ -762,6 +774,7 @@ async function handleEmailChangeSend(request: Request, env: Env): Promise<Respon
     success: delivery.sent,
     email_delivery_configured: delivery.configured,
     pending_email: pendingEmail,
+    email_error_code: delivery.error_code,
     error: delivery.sent ? undefined : delivery.error || "E-posta değişiklik kodu gönderilemedi."
   }, delivery.sent ? 200 : 503);
 }
@@ -827,6 +840,7 @@ async function handlePasswordChangeSend(request: Request, env: Env): Promise<Res
   return json({
     success: delivery.sent,
     email_delivery_configured: delivery.configured,
+    email_error_code: delivery.error_code,
     error: delivery.sent ? undefined : delivery.error || "Şifre değişiklik kodu gönderilemedi."
   }, delivery.sent ? 200 : 503);
 }
@@ -924,6 +938,7 @@ async function handlePasswordResetSend(request: Request, env: Env): Promise<Resp
   return json({
     success: delivery.sent,
     email_delivery_configured: delivery.configured,
+    email_error_code: delivery.error_code,
     error: delivery.sent ? undefined : delivery.error || "Şifre sıfırlama kodu gönderilemedi."
   }, delivery.sent ? 200 : 503);
 }
@@ -1575,7 +1590,7 @@ function validateAvatarDataUrl(value: string): string {
   return "";
 }
 
-async function sendVerificationCode(env: Env, user: UserRow): Promise<{ sent: boolean; configured: boolean; error?: string }> {
+async function sendVerificationCode(env: Env, user: UserRow): Promise<EmailDeliveryResult> {
   const binding = getEmailBinding(env);
   if (!binding) {
     return { sent: false, configured: false, error: "E-postana kod göndermek için servis henüz hazır değil." };
@@ -1600,16 +1615,11 @@ async function sendVerificationCode(env: Env, user: UserRow): Promise<{ sent: bo
     });
     return { sent: true, configured: true };
   } catch (error) {
-    console.error(JSON.stringify({
-      level: "error",
-      message: "verification email failed",
-      detail: error instanceof Error ? error.message : String(error)
-    }));
-    return { sent: false, configured: true, error: "Doğrulama e-postası gönderilemedi." };
+    return emailSendFailure(error, "Doğrulama e-postası gönderilemedi.", "verification email failed");
   }
 }
 
-async function sendEmailChangeCode(env: Env, user: UserRow, nextEmail: string): Promise<{ sent: boolean; configured: boolean; error?: string }> {
+async function sendEmailChangeCode(env: Env, user: UserRow, nextEmail: string): Promise<EmailDeliveryResult> {
   const email = normalizeEmail(nextEmail);
   const binding = getEmailBinding(env);
   if (!binding) {
@@ -1635,16 +1645,11 @@ async function sendEmailChangeCode(env: Env, user: UserRow, nextEmail: string): 
     });
     return { sent: true, configured: true };
   } catch (error) {
-    console.error(JSON.stringify({
-      level: "error",
-      message: "email change verification failed",
-      detail: error instanceof Error ? error.message : String(error)
-    }));
-    return { sent: false, configured: true, error: "E-posta değişiklik kodu gönderilemedi." };
+    return emailSendFailure(error, "E-posta değişiklik kodu gönderilemedi.", "email change verification failed");
   }
 }
 
-async function sendPasswordChangeCode(env: Env, user: UserRow): Promise<{ sent: boolean; configured: boolean; error?: string }> {
+async function sendPasswordChangeCode(env: Env, user: UserRow): Promise<EmailDeliveryResult> {
   const binding = getEmailBinding(env);
   if (!binding) {
     return { sent: false, configured: false, error: "E-postana kod göndermek için servis henüz hazır değil." };
@@ -1670,12 +1675,7 @@ async function sendPasswordChangeCode(env: Env, user: UserRow): Promise<{ sent: 
     });
     return { sent: true, configured: true };
   } catch (error) {
-    console.error(JSON.stringify({
-      level: "error",
-      message: "password change email failed",
-      detail: error instanceof Error ? error.message : String(error)
-    }));
-    return { sent: false, configured: true, error: "Şifre değişiklik e-postası gönderilemedi." };
+    return emailSendFailure(error, "Şifre değişiklik e-postası gönderilemedi.", "password change email failed");
   }
 }
 
@@ -1762,6 +1762,45 @@ function dmNotificationEmailHtml(senderName: string, countText: string, snippet:
 function getEmailBinding(env: Env): EmailBinding | null {
   const value = (env as unknown as Record<string, unknown>).EMAIL;
   return isRecord(value) && typeof value.send === "function" ? value as EmailBinding : null;
+}
+
+function emailSendFailure(error: unknown, fallback: string, logMessage: string): EmailDeliveryResult {
+  const code = emailSendErrorCode(error);
+  console.error(JSON.stringify({
+    level: "error",
+    message: logMessage,
+    code: code || undefined,
+    detail: error instanceof Error ? error.message : String(error)
+  }));
+  return {
+    sent: false,
+    configured: true,
+    error: emailSendErrorMessage(code, fallback),
+    error_code: code || undefined
+  };
+}
+
+function emailSendErrorCode(error: unknown): string {
+  if (isRecord(error) && typeof error.code === "string") return error.code;
+  const detail = error instanceof Error ? error.message : String(error);
+  const match = detail.match(/\bE_[A-Z0-9_]+\b/);
+  return match ? match[0] : "";
+}
+
+function emailSendErrorMessage(code: string, fallback: string): string {
+  if (code === "E_RECIPIENT_NOT_ALLOWED") {
+    return "Cloudflare bu alıcıya e-posta göndermeye izin vermiyor. Email Sending'i Workers Paid planda açın veya alıcıyı Cloudflare hesabında doğrulayın.";
+  }
+  if (code === "E_SENDER_NOT_VERIFIED" || code === "E_SENDER_DOMAIN_NOT_AVAILABLE") {
+    return "Gönderici alan adı Cloudflare Email Service için hazır değil. reyliar.xyz Email Sending kurulumunu ve no-reply adresini kontrol edin.";
+  }
+  if (code === "E_RECIPIENT_SUPPRESSED") {
+    return "Bu alıcı Cloudflare suppression listesinde. Adresi kontrol edip listeden çıkarmadan kod gönderilemez.";
+  }
+  if (code === "E_DAILY_LIMIT_EXCEEDED" || code === "E_RATE_LIMIT_EXCEEDED") {
+    return "Cloudflare e-posta gönderim limiti doldu. Bir süre sonra tekrar deneyin.";
+  }
+  return fallback;
 }
 
 async function verificationHash(userId: string, email: string, code: string): Promise<string> {

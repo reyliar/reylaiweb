@@ -9078,6 +9078,8 @@ async function submitAccountAuth(event) {
     if (_accountAuthMode === 'signup' && _accountUser && !_accountUser.email_verified) {
       if (data.email_delivery_configured === false) {
         showToast('warning', 'Kod gönderimi bekliyor', 'Hesabın açıldı; e-postana kod göndermek için servis hazırlanıyor.', 6500);
+      } else if (data.verification_email_sent === false) {
+        showToast('warning', 'Kod gönderilemedi', emailDeliveryFailureMessage(data, 'Hesabın açıldı ama doğrulama kodu e-postana gönderilemedi.'), 8200);
       } else {
         showToast('warning', 'E-postanı doğrula', 'E-postana gönderdiğimiz kodu açılan ekranda onayla.', 6200);
         setTimeout(function(){ openEmailCodeModal('verify', { email: _accountUser.email || '', send: false }); }, 850);
@@ -9550,9 +9552,13 @@ async function saveProfileSettings(options) {
       const targetEmail = data.pending_email || payload.email;
       if (data.email_delivery_configured === false) {
         showToast('warning', 'Kod gönderimi bekliyor', 'Değişiklik beklemeye alındı; e-postana kod göndermek için servis hazırlanıyor.', 6200);
-      } else {
-        showToast('warning', 'E-postanı onayla', 'Yeni adresine gelen 6 haneli kodu gir.', 5200);
+        return;
       }
+      if (data.verification_email_sent === false) {
+        showToast('warning', 'Kod gönderilemedi', emailDeliveryFailureMessage(data, 'Yeni e-postana doğrulama kodu gönderilemedi.'), 8200);
+        return;
+      }
+      showToast('warning', 'E-postanı onayla', 'Yeni adresine gelen 6 haneli kodu gir.', 5200);
       openEmailCodeModal('email-change', { email: targetEmail, send: false });
       return;
     }
@@ -9952,12 +9958,24 @@ function setEmailCodeStatus(message, type) {
   status.className = 'email-code-status' + (type ? ' ' + type : '');
 }
 
+function emailDeliveryFailureMessage(data, fallback) {
+  data = data || {};
+  if (data.email_delivery_error || data.error) return data.email_delivery_error || data.error;
+  if (data.email_error_code === 'E_RECIPIENT_NOT_ALLOWED') {
+    return 'Cloudflare bu alıcıya e-posta göndermeye izin vermiyor. Email Sending için Workers Paid planı açın veya alıcıyı Cloudflare hesabında doğrulayın.';
+  }
+  if (data.email_error_code === 'E_SENDER_NOT_VERIFIED' || data.email_error_code === 'E_SENDER_DOMAIN_NOT_AVAILABLE') {
+    return 'Gönderici alan adı Cloudflare Email Service için hazır değil. reyliar.xyz Email Sending kurulumunu ve no-reply adresini kontrol edin.';
+  }
+  return fallback || 'E-posta kodu gönderilemedi.';
+}
+
 async function sendVerificationCode(options) {
   options = options || {};
   try {
     const res = await apiFetch('/api/auth/verification/send', { method: 'POST' });
     const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'Kod gönderilemedi.');
+    if (!res.ok || !data.success) throw new Error(emailDeliveryFailureMessage(data, 'Kod gönderilemedi.'));
     setEmailCodeStatus('Kod gönderildi. E-postandaki 6 haneyi gir veya yapıştır.', 'success');
     if (!options.quiet) showToast('success', 'Kod gönderildi', 'E-postana gönderdiğimiz 6 haneli kodu gir.', 5200);
     return true;
@@ -9974,7 +9992,7 @@ async function resendEmailCode() {
       setEmailCodeStatus('Yeni kod gönderiliyor...', '');
       const res = await apiFetch('/api/auth/email-change/send', { method: 'POST' });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'Kod gönderilemedi.');
+      if (!res.ok || !data.success) throw new Error(emailDeliveryFailureMessage(data, 'Kod gönderilemedi.'));
       _emailCodeTargetEmail = data.pending_email || _emailCodeTargetEmail;
       const target = document.getElementById('emailCodeTarget');
       if (target) target.textContent = _emailCodeTargetEmail ? 'Hedef: ' + _emailCodeTargetEmail : '';
