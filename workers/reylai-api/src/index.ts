@@ -617,7 +617,7 @@ async function handleAdminAccounts(request: Request, env: Env): Promise<Response
     id: String(row.id || ""),
     email: String(row.email || ""),
     display_name: String(row.display_name || ""),
-    role: String(row.role || roleForEmail(String(row.email || ""))),
+    role: effectiveRole(String(row.email || ""), String(row.role || "")),
     roles: roleBadgesForEmail(String(row.email || ""), String(row.role || "")),
     avatar_data_url: String(row.avatar_data_url || ""),
     email_verified: Boolean(row.email_verified_at),
@@ -786,7 +786,7 @@ async function getUserById(env: Env, id: string): Promise<UserRow | null> {
 }
 
 function publicUser(user: UserRow): PublicUser {
-  const role = user.role || roleForEmail(user.email);
+  const role = effectiveRole(user.email, user.role || "");
   return {
     id: user.id,
     email: user.email,
@@ -814,8 +814,12 @@ function roleForEmail(email: string): string {
   return normalizeEmail(email) === ADMIN_EMAIL ? "admin" : "user";
 }
 
+function effectiveRole(email: string, storedRole = ""): string {
+  return normalizeEmail(email) === ADMIN_EMAIL ? "admin" : (storedRole || "user");
+}
+
 function roleBadgesForEmail(email: string, roleValue = ""): Array<{ label: string; icon: string }> {
-  const role = roleValue || roleForEmail(email);
+  const role = effectiveRole(email, roleValue);
   if (role === "admin" || normalizeEmail(email) === ADMIN_EMAIL) {
     return [
       { label: "Admin", icon: "shield" },
