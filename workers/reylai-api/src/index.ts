@@ -29,6 +29,10 @@ const ADMIN_ACTION_TOKEN_TTL_MINUTES = 20;
 const AVATAR_DATA_URL_LIMIT = 360_000;
 const BOOK_COVER_FILE_LIMIT = 700_000;
 const BOOK_COVER_DATA_URL_LIMIT = 950_000;
+const DM_TEXT_LIMIT = 4000;
+const DM_FORWARD_TEXT_LIMIT = 9000;
+const DM_ATTACHMENT_DATA_URL_LIMIT = 900_000;
+const DM_ATTACHMENT_FILE_LIMIT = 650_000;
 const NO_REPLY_FROM = "no-reply@reyliar.xyz";
 
 type Book = {
@@ -167,6 +171,23 @@ type EmailBinding = {
   send: (message: Record<string, unknown>) => Promise<unknown>;
 };
 
+type DmMessageRow = {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  body?: string | null;
+  kind?: string | null;
+  attachment_data_url?: string | null;
+  attachment_name?: string | null;
+  attachment_mime_type?: string | null;
+  attachment_size?: number | null;
+  voice_duration_ms?: number | null;
+  forward_json?: string | null;
+  created_at: string;
+  read_at?: string | null;
+  deleted_at?: string | null;
+};
+
 const USER_SELECT_COLUMNS = [
   "id",
   "email",
@@ -284,6 +305,26 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (path === "/api/admin/accounts/sensitive" && request.method === "POST") {
     return handleAdminAccountsSensitive(request, env);
+  }
+
+  if (path === "/api/dm/users" && request.method === "GET") {
+    return handleDmUsers(request, env);
+  }
+
+  if (path === "/api/dm/threads" && request.method === "GET") {
+    return handleDmThreads(request, env);
+  }
+
+  if (path === "/api/dm/messages" && request.method === "GET") {
+    return handleDmMessagesGet(request, env, url);
+  }
+
+  if (path === "/api/dm/messages" && request.method === "POST") {
+    return handleDmMessageSend(request, env);
+  }
+
+  if (path === "/api/dm/read" && request.method === "POST") {
+    return handleDmRead(request, env);
   }
 
   if (request.method === "GET" && path === "/api/library") {
@@ -971,6 +1012,142 @@ async function handleChatHistoryDelete(env: Env, userId: string, rawChatId: stri
   return json({ success: true, store });
 }
 
+async function handleDmUsers(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+
+  const rows = await env.DB.prepare(
+    "SELECT id, email, display_name, role, avatar_data_url, email_verified_at, created_at " +
+    "FROM users WHERE id <> ? ORDER BY lower(display_name), lower(email) LIMIT 300"
+  ).bind(auth.user.id).all<Record<string, unknown>>();
+
+  const users = (rows.results || []).map(publicDmUser);
+  return json({ success: true, users });
+}
+
+async function handleDmThreads(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const userId = auth.user.id;
+
+  const rows = await env.DB.prepare(
+    "SELECT CASE WHEN sender_id = ? THEN recipient_id ELSE sender_id END AS other_user_id, MAX(created_at) AS last_at " +
+    "FROM dm_messages WHERE deleted_at IS NULL AND (sender_id = ? OR recipient_id = ?) " +
+    "GROUP BY other_user_id ORDER BY last_at DESC LIMIT 200"
+  ).bind(userId, userId, userId).all<{ other_user_id: string; last_at: string }>();
+
+  const threads = [];
+  for (const row of rows.results || []) {
+    const otherId = String(row.other_user_id || "");
+    if (!otherId) continue;
+    const other = await env.DB.prepare(
+      "SELECT id, email, display_name, role, avatar_data_url, email_verified_at, created_at FROM users WHERE id = ?"
+    ).bind(otherId).first<Record<string, unknown>>();
+    if (!other) continue;
+    const latest = await env.DB.prepare(
+      "SELECT * FROM dm_messages WHERE deleted_at IS NULL AND " +
+      "((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)) " +
+      "ORDER BY created_at DESC LIMIT 1"
+    ).bind(userId, otherId, otherId, userId).first<DmMessageRow>();
+    const unread = await env.DB.prepare(
+      "SELECT COUNT(*) AS count FROM dm_messages WHERE sender_id = ? AND recipient_id = ? AND read_at IS NULL AND deleted_at IS NULL"
+    ).bind(otherId, userId).first<{ count: number }>();
+    threads.push({
+      user: publicDmUser(other),
+      latest_message: latest ? publicDmMessage(latest, userId) : null,
+      unread_count: Number(unread?.count || 0),
+      updated_at: latest?.created_at || row.last_at || ""
+    });
+  }
+
+  return json({ success: true, threads });
+}
+
+async function handleDmMessagesGet(request: Request, env: Env, url: URL): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const userId = auth.user.id;
+  const otherId = String(url.searchParams.get("user_id") || "").trim();
+  if (!otherId || otherId === userId) return json({ success: false, error: "Mesajlaşılacak hesap seçilemedi." }, 400);
+
+  const other = await getDmUserById(env, otherId);
+  if (!other) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE dm_messages SET read_at = ? WHERE sender_id = ? AND recipient_id = ? AND read_at IS NULL"
+  ).bind(now, otherId, userId).run();
+
+  const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") || 80) || 80, 120));
+  const rows = await env.DB.prepare(
+    "SELECT * FROM dm_messages WHERE deleted_at IS NULL AND " +
+    "((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)) " +
+    "ORDER BY created_at DESC LIMIT ?"
+  ).bind(userId, otherId, otherId, userId, limit).all<DmMessageRow>();
+
+  const messages = (rows.results || []).reverse().map((message) => publicDmMessage(message, userId));
+  return json({ success: true, user: publicDmUser(other), messages });
+}
+
+async function handleDmMessageSend(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const payload = await readJson<Record<string, unknown>>(request);
+  const senderId = auth.user.id;
+  const recipientId = String(payload.recipient_id || "").trim();
+  if (!recipientId || recipientId === senderId) return json({ success: false, error: "Geçerli bir alıcı seç." }, 400);
+
+  const recipient = await getDmUserById(env, recipientId);
+  if (!recipient) return json({ success: false, error: "Alıcı hesap bulunamadı." }, 404);
+
+  const body = cleanDmText(payload.body || payload.text || "", DM_TEXT_LIMIT);
+  const attachment = normalizeDmAttachment(payload.attachment);
+  if ("error" in attachment) return json({ success: false, error: attachment.error }, 400);
+  const forward = normalizeDmForward(payload.forward);
+  const hasForward = Boolean(forward);
+  const hasAttachment = Boolean(attachment.data_url);
+  if (!body && !hasAttachment && !hasForward) {
+    return json({ success: false, error: "Boş mesaj gönderilemez." }, 400);
+  }
+
+  const now = new Date().toISOString();
+  const kind = hasForward ? "forward" : (String(payload.kind || "").trim() === "voice" || attachment.mime_type.startsWith("audio/") ? "voice" : (hasAttachment ? "file" : "text"));
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    "INSERT INTO dm_messages (id, sender_id, recipient_id, body, kind, attachment_data_url, attachment_name, attachment_mime_type, attachment_size, voice_duration_ms, forward_json, created_at) " +
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(
+    id,
+    senderId,
+    recipientId,
+    body,
+    kind,
+    attachment.data_url,
+    attachment.name,
+    attachment.mime_type,
+    attachment.size || null,
+    Number(payload.voice_duration_ms || 0) || null,
+    forward ? JSON.stringify(forward) : null,
+    now
+  ).run();
+
+  const row = await env.DB.prepare("SELECT * FROM dm_messages WHERE id = ?").bind(id).first<DmMessageRow>();
+  return json({ success: true, message: row ? publicDmMessage(row, senderId) : null }, 201);
+}
+
+async function handleDmRead(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const payload = await readJson<Record<string, unknown>>(request);
+  const otherId = String(payload.user_id || "").trim();
+  if (!otherId || otherId === auth.user.id) return json({ success: false, error: "Hesap seçilemedi." }, 400);
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE dm_messages SET read_at = ? WHERE sender_id = ? AND recipient_id = ? AND read_at IS NULL"
+  ).bind(now, otherId, auth.user.id).run();
+  return json({ success: true });
+}
+
 async function requireAuth(request: Request, env: Env): Promise<AuthContext | Response> {
   const token = bearerToken(request);
   if (!token) return json({ success: false, auth: false, error: "Oturum gerekli." }, 401);
@@ -1084,6 +1261,58 @@ function publicUser(user: UserRow): PublicUser {
     email_verified: Boolean(user.email_verified_at),
     email_verified_at: user.email_verified_at || "",
     avatar_data_url: user.avatar_data_url || ""
+  };
+}
+
+async function getDmUserById(env: Env, id: string): Promise<Record<string, unknown> | null> {
+  return await env.DB.prepare(
+    "SELECT id, email, display_name, role, avatar_data_url, email_verified_at, created_at FROM users WHERE id = ?"
+  ).bind(id).first<Record<string, unknown>>();
+}
+
+function publicDmUser(user: Record<string, unknown>): Record<string, unknown> {
+  const email = String(user.email || "");
+  const role = effectiveRole(email, String(user.role || ""));
+  return {
+    id: String(user.id || ""),
+    email,
+    display_name: String(user.display_name || email || "ReylAI kullanıcısı"),
+    role,
+    roles: roleBadgesForEmail(email, role),
+    is_admin: role === "admin" || normalizeEmail(email) === ADMIN_EMAIL,
+    email_verified: Boolean(user.email_verified_at),
+    avatar_data_url: String(user.avatar_data_url || ""),
+    created_at: String(user.created_at || "")
+  };
+}
+
+function publicDmMessage(message: DmMessageRow, currentUserId: string): Record<string, unknown> {
+  let forward: unknown = null;
+  if (message.forward_json) {
+    try {
+      forward = JSON.parse(message.forward_json);
+    } catch {
+      forward = null;
+    }
+  }
+  const attachment = message.attachment_data_url ? {
+    data_url: message.attachment_data_url,
+    name: message.attachment_name || "dosya",
+    mime_type: message.attachment_mime_type || "application/octet-stream",
+    size: Number(message.attachment_size || 0)
+  } : null;
+  return {
+    id: message.id,
+    sender_id: message.sender_id,
+    recipient_id: message.recipient_id,
+    body: message.body || "",
+    kind: message.kind || "text",
+    attachment,
+    forward,
+    voice_duration_ms: Number(message.voice_duration_ms || 0),
+    created_at: message.created_at,
+    read_at: message.read_at || "",
+    outgoing: message.sender_id === currentUserId
   };
 }
 
@@ -1369,6 +1598,77 @@ function normalizeServerChatStore(rawStore: unknown): ChatStore {
   });
   chats.sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
   return { chats };
+}
+
+function cleanDmText(value: unknown, limit: number): string {
+  return String(value || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim().slice(0, limit);
+}
+
+function normalizeDmAttachment(value: unknown): { data_url: string; name: string; mime_type: string; size: number } | { error: string } {
+  if (!isRecord(value)) return { data_url: "", name: "", mime_type: "", size: 0 };
+  const dataUrl = String(value.data_url || "").trim();
+  if (!dataUrl) return { data_url: "", name: "", mime_type: "", size: 0 };
+  if (dataUrl.length > DM_ATTACHMENT_DATA_URL_LIMIT) {
+    return { error: "Dosya çok büyük. DM ekleri için daha küçük bir dosya seç." };
+  }
+  const match = dataUrl.match(/^data:([^;,]+);base64,([a-z0-9+/=]+)$/i);
+  if (!match) return { error: "Dosya okunamadı. Lütfen tekrar seç." };
+  const mime = normalizeDmMime(match[1]);
+  if (!mime) return { error: "Bu dosya türü DM için desteklenmiyor." };
+  const size = estimateBase64Bytes(match[2]);
+  if (size > DM_ATTACHMENT_FILE_LIMIT) {
+    return { error: "Dosya çok büyük. 650 KB altında bir dosya seç." };
+  }
+  return {
+    data_url: dataUrl,
+    name: cleanDmFileName(value.name || "dosya"),
+    mime_type: mime,
+    size
+  };
+}
+
+function normalizeDmForward(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value)) return null;
+  const text = cleanDmText(value.text || "", DM_FORWARD_TEXT_LIMIT);
+  if (!text) return null;
+  return {
+    text,
+    source_role: String(value.source_role || "ai").slice(0, 24),
+    book_title: String(value.book_title || "").trim().slice(0, 180),
+    created_at: String(value.created_at || "").slice(0, 40)
+  };
+}
+
+function normalizeDmMime(value: string): string {
+  const mime = String(value || "").trim().toLowerCase();
+  const allowed = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+    "text/plain",
+    "audio/webm",
+    "audio/ogg",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/wav",
+    "audio/x-wav"
+  ]);
+  if (mime === "image/jpg") return "image/jpeg";
+  if (allowed.has(mime)) return mime;
+  return "";
+}
+
+function cleanDmFileName(value: unknown): string {
+  const clean = String(value || "dosya").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
+  return clean.slice(0, 120) || "dosya";
+}
+
+function estimateBase64Bytes(value: string): number {
+  const clean = String(value || "").replace(/\s+/g, "");
+  const padding = clean.endsWith("==") ? 2 : (clean.endsWith("=") ? 1 : 0);
+  return Math.max(0, Math.floor(clean.length * 3 / 4) - padding);
 }
 
 async function hashPassword(password: string): Promise<string> {

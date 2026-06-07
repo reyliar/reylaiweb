@@ -2586,6 +2586,374 @@ body.account-menu-open .account-menu {
   color: var(--red);
 }
 
+.dm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 330;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3,7,18,0.62);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s var(--motion-smooth);
+}
+
+.dm-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dm-panel {
+  width: min(1120px, calc(100vw - 32px));
+  height: min(760px, calc(100dvh - 32px));
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(145deg, rgba(18,31,58,0.92), rgba(6,14,31,0.88));
+  box-shadow: 0 34px 110px rgba(0,0,0,0.46);
+  backdrop-filter: blur(28px) saturate(1.55);
+  -webkit-backdrop-filter: blur(28px) saturate(1.55);
+  transform: translateY(18px) scale(0.985);
+  transition: transform 0.34s var(--motion-spring);
+}
+
+.dm-overlay.active .dm-panel {
+  transform: translateY(0) scale(1);
+}
+
+.dm-people,
+.dm-chat {
+  min-width: 0;
+  min-height: 0;
+}
+
+.dm-people {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 14px;
+  padding: 20px;
+  border-right: 1px solid rgba(147,197,253,0.14);
+  background: rgba(3,7,18,0.22);
+}
+
+.dm-head,
+.dm-chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dm-kicker {
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.dm-title {
+  margin-top: 3px;
+  font-size: 24px;
+  font-weight: 950;
+  color: var(--text-primary);
+}
+
+.dm-close,
+.dm-back,
+.dm-tool-btn,
+.dm-send-btn {
+  border: 1px solid rgba(147,197,253,0.18);
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.dm-close,
+.dm-back,
+.dm-tool-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 15px;
+}
+
+.dm-close:hover,
+.dm-back:hover,
+.dm-tool-btn:hover,
+.dm-send-btn:hover {
+  background: rgba(37,99,235,0.22);
+  border-color: rgba(147,197,253,0.34);
+  transform: translateY(-1px);
+}
+
+.dm-back { display: none; }
+
+.dm-search {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(147,197,253,0.16);
+  background: rgba(3,7,18,0.28);
+  color: var(--text-primary);
+  padding: 0 16px;
+  outline: none;
+}
+
+.dm-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.dm-thread {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 18px;
+  color: var(--text-primary);
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.dm-thread:hover,
+.dm-thread.active {
+  background: rgba(37,99,235,0.16);
+  border-color: rgba(147,197,253,0.20);
+}
+
+.dm-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #dbeafe, #1d4ed8);
+  color: #071326;
+  font-weight: 950;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.24);
+}
+
+.dm-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dm-thread-name {
+  font-size: 14px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-thread-snippet,
+.dm-thread-email,
+.dm-chat-subtitle,
+.dm-time {
+  color: var(--text-secondary);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-unread,
+.dm-bottom-badge {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #60a5fa;
+  color: #06101f;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.dm-bottom-badge:empty { display: none; }
+
+.dm-chat {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background:
+    radial-gradient(circle at 80% 0%, rgba(37,99,235,0.16), transparent 36%),
+    rgba(3,7,18,0.10);
+}
+
+.dm-chat-head {
+  min-height: 76px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(147,197,253,0.13);
+}
+
+.dm-chat-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.dm-chat-title {
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.dm-empty-state {
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  color: var(--text-secondary);
+  text-align: center;
+  font-weight: 800;
+}
+
+.dm-message-list {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dm-message {
+  display: flex;
+  flex-direction: column;
+  max-width: min(72%, 560px);
+  gap: 5px;
+  animation: dmMessageIn 0.24s var(--motion-smooth) both;
+}
+
+.dm-message.out { align-self: flex-end; align-items: flex-end; }
+.dm-message.in { align-self: flex-start; align-items: flex-start; }
+
+.dm-bubble {
+  border: 1px solid rgba(147,197,253,0.16);
+  border-radius: 21px;
+  padding: 11px 14px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  line-height: 1.48;
+  overflow-wrap: anywhere;
+}
+
+.dm-message.out .dm-bubble {
+  background: linear-gradient(135deg, rgba(29,78,216,0.86), rgba(15,42,95,0.92));
+  border-color: rgba(147,197,253,0.25);
+}
+
+.dm-forward-card,
+.dm-attachment-card {
+  margin-top: 7px;
+  border: 1px solid rgba(147,197,253,0.16);
+  border-radius: 16px;
+  background: rgba(3,7,18,0.22);
+  padding: 10px;
+}
+
+.dm-forward-label,
+.dm-attachment-name {
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.dm-forward-text,
+.dm-attachment-meta {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.dm-attachment-card img {
+  display: block;
+  width: min(260px, 100%);
+  max-height: 260px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.dm-attachment-card audio {
+  width: min(280px, 100%);
+  margin-top: 8px;
+}
+
+.dm-composer {
+  padding: 14px 18px 18px;
+  border-top: 1px solid rgba(147,197,253,0.13);
+  display: grid;
+  gap: 10px;
+}
+
+.dm-pending {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(147,197,253,0.16);
+  background: rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 9px 11px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.dm-pending.active { display: flex; }
+
+.dm-compose-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 9px;
+}
+
+.dm-input {
+  min-height: 42px;
+  max-height: 120px;
+  resize: none;
+  border: 1px solid rgba(147,197,253,0.16);
+  border-radius: 18px;
+  background: rgba(3,7,18,0.28);
+  color: var(--text-primary);
+  padding: 11px 13px;
+  outline: none;
+}
+
+.dm-send-btn {
+  min-width: 48px;
+  height: 42px;
+  border-radius: 18px;
+  background: var(--material-stained);
+}
+
+.dm-recording {
+  color: #bfdbfe;
+  box-shadow: 0 0 0 3px rgba(96,165,250,0.16);
+}
+
+@keyframes dmMessageIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @media (max-width: 860px) {
   .account-auth-screen {
     grid-template-columns: 1fr;
@@ -2804,11 +3172,11 @@ body.account-menu-open .account-menu {
   .nav-logo { width: 42px; height: 42px; }
   .status-pill { display: none; }
   .grade-label { display: none; }
-  .upload-nav-btn, .history-nav-btn, .sync-btn, .scan-nav-btn {
+  .upload-nav-btn, .history-nav-btn, .dm-nav-btn, .sync-btn, .scan-nav-btn {
     font-size: 11px;
     padding: 5px 10px;
   }
-  .upload-nav-btn svg, .history-nav-btn svg, .sync-btn .sync-icon, .scan-nav-btn svg {
+  .upload-nav-btn svg, .history-nav-btn svg, .dm-nav-btn svg, .sync-btn .sync-icon, .scan-nav-btn svg {
     width: 10px;
     height: 10px;
   }
@@ -5931,7 +6299,8 @@ body.account-menu-open .account-menu {
 
 /* Library nav action buttons */
 .upload-nav-btn,
-.history-nav-btn {
+.history-nav-btn,
+.dm-nav-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -5950,7 +6319,8 @@ body.account-menu-open .account-menu {
 }
 
 .upload-nav-btn:hover,
-.history-nav-btn:hover {
+.history-nav-btn:hover,
+.dm-nav-btn:hover {
   background: rgba(37,99,235,0.22);
   border-color: var(--accent);
   color: #fff;
@@ -5979,16 +6349,20 @@ body.account-menu-open .account-menu {
 }
 .btn-danger:hover { background: rgba(248,113,113,0.28); }
 
-/* Merkez bildirimleri */
+/* Bildirimler */
 #toastContainer {
   position: fixed;
-  inset: 0;
+  top: calc(18px + env(safe-area-inset-top, 0px));
+  right: 18px;
+  left: auto;
+  bottom: auto;
   z-index: 360;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  justify-content: flex-start;
   gap: 14px;
+  width: min(430px, calc(100vw - 28px));
   pointer-events: none;
 }
 
@@ -6009,12 +6383,12 @@ body.account-menu-open .account-menu {
   position: relative;
   overflow: hidden;
   opacity: 0;
-  transform: scale(1.08);
+  transform: translateX(36px) translateY(-8px) scale(0.98);
 }
 
 @keyframes toastIn {
-  from { transform: scale(1.08); opacity: 0; }
-  to   { transform: scale(1); opacity: 1; }
+  from { transform: translateX(36px) translateY(-8px) scale(0.98); opacity: 0; filter: saturate(0.86); }
+  to   { transform: translateX(0) translateY(0) scale(1); opacity: 1; filter: none; }
 }
 
 .toast.leaving {
@@ -6022,7 +6396,7 @@ body.account-menu-open .account-menu {
 }
 
 @keyframes toastOut {
-  to { transform: scale(0.92); opacity: 0; }
+  to { transform: translateX(44px) translateY(-6px) scale(0.98); opacity: 0; filter: saturate(0.86); }
 }
 
 .toast.success { border-color: rgba(147,197,253,0.34); }
@@ -6392,6 +6766,7 @@ select {
 .search-wrap::after,
 .upload-nav-btn,
 .history-nav-btn,
+.dm-nav-btn,
 .library-bottom-menu,
 .bottom-grade-cluster,
 .sync-btn,
@@ -6399,6 +6774,8 @@ select {
 .sync-btn-empty,
 .btn-ghost,
 .net-indicator,
+.dm-panel,
+.dm-thread,
 .chat-sidebar,
 .analysis-left,
 .selected-book-cover,
@@ -6589,6 +6966,7 @@ select {
 
 .upload-nav-btn,
 .history-nav-btn,
+.dm-nav-btn,
 .bottom-menu-item,
 .sync-btn,
 .scan-nav-btn,
@@ -6605,6 +6983,7 @@ select {
 
 .upload-nav-btn,
 .history-nav-btn,
+.dm-nav-btn,
 .bottom-menu-item,
 .sync-btn,
 .scan-nav-btn,
@@ -6618,6 +6997,7 @@ select {
 
 .upload-nav-btn:hover,
 .history-nav-btn:hover,
+.dm-nav-btn:hover,
 .bottom-menu-item:hover,
 .sync-btn:hover:not(:disabled),
 .scan-nav-btn:hover:not(:disabled),
@@ -7353,6 +7733,7 @@ body::after {
 .bottom-grade-cluster,
 .upload-nav-btn,
 .history-nav-btn,
+.dm-nav-btn,
 .sync-btn,
 .scan-nav-btn,
 .sync-btn-empty,
@@ -7432,6 +7813,7 @@ body::after {
 .chat-md-footnote-backref,
 .upload-nav-btn,
 .history-nav-btn,
+.dm-nav-btn,
 .bottom-menu-item,
 .sync-btn,
 .scan-nav-btn,
@@ -7659,6 +8041,7 @@ body::after {
 .bottom-menu-item:hover,
 .upload-nav-btn:hover,
 .history-nav-btn:hover,
+.dm-nav-btn:hover,
 .read-btn:hover,
 .btn-ghost:hover,
 .new-chat-btn:hover,
@@ -7689,6 +8072,7 @@ body::after {
 .auth-overlay,
 .rename-overlay,
 .add-overlay,
+.dm-overlay,
 .profile-settings-overlay,
 .admin-tools-overlay,
 .task-overlay {
@@ -7696,6 +8080,7 @@ body::after {
 }
 
 .chat-sidebar,
+.dm-panel,
 .del-panel,
 .cfg-panel,
 .auth-panel,
@@ -7990,12 +8375,12 @@ body::after {
 }
 
 @keyframes toastIn {
-  from { transform: translateY(10px) scale(0.98); opacity: 0; filter: saturate(0.86); }
-  to { transform: translateY(0) scale(1); opacity: 1; filter: none; }
+  from { transform: translateX(36px) translateY(-8px) scale(0.98); opacity: 0; filter: saturate(0.86); }
+  to { transform: translateX(0) translateY(0) scale(1); opacity: 1; filter: none; }
 }
 
 @keyframes toastOut {
-  to { transform: translateY(-8px) scale(0.98); opacity: 0; filter: saturate(0.86); }
+  to { transform: translateX(44px) translateY(-6px) scale(0.98); opacity: 0; filter: saturate(0.86); }
 }
 
 .chat-msg {
@@ -8654,15 +9039,58 @@ body::after {
 
   .toast-container,
   #toastContainer {
-    left: 10px;
+    top: calc(10px + env(safe-area-inset-top, 0px));
     right: 10px;
-    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    left: 10px;
+    bottom: auto;
     width: auto;
+    align-items: stretch;
   }
 
   .toast {
     width: 100%;
     max-width: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .dm-overlay {
+    padding: 0;
+  }
+
+  .dm-panel {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .dm-people {
+    border-right: 0;
+  }
+
+  .dm-chat {
+    display: none;
+  }
+
+  .dm-overlay.chat-open .dm-people {
+    display: none;
+  }
+
+  .dm-overlay.chat-open .dm-chat {
+    display: grid;
+  }
+
+  .dm-back {
+    display: inline-flex;
+  }
+
+  .dm-message {
+    max-width: 86%;
+  }
+
+  .dm-compose-row {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
   }
 }
 
@@ -8779,6 +9207,11 @@ body::after,
 .account-panel-card,
 .auth-panel-card,
 .account-menu,
+.dm-panel,
+.dm-thread,
+.dm-input,
+.dm-pending,
+.dm-bubble,
 .profile-settings-panel,
 .admin-tools-panel,
 .email-code-panel,
@@ -8834,6 +9267,7 @@ body::after,
 .bottom-menu-item:hover,
 .upload-nav-btn:hover,
 .history-nav-btn:hover,
+.dm-nav-btn:hover,
 .sync-btn:hover:not(:disabled),
 .scan-nav-btn:hover:not(:disabled),
 .read-btn:hover,
@@ -9115,6 +9549,7 @@ body::after,
         <div class="account-verify-state" id="accountVerifyState">E-posta doğrulaması bekliyor</div>
         <div class="account-menu-actions">
           <button class="account-menu-btn" type="button" onclick="openProfileSettings()">⚙ Ayarlar</button>
+          <button class="account-menu-btn" type="button" onclick="openDmOverlay()">✉ Mesajlar</button>
           <button class="account-menu-btn" id="adminToolsMenuBtn" type="button" onclick="openAdminTools()" style="display:none">✦ Admin Araçları</button>
           <button class="account-menu-btn danger" type="button" onclick="logoutAccount()">Çıkış yap</button>
         </div>
@@ -9134,6 +9569,11 @@ body::after,
     <button class="history-nav-btn bottom-menu-item" type="button" onclick="openChatSidebar()" aria-label="Sohbet geçmişini aç">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
       <span>Sohbetler</span>
+    </button>
+    <button class="dm-nav-btn bottom-menu-item" type="button" onclick="openDmOverlay()" aria-label="Mesajları aç">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 8.7 8.7 0 0 1-3.6-.78L3 21l1.78-5.2A8.28 8.28 0 0 1 4 12a8.5 8.5 0 1 1 17-.5Z"/><path d="M8 10h8"/><path d="M8 14h5"/></svg>
+      <span>Mesajlar</span>
+      <span class="dm-bottom-badge" id="dmBottomBadge"></span>
     </button>
     <div class="bottom-grade-cluster" role="group" aria-label="Sınıf seçimi">
       <div class="bottom-grade-options">
@@ -9493,7 +9933,7 @@ body::after,
     <button class="email-code-back" type="button" onclick="closeEmailCodeModal()">‹ Geri</button>
     <div class="email-code-kicker">Güvenlik kodu</div>
     <div class="email-code-title" id="emailCodeTitle">E-postanı doğrula</div>
-    <div class="email-code-lead" id="emailCodeLead">No-reply adresinden gelen 6 haneli kodu gir.</div>
+    <div class="email-code-lead" id="emailCodeLead">E-postana gönderdiğimiz 6 haneli kodu gir.</div>
     <div class="email-code-target" id="emailCodeTarget"></div>
     <div class="email-code-grid" id="emailCodeGrid" onclick="focusFirstEmptyEmailCodeCell()">
       <input class="email-code-cell" inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="Kod hanesi 1">
@@ -9515,7 +9955,7 @@ body::after,
   <div class="verify-required-panel">
     <div class="email-code-kicker">E-posta gerekli</div>
     <div class="email-code-title">AI için e-postanı doğrula</div>
-    <div class="email-code-lead">Kitap analizlerine erişmeden önce hesabındaki e-posta adresini no-reply kodu ile doğrulaman gerekiyor.</div>
+    <div class="email-code-lead">Kitap analizlerine erişmeden önce hesabındaki e-posta adresini gönderdiğimiz güvenlik koduyla doğrulaman gerekiyor.</div>
     <div class="email-code-actions">
       <button class="btn btn-ghost" type="button" onclick="closeVerifyRequiredModal()">Sonra</button>
       <button class="btn btn-primary" type="button" onclick="startVerifyRequiredFlow()">E-postayı doğrula</button>
@@ -9539,6 +9979,57 @@ body::after,
     </div>
     <div class="admin-sensitive-list" id="adminSensitiveList"></div>
     <div class="admin-account-list" id="adminAccountsList"></div>
+  </div>
+</div>
+
+<div class="dm-overlay" id="dmOverlay" onclick="if(event.target===this)closeDmOverlay()">
+  <div class="dm-panel" role="dialog" aria-modal="true" aria-label="ReylAI mesajlar">
+    <aside class="dm-people">
+      <div class="dm-head">
+        <div>
+          <div class="dm-kicker">ReylAI DM</div>
+          <div class="dm-title">Mesajlar</div>
+        </div>
+        <button class="dm-close" type="button" onclick="closeDmOverlay()" aria-label="Mesajları kapat">×</button>
+      </div>
+      <input class="dm-search" id="dmSearch" type="search" placeholder="Kişi ara..." oninput="renderDmThreads()">
+      <div class="dm-thread-list" id="dmThreadList"></div>
+    </aside>
+    <section class="dm-chat">
+      <div class="dm-chat-head">
+        <button class="dm-back" type="button" onclick="showDmPeople()" aria-label="Kişilere dön">‹</button>
+        <div class="dm-chat-user" id="dmChatUser">
+          <div class="dm-avatar">R</div>
+          <div>
+            <div class="dm-chat-title">Bir konuşma seç</div>
+            <div class="dm-chat-subtitle">Kayıtlı hesaplar burada görünür.</div>
+          </div>
+        </div>
+        <button class="dm-close" type="button" onclick="closeDmOverlay()" aria-label="Mesajları kapat">×</button>
+      </div>
+      <div class="dm-message-list" id="dmMessageList">
+        <div class="dm-empty-state">Mesajlaşmak için soldan bir hesap seç.</div>
+      </div>
+      <div class="dm-composer">
+        <div class="dm-pending" id="dmPendingBar">
+          <span id="dmPendingText"></span>
+          <button class="dm-close" type="button" onclick="clearDmPending()" aria-label="Eki kaldır">×</button>
+        </div>
+        <div class="dm-compose-row">
+          <button class="dm-tool-btn" type="button" onclick="document.getElementById('dmFileInput').click()" aria-label="Dosya ekle" title="Dosya ekle">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05 12.2 20.29a6 6 0 0 1-8.49-8.49l9.24-9.24a4 4 0 0 1 5.66 5.66l-9.25 9.24a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <button class="dm-tool-btn" id="dmVoiceBtn" type="button" onclick="toggleDmVoiceRecording()" aria-label="Ses kaydı" title="Ses kaydı">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
+          </button>
+          <textarea class="dm-input" id="dmTextInput" rows="1" maxlength="4000" placeholder="Mesaj yaz..." oninput="autoResizeDmInput()"></textarea>
+          <button class="dm-send-btn" type="button" onclick="sendDmMessage()" aria-label="Mesaj gönder">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+        <input id="dmFileInput" type="file" hidden onchange="handleDmFileSelect(this.files && this.files[0]); this.value='';">
+      </div>
+    </section>
   </div>
 </div>
 
@@ -9631,6 +10122,18 @@ let _libraryBookCache = {};
 let _activeAnalyzeController = null;
 let _analysisStopRequested = false;
 let _editingMessageId = '';
+let _dmUsers = [];
+let _dmThreads = [];
+let _dmActiveUserId = '';
+let _dmMessages = [];
+let _dmPendingAttachment = null;
+let _dmPendingForward = null;
+let _dmPollTimer = null;
+let _dmKnownLatestIds = {};
+let _dmInitialPollDone = false;
+let _dmRecorder = null;
+let _dmVoiceChunks = [];
+let _dmVoiceStartedAt = 0;
 const BOOKS_REMOTE_BASE_URL = {{ books_remote_base_url|tojson }};
 
 const SEND_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
@@ -9942,7 +10445,7 @@ async function submitAccountAuth(event) {
       if (data.email_delivery_configured === false) {
         showToast('warning', 'E-posta servisi bekliyor', 'Hesabın açıldı; doğrulama e-postası Cloudflare Email bağlanınca gönderilecek.', 6500);
       } else {
-        showToast('warning', 'E-postanı doğrula', 'No-reply kodunu açılan ekranda onayla.', 6200);
+        showToast('warning', 'E-postanı doğrula', 'E-postana gönderdiğimiz kodu açılan ekranda onayla.', 6200);
         setTimeout(function(){ openEmailCodeModal('verify', { email: _accountUser.email || '', send: false }); }, 850);
       }
     } else {
@@ -10158,7 +10661,7 @@ function updateVerificationPanel() {
   state.textContent = 'Doğrulama bekliyor';
   state.classList.add('pending');
   btn.textContent = 'Doğrula';
-  hint.textContent = 'No-reply adresinden gelen kodla e-postanı doğrulayabilirsin.';
+  hint.textContent = 'E-postana gönderdiğimiz kodla adresini doğrulayabilirsin.';
 }
 
 function accountEmailVerified() {
@@ -10169,7 +10672,7 @@ function showVerifyRequiredModal(message) {
   const overlay = document.getElementById('verifyRequiredOverlay');
   const lead = overlay ? overlay.querySelector('.email-code-lead') : null;
   if (lead) {
-    lead.textContent = message || 'Kitap analizlerine erişmeden önce hesabındaki e-posta adresini no-reply kodu ile doğrulaman gerekiyor.';
+    lead.textContent = message || 'Kitap analizlerine erişmeden önce hesabındaki e-posta adresini gönderdiğimiz güvenlik koduyla doğrulaman gerekiyor.';
   }
   if (overlay) overlay.classList.add('active');
 }
@@ -10592,7 +11095,7 @@ function openEmailCodeModal(mode, options) {
   if (title) title.textContent = _emailCodeMode === 'email-change' ? 'Yeni e-postanı onayla' : 'E-postanı doğrula';
   if (lead) lead.textContent = _emailCodeMode === 'email-change'
     ? 'Yeni adresine gönderilen 6 haneli kodu gir. Kod tamamlanınca e-posta değişimi otomatik onaylanır.'
-    : 'No-reply adresinden gelen 6 haneli kodu gir. Kodu yapıştırırsan kutucuklar otomatik dolar.';
+    : 'E-postana gönderdiğimiz 6 haneli kodu gir. Kodu yapıştırırsan kutucuklar otomatik dolar.';
   if (target) target.textContent = _emailCodeTargetEmail ? 'Hedef: ' + _emailCodeTargetEmail : '';
   setEmailCodeStatus(options.send ? 'Kod gönderiliyor...' : 'Kodu bekliyorum.', '');
   if (overlay) overlay.classList.add('active');
@@ -10657,7 +11160,7 @@ async function sendVerificationCode(options) {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Kod gönderilemedi.');
     setEmailCodeStatus('Kod gönderildi. E-postandaki 6 haneyi gir veya yapıştır.', 'success');
-    if (!options.quiet) showToast('success', 'Kod gönderildi', 'No-reply adresinden gelen 6 haneli kodu gir.', 5200);
+    if (!options.quiet) showToast('success', 'Kod gönderildi', 'E-postana gönderdiğimiz 6 haneli kodu gir.', 5200);
     return true;
   } catch(e) {
     setEmailCodeStatus(e.message || 'Kod gönderilemedi.', 'error');
@@ -10889,6 +11392,8 @@ async function logoutAccount() {
   _chatStoreLoaded = false;
   _chatStoreLoadPromise = null;
   _activeChatId = '';
+  closeDmOverlay();
+  stopDmPolling();
   closeAccountMenu();
   updateAccountUI();
   renderChatHistory();
@@ -11443,6 +11948,473 @@ let _typingVisibleSince = 0;
 let _typingHideTimer = null;
 let _analysisStatusPollTimer = null;
 let _activeAnalysisId = '';
+
+function dmInitials(user) {
+  const source = String((user && (user.display_name || user.email)) || 'R').trim();
+  return (source[0] || 'R').toLocaleUpperCase('tr-TR');
+}
+
+function dmAvatarHtml(user) {
+  const src = user && user.avatar_data_url;
+  if (src) return '<img src="' + escHtml(src) + '" alt="">';
+  return escHtml(dmInitials(user));
+}
+
+function dmUserName(user) {
+  return String((user && (user.display_name || user.email)) || 'Hesap');
+}
+
+function dmSnippet(message) {
+  if (!message) return 'Henüz mesaj yok.';
+  if (message.forward) return 'İletilen AI mesajı';
+  if (message.kind === 'voice') return 'Ses mesajı';
+  if (message.attachment) return message.attachment.name || 'Dosya';
+  return String(message.body || '').replace(/\s+/g, ' ').trim() || 'Mesaj';
+}
+
+function dmThreadForUser(userId) {
+  return _dmThreads.find(function(thread) { return thread.user && thread.user.id === userId; }) || null;
+}
+
+function dmUserById(userId) {
+  const thread = dmThreadForUser(userId);
+  if (thread && thread.user) return thread.user;
+  return _dmUsers.find(function(user) { return user.id === userId; }) || null;
+}
+
+function setDmBadge(count) {
+  const badge = document.getElementById('dmBottomBadge');
+  if (!badge) return;
+  badge.textContent = count > 0 ? String(Math.min(count, 99)) : '';
+}
+
+async function fetchDmThreads(options) {
+  options = options || {};
+  const res = await apiFetch('/api/dm/threads', { cache: 'no-store' });
+  const data = await res.json();
+  if (!res.ok || !data.success) throw new Error(data.error || 'Mesajlar yüklenemedi.');
+  _dmThreads = Array.isArray(data.threads) ? data.threads : [];
+  const unread = _dmThreads.reduce(function(sum, thread) { return sum + Number(thread.unread_count || 0); }, 0);
+  setDmBadge(unread);
+  if (options.seed) {
+    _dmKnownLatestIds = {};
+    _dmThreads.forEach(function(thread) {
+      if (thread.user && thread.latest_message) _dmKnownLatestIds[thread.user.id] = thread.latest_message.id;
+    });
+    _dmInitialPollDone = true;
+  }
+  return _dmThreads;
+}
+
+async function loadDmUsers() {
+  const res = await apiFetch('/api/dm/users', { cache: 'no-store' });
+  const data = await res.json();
+  if (!res.ok || !data.success) throw new Error(data.error || 'Kişi listesi yüklenemedi.');
+  _dmUsers = Array.isArray(data.users) ? data.users : [];
+  return _dmUsers;
+}
+
+async function loadDmPanelData(options) {
+  options = options || {};
+  await Promise.all([loadDmUsers(), fetchDmThreads(options)]);
+  renderDmThreads();
+}
+
+function openDmOverlay(options) {
+  options = options || {};
+  if (!_accountUser) {
+    showAccountAuth();
+    return;
+  }
+  closeAccountMenu();
+  const overlay = document.getElementById('dmOverlay');
+  if (!overlay) return;
+  if (options.forward) {
+    _dmPendingForward = options.forward;
+    updateDmPendingBar();
+  }
+  overlay.classList.add('active');
+  if (!_dmActiveUserId) overlay.classList.remove('chat-open');
+  loadDmPanelData().then(function() {
+    if (options.user_id) openDmConversation(options.user_id);
+  }).catch(function(e) {
+    showToast('error', 'Mesajlar açılamadı', e.message || 'Bağlantı hatası.', 5200);
+  });
+  setTimeout(function() {
+    const search = document.getElementById('dmSearch');
+    if (search && !_dmActiveUserId) search.focus();
+  }, 120);
+}
+
+function closeDmOverlay() {
+  const overlay = document.getElementById('dmOverlay');
+  if (overlay) overlay.classList.remove('active', 'chat-open');
+  stopDmVoiceRecording(true);
+}
+
+function showDmPeople() {
+  const overlay = document.getElementById('dmOverlay');
+  if (overlay) overlay.classList.remove('chat-open');
+}
+
+function renderDmThreads() {
+  const list = document.getElementById('dmThreadList');
+  if (!list) return;
+  const query = String((document.getElementById('dmSearch') || {}).value || '').toLocaleLowerCase('tr-TR').trim();
+  const seen = {};
+  const rows = [];
+  _dmThreads.forEach(function(thread) {
+    if (thread.user && !seen[thread.user.id]) {
+      seen[thread.user.id] = true;
+      rows.push({ user: thread.user, thread: thread });
+    }
+  });
+  _dmUsers.forEach(function(user) {
+    if (user && !seen[user.id]) {
+      seen[user.id] = true;
+      rows.push({ user: user, thread: null });
+    }
+  });
+  const filtered = rows.filter(function(row) {
+    if (!query) return true;
+    return (dmUserName(row.user) + ' ' + (row.user.email || '')).toLocaleLowerCase('tr-TR').indexOf(query) !== -1;
+  });
+  list.innerHTML = '';
+  if (!filtered.length) {
+    list.innerHTML = '<div class="dm-empty-state">Eşleşen hesap bulunamadı.</div>';
+    return;
+  }
+  filtered.forEach(function(row) {
+    const thread = row.thread || {};
+    const latest = thread.latest_message || null;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'dm-thread' + (row.user.id === _dmActiveUserId ? ' active' : '');
+    btn.onclick = function() { openDmConversation(row.user.id); };
+    btn.innerHTML =
+      '<div class="dm-avatar">' + dmAvatarHtml(row.user) + '</div>' +
+      '<div style="min-width:0">' +
+        '<div class="dm-thread-name">' + escHtml(dmUserName(row.user)) + '</div>' +
+        '<div class="dm-thread-snippet">' + escHtml(dmSnippet(latest)) + '</div>' +
+        '<div class="dm-thread-email">' + escHtml(row.user.email || '') + '</div>' +
+      '</div>' +
+      (thread.unread_count ? '<span class="dm-unread">' + escHtml(Math.min(Number(thread.unread_count || 0), 99)) + '</span>' : '<span class="dm-time">' + escHtml(latest ? formatChatTime(latest.created_at) : '') + '</span>');
+    list.appendChild(btn);
+  });
+}
+
+async function openDmConversation(userId) {
+  _dmActiveUserId = userId;
+  const overlay = document.getElementById('dmOverlay');
+  if (overlay) overlay.classList.add('chat-open');
+  renderDmThreads();
+  const user = dmUserById(userId);
+  renderDmHeader(user);
+  await loadDmMessages(userId);
+  const input = document.getElementById('dmTextInput');
+  if (input) setTimeout(function(){ input.focus(); }, 80);
+}
+
+function renderDmHeader(user) {
+  const host = document.getElementById('dmChatUser');
+  if (!host) return;
+  host.innerHTML =
+    '<div class="dm-avatar">' + dmAvatarHtml(user || {}) + '</div>' +
+    '<div style="min-width:0">' +
+      '<div class="dm-chat-title">' + escHtml(user ? dmUserName(user) : 'Bir konuşma seç') + '</div>' +
+      '<div class="dm-chat-subtitle">' + escHtml(user ? (user.email || 'ReylAI hesabı') : 'Kayıtlı hesaplar burada görünür.') + '</div>' +
+    '</div>';
+}
+
+async function loadDmMessages(userId) {
+  const list = document.getElementById('dmMessageList');
+  if (list) list.innerHTML = '<div class="dm-empty-state">Mesajlar yükleniyor...</div>';
+  try {
+    const res = await apiFetch('/api/dm/messages?user_id=' + encodeURIComponent(userId), { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Mesajlar yüklenemedi.');
+    _dmMessages = Array.isArray(data.messages) ? data.messages : [];
+    renderDmMessages();
+    await fetchDmThreads();
+    renderDmThreads();
+  } catch(e) {
+    if (list) list.innerHTML = '<div class="dm-empty-state">Mesajlar yüklenemedi.</div>';
+    showToast('error', 'Mesajlar yüklenemedi', e.message || 'Bağlantı hatası.', 5200);
+  }
+}
+
+function renderDmMessages() {
+  const list = document.getElementById('dmMessageList');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!_dmMessages.length) {
+    list.innerHTML = '<div class="dm-empty-state">İlk mesajı gönder.</div>';
+    return;
+  }
+  _dmMessages.forEach(function(message) {
+    list.appendChild(renderDmMessage(message));
+  });
+  list.scrollTop = list.scrollHeight;
+}
+
+function renderDmMessage(message) {
+  const wrap = document.createElement('div');
+  wrap.className = 'dm-message ' + (message.outgoing ? 'out' : 'in');
+  const bubble = document.createElement('div');
+  bubble.className = 'dm-bubble';
+  const body = String(message.body || '').trim();
+  if (body) {
+    const text = document.createElement('div');
+    text.textContent = body;
+    bubble.appendChild(text);
+  }
+  if (message.forward) bubble.appendChild(renderDmForward(message.forward));
+  if (message.attachment) bubble.appendChild(renderDmAttachment(message));
+  if (!body && !message.forward && !message.attachment) bubble.textContent = 'Mesaj';
+  const time = document.createElement('div');
+  time.className = 'dm-time';
+  time.textContent = formatChatTime(message.created_at || '');
+  wrap.appendChild(bubble);
+  wrap.appendChild(time);
+  return wrap;
+}
+
+function renderDmForward(forward) {
+  const card = document.createElement('div');
+  card.className = 'dm-forward-card';
+  card.innerHTML =
+    '<div class="dm-forward-label">AI mesajı iletildi' + (forward.book_title ? ' · ' + escHtml(forward.book_title) : '') + '</div>' +
+    '<div class="dm-forward-text">' + escHtml(String(forward.text || '').slice(0, 9000)) + '</div>';
+  return card;
+}
+
+function renderDmAttachment(message) {
+  const attachment = message.attachment || {};
+  const card = document.createElement('div');
+  card.className = 'dm-attachment-card';
+  const mime = String(attachment.mime_type || '');
+  if (mime.indexOf('image/') === 0) {
+    card.innerHTML = '<img src="' + escHtml(attachment.data_url || '') + '" alt="' + escHtml(attachment.name || 'görsel') + '">';
+    return card;
+  }
+  if (mime.indexOf('audio/') === 0) {
+    card.innerHTML = '<div class="dm-attachment-name">Ses mesajı</div><audio controls src="' + escHtml(attachment.data_url || '') + '"></audio>';
+    return card;
+  }
+  card.innerHTML =
+    '<div class="dm-attachment-name">' + escHtml(attachment.name || 'Dosya') + '</div>' +
+    '<div class="dm-attachment-meta">' + escHtml(formatBytes(Number(attachment.size || 0))) + '</div>' +
+    '<a class="account-menu-btn" download="' + escHtml(attachment.name || 'dosya') + '" href="' + escHtml(attachment.data_url || '') + '">İndir</a>';
+  return card;
+}
+
+function updateDmPendingBar() {
+  const bar = document.getElementById('dmPendingBar');
+  const text = document.getElementById('dmPendingText');
+  if (!bar || !text) return;
+  const parts = [];
+  if (_dmPendingForward) parts.push('AI mesajı iletilecek');
+  if (_dmPendingAttachment) parts.push((_dmPendingAttachment.kind === 'voice' ? 'Ses kaydı' : (_dmPendingAttachment.name || 'Dosya')) + ' hazır');
+  text.textContent = parts.join(' · ');
+  bar.classList.toggle('active', parts.length > 0);
+}
+
+function clearDmPending() {
+  _dmPendingAttachment = null;
+  _dmPendingForward = null;
+  updateDmPendingBar();
+}
+
+function autoResizeDmInput() {
+  const input = document.getElementById('dmTextInput');
+  if (!input) return;
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+}
+
+function fileToDataUrl(file) {
+  return new Promise(function(resolve, reject) {
+    const reader = new FileReader();
+    reader.onload = function() { resolve(String(reader.result || '')); };
+    reader.onerror = function() { reject(new Error('Dosya okunamadı.')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleDmFileSelect(file) {
+  if (!file) return;
+  if (file.size > 650000) {
+    showToast('warning', 'Dosya büyük', 'DM ekleri için 650 KB altında bir dosya seç.', 4200);
+    return;
+  }
+  try {
+    const dataUrl = await fileToDataUrl(file);
+    _dmPendingAttachment = {
+      data_url: dataUrl,
+      name: file.name || 'dosya',
+      mime_type: file.type || 'application/octet-stream',
+      size: file.size || 0,
+      kind: 'file'
+    };
+    updateDmPendingBar();
+  } catch(e) {
+    showToast('error', 'Dosya okunamadı', e.message || 'Dosyayı tekrar seç.', 4200);
+  }
+}
+
+async function toggleDmVoiceRecording() {
+  if (_dmRecorder && _dmRecorder.state === 'recording') {
+    stopDmVoiceRecording(false);
+    return;
+  }
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    showToast('warning', 'Ses kaydı yok', 'Tarayıcı bu cihazda ses kaydını desteklemiyor.', 4200);
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _dmVoiceChunks = [];
+    _dmVoiceStartedAt = Date.now();
+    _dmRecorder = new MediaRecorder(stream);
+    _dmRecorder.ondataavailable = function(e) {
+      if (e.data && e.data.size) _dmVoiceChunks.push(e.data);
+    };
+    _dmRecorder.onstop = async function() {
+      stream.getTracks().forEach(function(track) { track.stop(); });
+      const blob = new Blob(_dmVoiceChunks, { type: _dmRecorder.mimeType || 'audio/webm' });
+      const duration = Math.max(0, Date.now() - _dmVoiceStartedAt);
+      if (!blob.size) return;
+      if (blob.size > 650000) {
+        showToast('warning', 'Ses kaydı uzun', 'Kayıt çok büyük oldu; daha kısa bir ses kaydı gönder.', 5200);
+        return;
+      }
+      const dataUrl = await fileToDataUrl(blob);
+      _dmPendingAttachment = {
+        data_url: dataUrl,
+        name: 'ses-kaydi.webm',
+        mime_type: blob.type || 'audio/webm',
+        size: blob.size,
+        kind: 'voice',
+        voice_duration_ms: duration
+      };
+      updateDmPendingBar();
+      showToast('success', 'Ses kaydı hazır', 'Göndermek için mesaj düğmesine bas.', 2800);
+    };
+    _dmRecorder.start();
+    const btn = document.getElementById('dmVoiceBtn');
+    if (btn) btn.classList.add('dm-recording');
+    showToast('info', 'Kayıt başladı', 'Bitirmek için mikrofon düğmesine tekrar bas.', 3200);
+  } catch(e) {
+    showToast('warning', 'Mikrofon açılamadı', e.message || 'Mikrofon iznini kontrol et.', 5200);
+  }
+}
+
+function stopDmVoiceRecording(silent) {
+  const btn = document.getElementById('dmVoiceBtn');
+  if (btn) btn.classList.remove('dm-recording');
+  if (_dmRecorder && _dmRecorder.state === 'recording') {
+    try { _dmRecorder.stop(); } catch(e) {}
+    if (!silent) showToast('info', 'Kayıt işleniyor', 'Ses mesajı hazırlanıyor.', 2200);
+  }
+}
+
+async function sendDmMessage() {
+  if (!_dmActiveUserId) {
+    showToast('warning', 'Kişi seç', 'Mesaj göndermek için önce bir hesap seç.', 3200);
+    return;
+  }
+  const input = document.getElementById('dmTextInput');
+  const body = String(input && input.value || '').trim();
+  if (!body && !_dmPendingAttachment && !_dmPendingForward) {
+    showToast('warning', 'Mesaj boş', 'Bir metin, dosya, ses kaydı ya da iletilen AI mesajı ekle.', 3400);
+    return;
+  }
+  const payload = {
+    recipient_id: _dmActiveUserId,
+    body: body,
+    kind: _dmPendingAttachment && _dmPendingAttachment.kind === 'voice' ? 'voice' : undefined,
+    attachment: _dmPendingAttachment,
+    voice_duration_ms: _dmPendingAttachment && _dmPendingAttachment.voice_duration_ms,
+    forward: _dmPendingForward
+  };
+  try {
+    const res = await apiFetch('/api/dm/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Mesaj gönderilemedi.');
+    if (input) {
+      input.value = '';
+      autoResizeDmInput();
+    }
+    clearDmPending();
+    if (data.message) {
+      _dmMessages.push(data.message);
+      renderDmMessages();
+    }
+    await fetchDmThreads();
+    renderDmThreads();
+  } catch(e) {
+    showToast('error', 'Mesaj gönderilemedi', e.message || 'Bağlantı hatası.', 5200);
+  }
+}
+
+function forwardMessageToDm(messageId) {
+  const found = findActiveChatMessage(messageId);
+  if (!found || !found.message) return;
+  _dmPendingForward = {
+    source_role: found.message.role || 'ai',
+    text: found.message.text || '',
+    book_title: selectedBook ? getBookTitle(selectedBook) : '',
+    created_at: found.message.created_at || new Date().toISOString()
+  };
+  updateDmPendingBar();
+  openDmOverlay({ forward: _dmPendingForward });
+  showToast('info', 'DM’ye ilet', 'Bir kişi seçip gönder düğmesine bas.', 3600);
+}
+
+async function pollDmNotifications() {
+  if (!_accountUser) return;
+  try {
+    const previous = Object.assign({}, _dmKnownLatestIds);
+    await fetchDmThreads();
+    let newIncoming = null;
+    _dmThreads.forEach(function(thread) {
+      if (!thread.user || !thread.latest_message) return;
+      const userId = thread.user.id;
+      const latest = thread.latest_message;
+      if (_dmInitialPollDone && previous[userId] && previous[userId] !== latest.id && !latest.outgoing) {
+        newIncoming = { thread: thread, latest: latest };
+      }
+      _dmKnownLatestIds[userId] = latest.id;
+    });
+    _dmInitialPollDone = true;
+    renderDmThreads();
+    if (newIncoming) {
+      const activeOverlay = document.getElementById('dmOverlay');
+      const sameOpen = activeOverlay && activeOverlay.classList.contains('active') && _dmActiveUserId === newIncoming.thread.user.id;
+      if (sameOpen) loadDmMessages(_dmActiveUserId);
+      else showToast('info', 'Yeni mesaj', dmUserName(newIncoming.thread.user) + ': ' + dmSnippet(newIncoming.latest), 5200);
+    }
+  } catch(e) {}
+}
+
+function startDmPolling() {
+  clearInterval(_dmPollTimer);
+  _dmInitialPollDone = false;
+  fetchDmThreads({ seed: true }).catch(function() {});
+  _dmPollTimer = setInterval(pollDmNotifications, 12000);
+}
+
+function stopDmPolling() {
+  clearInterval(_dmPollTimer);
+  _dmPollTimer = null;
+  _dmKnownLatestIds = {};
+  _dmInitialPollDone = false;
+  setDmBadge(0);
+}
 
 function buildToastIcon(type) {
   if (type === 'success') {
@@ -14242,6 +15214,20 @@ function createMessageActions(text, role, messageId) {
   };
   actions.appendChild(copyBtn);
 
+  if (role === 'ai') {
+    const forwardBtn = document.createElement('button');
+    forwardBtn.type = 'button';
+    forwardBtn.className = 'message-action-btn';
+    forwardBtn.title = 'DM’ye ilet';
+    forwardBtn.setAttribute('aria-label', 'DM’ye ilet');
+    forwardBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg>';
+    forwardBtn.onclick = function(e) {
+      e.stopPropagation();
+      forwardMessageToDm(messageId);
+    };
+    actions.appendChild(forwardBtn);
+  }
+
   if (role === 'user') {
     const editBtn = document.createElement('button');
     editBtn.type = 'button';
@@ -14788,6 +15774,12 @@ document.addEventListener('DOMContentLoaded', function() {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); analyze(); }
     });
   }
+  const dmInput = document.getElementById('dmTextInput');
+  if (dmInput) {
+    dmInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendDmMessage(); }
+    });
+  }
   document.getElementById('delOverlay').addEventListener('click', function(e) {
     if (e.target === this) hideDelConfirm();
   });
@@ -14803,6 +15795,7 @@ document.addEventListener('keydown', function(e) {
   var pdfActive = document.getElementById('pdfViewerOverlay').classList.contains('active');
   if (e.key === 'Escape') {
     if (document.getElementById('passwordChangeOverlay') && document.getElementById('passwordChangeOverlay').classList.contains('active')) { closePasswordChangeModal(); }
+    else if (document.getElementById('dmOverlay') && document.getElementById('dmOverlay').classList.contains('active')) { closeDmOverlay(); }
     else if (document.getElementById('avatarCropOverlay') && document.getElementById('avatarCropOverlay').classList.contains('active')) { closeAvatarCropModal(); }
     else if (document.getElementById('verifyRequiredOverlay') && document.getElementById('verifyRequiredOverlay').classList.contains('active')) { closeVerifyRequiredModal(); }
     else if (document.getElementById('emailCodeOverlay') && document.getElementById('emailCodeOverlay').classList.contains('active')) { closeEmailCodeModal(); }
@@ -14939,6 +15932,7 @@ async function startApp() {
   if (_appStarted) {
     updateNetworkStatus();
     await loadLibrary();
+    startDmPolling();
     return;
   }
   loadChatStore();
@@ -14949,6 +15943,7 @@ async function startApp() {
   await loadLibrary();
   syncSilent();
   setTimeout(prefetchAllGrades, 1000);
+  startDmPolling();
   _appStarted = true;
 }
 bootApp();
