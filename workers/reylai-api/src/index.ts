@@ -90,6 +90,10 @@ type UserRow = {
   email_verification_code_hash?: string | null;
   email_verification_expires_at?: string | null;
   email_verification_sent_at?: string | null;
+  pending_email?: string | null;
+  pending_email_code_hash?: string | null;
+  pending_email_expires_at?: string | null;
+  pending_email_sent_at?: string | null;
 };
 
 type PublicUser = {
@@ -160,7 +164,11 @@ const USER_SELECT_COLUMNS = [
   "password_updated_at",
   "email_verification_code_hash",
   "email_verification_expires_at",
-  "email_verification_sent_at"
+  "email_verification_sent_at",
+  "pending_email",
+  "pending_email_code_hash",
+  "pending_email_expires_at",
+  "pending_email_sent_at"
 ].join(", ");
 
 export default {
@@ -225,6 +233,14 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (path === "/api/auth/verification/confirm" && request.method === "POST") {
     return handleVerificationConfirm(request, env);
+  }
+
+  if (path === "/api/auth/email-change/send" && request.method === "POST") {
+    return handleEmailChangeSend(request, env);
+  }
+
+  if (path === "/api/auth/email-change/confirm" && request.method === "POST") {
+    return handleEmailChangeConfirm(request, env);
   }
 
   if (path === "/api/admin/accounts" && request.method === "GET") {
@@ -439,6 +455,8 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
     const values: unknown[] = [];
     const now = new Date().toISOString();
     let shouldSendVerification = false;
+    let shouldSendEmailChange = false;
+    let pendingEmailForVerification = "";
 
     if (Object.prototype.hasOwnProperty.call(payload, "display_name")) {
       const displayName = normalizeDisplayName(payload.display_name || "");
@@ -472,16 +490,19 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
       if (!EMAIL_RE.test(requestedEmail) || requestedEmail.length > 254) {
         return json({ success: false, error: "GeÃ§erli bir e-posta girin." }, 400);
       }
+      const existing = await getUserByEmail(env, requestedEmail);
+      if (existing && existing.id !== user.id) {
+        return json({ success: false, error: "Bu e-posta baÅŸka bir hesapta kullanÄ±lÄ±yor." }, 409);
+      }
       updates.push(
-        "email = ?",
-        "role = ?",
-        "email_verified_at = NULL",
-        "email_verification_code_hash = NULL",
-        "email_verification_expires_at = NULL",
-        "email_verification_sent_at = NULL"
+        "pending_email = ?",
+        "pending_email_code_hash = NULL",
+        "pending_email_expires_at = NULL",
+        "pending_email_sent_at = NULL"
       );
-      values.push(requestedEmail, roleForEmail(requestedEmail));
-      shouldSendVerification = true;
+      values.push(requestedEmail);
+      shouldSendEmailChange = true;
+      pendingEmailForVerification = requestedEmail;
     }
 
     if (changingPassword) {
@@ -511,11 +532,16 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
 
     const freshUser = await getUserById(env, auth.user.id);
     const delivery = shouldSendVerification && freshUser ? await sendVerificationCode(env, freshUser) : null;
+    const emailChangeDelivery = shouldSendEmailChange && freshUser
+      ? await sendEmailChangeCode(env, freshUser, pendingEmailForVerification)
+      : null;
     return json({
       success: true,
       user: freshUser ? publicUser(freshUser) : auth.user,
-      verification_email_sent: delivery?.sent || false,
-      email_delivery_configured: delivery ? delivery.configured : undefined
+      verification_email_sent: delivery?.sent || emailChangeDelivery?.sent || false,
+      email_delivery_configured: delivery ? delivery.configured : (emailChangeDelivery ? emailChangeDelivery.configured : undefined),
+      email_change_pending: shouldSendEmailChange,
+      pending_email: shouldSendEmailChange ? pendingEmailForVerification : ""
     });
   }
   const authCtx = auth as AuthContext;
@@ -586,6 +612,73 @@ async function handleVerificationConfirm(request: Request, env: Env): Promise<Re
   await env.DB.prepare(
     "UPDATE users SET email_verified_at = ?, email_verification_code_hash = NULL, email_verification_expires_at = NULL, email_verification_sent_at = NULL, updated_at = ? WHERE id = ?"
   ).bind(now, now, user.id).run();
+  const freshUser = await getUserById(env, user.id);
+  return json({ success: true, user: freshUser ? publicUser(freshUser) : auth.user });
+}
+
+async function handleEmailChangeSend(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const user = await getUserById(env, auth.user.id);
+  if (!user) return json({ success: false, error: "Hesap bulunamadÄ±." }, 404);
+  const pendingEmail = normalizeEmail(user.pending_email || "");
+  if (!pendingEmail) {
+    return json({ success: false, error: "Bekleyen e-posta deÄŸiÅŸikliÄŸi bulunamadÄ±." }, 400);
+  }
+
+  const sentAt = user.pending_email_sent_at ? Date.parse(user.pending_email_sent_at) : 0;
+  const waitMs = sentAt ? VERIFY_CODE_COOLDOWN_SECONDS * 1000 - (Date.now() - sentAt) : 0;
+  if (waitMs > 0) {
+    return json({
+      success: false,
+      error: `Yeni kod iÃ§in ${Math.ceil(waitMs / 1000)} saniye bekleyin.`,
+      retry_after: Math.ceil(waitMs / 1000)
+    }, 429);
+  }
+
+  const delivery = await sendEmailChangeCode(env, user, pendingEmail);
+  return json({
+    success: delivery.sent,
+    email_delivery_configured: delivery.configured,
+    pending_email: pendingEmail,
+    error: delivery.sent ? undefined : delivery.error || "E-posta deÄŸiÅŸiklik kodu gÃ¶nderilemedi."
+  }, delivery.sent ? 200 : 503);
+}
+
+async function handleEmailChangeConfirm(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const payload = await readJson<VerificationPayload>(request);
+  const code = String(payload.code || "").replace(/\D+/g, "").slice(0, 12);
+  if (code.length !== 6) return json({ success: false, error: "6 haneli kodu girin." }, 400);
+
+  const user = await getUserById(env, auth.user.id);
+  if (!user) return json({ success: false, error: "Hesap bulunamadÄ±." }, 404);
+  const pendingEmail = normalizeEmail(user.pending_email || "");
+  if (!pendingEmail || !user.pending_email_code_hash || !user.pending_email_expires_at) {
+    return json({ success: false, error: "Bekleyen e-posta deÄŸiÅŸikliÄŸi bulunamadÄ±." }, 400);
+  }
+  if (Date.parse(user.pending_email_expires_at) <= Date.now()) {
+    return json({ success: false, error: "Kodun sÃ¼resi doldu. Yeni kod isteyin." }, 400);
+  }
+
+  const expected = await verificationHash(user.id, pendingEmail, code);
+  if (expected !== user.pending_email_code_hash) {
+    return json({ success: false, error: "DoÄŸrulama kodu hatalÄ±." }, 400);
+  }
+
+  const existing = await getUserByEmail(env, pendingEmail);
+  if (existing && existing.id !== user.id) {
+    return json({ success: false, error: "Bu e-posta baÅŸka bir hesapta kullanÄ±lÄ±yor." }, 409);
+  }
+
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE users SET email = ?, role = ?, email_verified_at = ?, " +
+    "email_verification_code_hash = NULL, email_verification_expires_at = NULL, email_verification_sent_at = NULL, " +
+    "pending_email = NULL, pending_email_code_hash = NULL, pending_email_expires_at = NULL, pending_email_sent_at = NULL, " +
+    "updated_at = ? WHERE id = ?"
+  ).bind(pendingEmail, roleForEmail(pendingEmail), now, now, user.id).run();
   const freshUser = await getUserById(env, user.id);
   return json({ success: true, user: freshUser ? publicUser(freshUser) : auth.user });
 }
@@ -956,6 +1049,41 @@ async function sendVerificationCode(env: Env, user: UserRow): Promise<{ sent: bo
       detail: error instanceof Error ? error.message : String(error)
     }));
     return { sent: false, configured: true, error: "DoÄŸrulama e-postasÄ± gÃ¶nderilemedi." };
+  }
+}
+
+async function sendEmailChangeCode(env: Env, user: UserRow, nextEmail: string): Promise<{ sent: boolean; configured: boolean; error?: string }> {
+  const email = normalizeEmail(nextEmail);
+  const binding = getEmailBinding(env);
+  if (!binding) {
+    return { sent: false, configured: false, error: "Cloudflare Email Sending henÃ¼z baÄŸlÄ± deÄŸil." };
+  }
+
+  const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + VERIFY_CODE_TTL_MINUTES * 60 * 1000).toISOString();
+  const codeHash = await verificationHash(user.id, email, code);
+
+  await env.DB.prepare(
+    "UPDATE users SET pending_email = ?, pending_email_code_hash = ?, pending_email_expires_at = ?, pending_email_sent_at = ?, updated_at = ? WHERE id = ?"
+  ).bind(email, codeHash, expiresAt, now.toISOString(), now.toISOString(), user.id).run();
+
+  try {
+    await binding.send({
+      to: email,
+      from: { email: NO_REPLY_FROM, name: "ReylAI" },
+      subject: "ReylAI e-posta deÄŸiÅŸiklik kodun",
+      html: verificationEmailHtml(user, code),
+      text: `ReylAI e-posta deÄŸiÅŸiklik kodun: ${code}. Kod ${VERIFY_CODE_TTL_MINUTES} dakika geÃ§erlidir.`
+    });
+    return { sent: true, configured: true };
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: "error",
+      message: "email change verification failed",
+      detail: error instanceof Error ? error.message : String(error)
+    }));
+    return { sent: false, configured: true, error: "E-posta deÄŸiÅŸiklik kodu gÃ¶nderilemedi." };
   }
 }
 

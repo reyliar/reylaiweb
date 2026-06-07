@@ -5080,6 +5080,50 @@ body.account-menu-open .account-menu {
   font-weight: 900;
 }
 
+.settings-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-email-state {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(196,181,253,0.18);
+  background: rgba(124,58,237,0.12);
+  color: #c4b5fd;
+  font-size: 10.5px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.settings-email-state.verified {
+  background: rgba(124,58,237,0.18);
+  color: #f7f2ff;
+}
+
+.settings-email-state.changed,
+.settings-email-state.pending {
+  border-color: rgba(251,191,36,0.24);
+  background: rgba(251,191,36,0.08);
+  color: #fbbf24;
+}
+
+.settings-email-control {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-email-control .settings-input {
+  min-width: 0;
+}
+
 .settings-input {
   width: 100%;
   min-height: 44px;
@@ -5098,31 +5142,167 @@ body.account-menu-open .account-menu {
   box-shadow: 0 0 0 4px rgba(124,58,237,0.14);
 }
 
-.verification-box {
-  display: grid;
-  gap: 10px;
-  padding: 13px;
-  border-radius: 18px;
-  border: 1px solid rgba(251,191,36,0.20);
-  background: rgba(251,191,36,0.07);
+.email-verify-btn {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(196,181,253,0.20);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(76,29,149,0.88), rgba(124,58,237,0.62));
+  color: #f7f2ff;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 14px 32px rgba(0,0,0,0.24), inset 0 1px rgba(255,255,255,0.10);
+  transition: transform 0.28s cubic-bezier(0.16,1,0.3,1), border-color 0.24s ease, opacity 0.24s ease;
 }
 
-.verification-box.verified {
-  border-color: rgba(196,181,253,0.24);
-  background: rgba(124,58,237,0.10);
+.email-verify-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(216,180,254,0.34);
 }
 
-.verification-status {
-  color: rgba(243,239,255,0.76);
-  font-size: 12.5px;
-  font-weight: 800;
+.email-verify-btn:disabled {
+  opacity: 0.54;
+  cursor: default;
+}
+
+.settings-hint {
+  color: rgba(243,239,255,0.52);
+  font-size: 11.5px;
+  font-weight: 750;
   line-height: 1.5;
 }
 
-.verification-actions {
+.email-code-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 345;
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  place-items: center;
+  padding: 18px;
+  background: rgba(5,3,12,0.58);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.32s cubic-bezier(0.22,1,0.36,1);
+  backdrop-filter: blur(26px) saturate(1.25);
+  -webkit-backdrop-filter: blur(26px) saturate(1.25);
+}
+
+.email-code-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.email-code-panel {
+  width: min(430px, 100%);
+  padding: 20px;
+  border: 1px solid rgba(196,181,253,0.20);
+  border-radius: 26px;
+  background:
+    linear-gradient(145deg, rgba(36,26,61,0.95), rgba(12,8,24,0.92)),
+    var(--material-glass);
+  box-shadow: 0 30px 90px rgba(0,0,0,0.48), 0 0 42px rgba(76,29,149,0.20), inset 0 1px rgba(255,255,255,0.10);
+  transform: translateY(18px) scale(0.96);
+  opacity: 0;
+  transition:
+    transform 0.42s cubic-bezier(0.16,1,0.3,1),
+    opacity 0.34s cubic-bezier(0.22,1,0.36,1);
+}
+
+.email-code-overlay.active .email-code-panel {
+  transform: none;
+  opacity: 1;
+}
+
+.email-code-back {
+  min-height: 34px;
+  padding: 0 12px;
+  margin: 0 0 12px;
+  border: 1px solid rgba(196,181,253,0.16);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+  color: rgba(243,239,255,0.86);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.email-code-kicker {
+  color: #c4b5fd;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.email-code-title {
+  margin-top: 7px;
+  font-size: 24px;
+  font-weight: 950;
+  line-height: 1.12;
+}
+
+.email-code-lead,
+.email-code-target,
+.email-code-status {
+  margin-top: 8px;
+  color: rgba(243,239,255,0.64);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.55;
+}
+
+.email-code-target {
+  overflow-wrap: anywhere;
+  color: #ddd6fe;
+}
+
+.email-code-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
+  margin: 18px 0 10px;
+}
+
+.email-code-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 48px;
+  border: 1px solid rgba(196,181,253,0.18);
+  border-radius: 16px;
+  background: rgba(8,6,17,0.48);
+  color: #fff;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 950;
+  outline: none;
+  box-shadow: inset 0 1px rgba(255,255,255,0.06);
+  transition: transform 0.26s cubic-bezier(0.16,1,0.3,1), border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+
+.email-code-cell:focus {
+  transform: translateY(-2px);
+  border-color: rgba(216,180,254,0.48);
+  background: rgba(24,16,45,0.72);
+  box-shadow: 0 0 0 4px rgba(124,58,237,0.18), inset 0 1px rgba(255,255,255,0.08);
+}
+
+.email-code-cell.filled {
+  border-color: rgba(196,181,253,0.34);
+  background: rgba(124,58,237,0.16);
+}
+
+.email-code-status.error {
+  color: var(--red);
+}
+
+.email-code-status.success {
+  color: #c4b5fd;
+}
+
+.email-code-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .settings-actions {
@@ -5317,8 +5497,18 @@ body.account-menu-open .account-menu {
   .profile-settings-grid {
     grid-template-columns: 1fr;
   }
-  .verification-actions {
+  .settings-email-control,
+  .email-code-actions {
     grid-template-columns: 1fr;
+  }
+  .settings-email-control {
+    display: grid;
+  }
+  .email-code-actions {
+    display: grid;
+  }
+  .email-code-grid {
+    gap: 6px;
   }
   .admin-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -8344,10 +8534,17 @@ body::after {
           <span class="settings-label">Görünen ad</span>
           <input class="settings-input" id="settingsDisplayName" type="text" maxlength="40" placeholder="Görünen ad">
         </label>
-        <label class="settings-field">
-          <span class="settings-label">E-posta</span>
-          <input class="settings-input" id="settingsEmail" type="email" maxlength="254" placeholder="eposta@example.com">
-        </label>
+        <div class="settings-field">
+          <div class="settings-label-row">
+            <span class="settings-label">E-posta</span>
+            <span class="settings-email-state" id="settingsEmailState">Doğrulama bekliyor</span>
+          </div>
+          <div class="settings-email-control">
+            <input class="settings-input" id="settingsEmail" type="email" maxlength="254" placeholder="eposta@example.com" oninput="updateVerificationPanel()">
+            <button class="email-verify-btn" id="settingsEmailVerifyBtn" type="button" onclick="handleEmailVerifyButton()">Doğrula</button>
+          </div>
+          <div class="settings-hint" id="settingsEmailHint">E-posta doğrulaması hesap güvenliği için kullanılır.</div>
+        </div>
         <label class="settings-field">
           <span class="settings-label">Mevcut şifre</span>
           <input class="settings-input" id="settingsCurrentPassword" type="password" autocomplete="current-password" placeholder="E-posta veya şifre değişimi için">
@@ -8356,19 +8553,34 @@ body::after {
           <span class="settings-label">Yeni şifre</span>
           <input class="settings-input" id="settingsNewPassword" type="password" autocomplete="new-password" placeholder="Boş bırakılırsa değişmez">
         </label>
-        <div class="verification-box" id="verificationBox">
-          <div class="verification-status" id="verificationStatus">E-posta doğrulaması bekliyor.</div>
-          <div class="verification-actions">
-            <input class="settings-input" id="verificationCodeInput" type="text" inputmode="numeric" maxlength="6" placeholder="6 haneli kod">
-            <button class="account-menu-btn" type="button" onclick="sendVerificationCode()">Kod gönder</button>
-            <button class="account-menu-btn" type="button" onclick="confirmVerificationCode()">Onayla</button>
-          </div>
-        </div>
       </div>
     </div>
     <div class="settings-actions">
       <button class="btn btn-ghost" type="button" onclick="closeProfileSettings()">İptal</button>
       <button class="btn btn-primary" type="button" onclick="saveProfileSettings()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<div class="email-code-overlay" id="emailCodeOverlay" onclick="if(event.target===this)closeEmailCodeModal()">
+  <div class="email-code-panel" role="dialog" aria-modal="true" aria-labelledby="emailCodeTitle">
+    <button class="email-code-back" type="button" onclick="closeEmailCodeModal()">‹ Geri</button>
+    <div class="email-code-kicker">Güvenlik kodu</div>
+    <div class="email-code-title" id="emailCodeTitle">E-postanı doğrula</div>
+    <div class="email-code-lead" id="emailCodeLead">No-reply adresinden gelen 6 haneli kodu gir.</div>
+    <div class="email-code-target" id="emailCodeTarget"></div>
+    <div class="email-code-grid" id="emailCodeGrid" onclick="focusFirstEmptyEmailCodeCell()">
+      <input class="email-code-cell" inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="Kod hanesi 1">
+      <input class="email-code-cell" inputmode="numeric" maxlength="1" aria-label="Kod hanesi 2">
+      <input class="email-code-cell" inputmode="numeric" maxlength="1" aria-label="Kod hanesi 3">
+      <input class="email-code-cell" inputmode="numeric" maxlength="1" aria-label="Kod hanesi 4">
+      <input class="email-code-cell" inputmode="numeric" maxlength="1" aria-label="Kod hanesi 5">
+      <input class="email-code-cell" inputmode="numeric" maxlength="1" aria-label="Kod hanesi 6">
+    </div>
+    <div class="email-code-status" id="emailCodeStatus"></div>
+    <div class="email-code-actions">
+      <button class="account-menu-btn" id="emailCodeResendBtn" type="button" onclick="resendEmailCode()">Kodu yeniden gönder</button>
+      <button class="btn btn-primary" id="emailCodeSubmitBtn" type="button" onclick="confirmEmailCodeFromModal()">Onayla</button>
     </div>
   </div>
 </div>
@@ -8457,6 +8669,10 @@ let _turnstileToken = '';
 let _turnstileReady = false;
 let _appStarted = false;
 let _pendingProfileAvatarDataUrl = '';
+let _emailCodeMode = 'verify';
+let _emailCodeTargetEmail = '';
+let _emailCodeSubmitting = false;
+let _emailCodeAutoTimer = null;
 let _chatStore = { chats: [] };
 let _chatStoreLoaded = false;
 let _chatStoreLoadPromise = null;
@@ -8726,8 +8942,8 @@ async function submitAccountAuth(event) {
       if (data.email_delivery_configured === false) {
         showToast('warning', 'E-posta servisi bekliyor', 'Hesabın açıldı; doğrulama e-postası Cloudflare Email bağlanınca gönderilecek.', 6500);
       } else {
-        showToast('warning', 'E-postanı doğrula', 'Ayarlar panelinden no-reply kodunu onayla.', 6200);
-        setTimeout(function(){ openProfileSettings(); }, 850);
+        showToast('warning', 'E-postanı doğrula', 'No-reply kodunu açılan ekranda onayla.', 6200);
+        setTimeout(function(){ openEmailCodeModal('verify', { email: _accountUser.email || '', send: false }); }, 850);
       }
     } else {
       showToast('success', 'Hoş geldin', 'ReylAI hesabın hazır.', 2800);
@@ -8894,12 +9110,10 @@ function openProfileSettings() {
   const email = document.getElementById('settingsEmail');
   const current = document.getElementById('settingsCurrentPassword');
   const next = document.getElementById('settingsNewPassword');
-  const code = document.getElementById('verificationCodeInput');
   if (name) name.value = _accountUser.display_name || '';
   if (email) email.value = _accountUser.email || '';
   if (current) current.value = '';
   if (next) next.value = '';
-  if (code) code.value = '';
   updateProfilePhotoPreview();
   updateVerificationPanel();
   document.getElementById('profileSettingsOverlay').classList.add('active');
@@ -8918,14 +9132,35 @@ function updateProfilePhotoPreview() {
 }
 
 function updateVerificationPanel() {
-  const box = document.getElementById('verificationBox');
-  const status = document.getElementById('verificationStatus');
-  if (!box || !status || !_accountUser) return;
-  const ok = !!_accountUser.email_verified;
-  box.classList.toggle('verified', ok);
-  status.textContent = ok
-    ? 'E-posta adresin doğrulandı. Hesap güvenliği tamam.'
-    : 'E-posta doğrulaması bekliyor. Kod gönderip gelen 6 haneli güvenlik kodunu gir.';
+  const state = document.getElementById('settingsEmailState');
+  const btn = document.getElementById('settingsEmailVerifyBtn');
+  const hint = document.getElementById('settingsEmailHint');
+  const input = document.getElementById('settingsEmail');
+  if (!state || !btn || !hint || !input || !_accountUser) return;
+  const currentEmail = String(_accountUser.email || '').trim().toLowerCase();
+  const typedEmail = String(input.value || '').trim().toLowerCase();
+  const changed = typedEmail && typedEmail !== currentEmail;
+  state.classList.remove('verified', 'changed', 'pending');
+  btn.disabled = false;
+  if (changed) {
+    state.textContent = 'Değişiklik bekliyor';
+    state.classList.add('changed');
+    btn.textContent = 'Kaydet & doğrula';
+    hint.textContent = 'Yeni e-posta önce kaydedilir, sonra o adrese gelen 6 haneli kodla onaylanır.';
+    return;
+  }
+  if (_accountUser.email_verified) {
+    state.textContent = 'Doğrulandı';
+    state.classList.add('verified');
+    btn.textContent = 'Doğrulandı';
+    btn.disabled = true;
+    hint.textContent = 'Bu e-posta adresi doğrulanmış durumda.';
+    return;
+  }
+  state.textContent = 'Doğrulama bekliyor';
+  state.classList.add('pending');
+  btn.textContent = 'Doğrula';
+  hint.textContent = 'No-reply adresinden gelen kodla e-postanı doğrulayabilirsin.';
 }
 
 function handleProfilePhotoChange(event) {
@@ -8957,7 +9192,8 @@ function clearProfilePhoto() {
   updateProfilePhotoPreview();
 }
 
-async function saveProfileSettings() {
+async function saveProfileSettings(options) {
+  options = options || {};
   if (!_accountUser) return;
   const displayName = (document.getElementById('settingsDisplayName') || {}).value || '';
   const email = (document.getElementById('settingsEmail') || {}).value || '';
@@ -8982,6 +9218,17 @@ async function saveProfileSettings() {
     _accountUser = data.user;
     _pendingProfileAvatarDataUrl = _accountUser.avatar_data_url || '';
     updateAccountUI();
+    updateVerificationPanel();
+    if (data.email_change_pending) {
+      const targetEmail = data.pending_email || payload.email;
+      if (data.email_delivery_configured === false) {
+        showToast('warning', 'E-posta servisi bağlı değil', 'Değişiklik beklemeye alındı; Cloudflare Email bağlanınca kod gönderilecek.', 6200);
+      } else {
+        showToast('warning', 'E-postanı onayla', 'Yeni adresine gelen 6 haneli kodu gir.', 5200);
+      }
+      openEmailCodeModal('email-change', { email: targetEmail, send: false });
+      return;
+    }
     closeProfileSettings();
     if (data.email_delivery_configured === false) {
       showToast('warning', 'E-posta servisi bağlı değil', 'Profil kaydedildi; doğrulama e-postası Cloudflare Email bağlanınca gönderilecek.', 6200);
@@ -8995,26 +9242,185 @@ async function saveProfileSettings() {
   }
 }
 
-async function sendVerificationCode() {
+function handleEmailVerifyButton() {
+  if (!_accountUser) return;
+  const input = document.getElementById('settingsEmail');
+  const typedEmail = input ? String(input.value || '').trim().toLowerCase() : '';
+  const currentEmail = String(_accountUser.email || '').trim().toLowerCase();
+  if (typedEmail && typedEmail !== currentEmail) {
+    saveProfileSettings({ openEmailVerification: true });
+    return;
+  }
+  openEmailCodeModal('verify', { email: _accountUser.email || '', send: true });
+}
+
+function getEmailCodeCells() {
+  return Array.prototype.slice.call(document.querySelectorAll('.email-code-cell'));
+}
+
+function setupEmailCodeInputs() {
+  getEmailCodeCells().forEach(function(cell, index, cells) {
+    cell.addEventListener('input', function() {
+      const digits = String(cell.value || '').replace(/\D+/g, '');
+      if (digits.length > 1) {
+        fillEmailCodeCells(digits);
+        return;
+      }
+      cell.value = digits;
+      cell.classList.toggle('filled', !!digits);
+      if (digits && cells[index + 1]) cells[index + 1].focus();
+      maybeAutoConfirmEmailCode();
+    });
+    cell.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace' && !cell.value && cells[index - 1]) {
+        cells[index - 1].focus();
+        cells[index - 1].value = '';
+        cells[index - 1].classList.remove('filled');
+        e.preventDefault();
+      } else if (e.key === 'ArrowLeft' && cells[index - 1]) {
+        cells[index - 1].focus();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight' && cells[index + 1]) {
+        cells[index + 1].focus();
+        e.preventDefault();
+      }
+    });
+    cell.addEventListener('paste', function(e) {
+      const text = (e.clipboardData || window.clipboardData || {}).getData ? (e.clipboardData || window.clipboardData).getData('text') : '';
+      const digits = String(text || '').replace(/\D+/g, '').slice(0, 6);
+      if (digits) {
+        e.preventDefault();
+        fillEmailCodeCells(digits);
+      }
+    });
+  });
+}
+
+function openEmailCodeModal(mode, options) {
+  options = options || {};
+  _emailCodeMode = mode || 'verify';
+  _emailCodeTargetEmail = String(options.email || (_accountUser && _accountUser.email) || '').trim();
+  _emailCodeSubmitting = false;
+  clearEmailCodeCells();
+  const overlay = document.getElementById('emailCodeOverlay');
+  const title = document.getElementById('emailCodeTitle');
+  const lead = document.getElementById('emailCodeLead');
+  const target = document.getElementById('emailCodeTarget');
+  if (title) title.textContent = _emailCodeMode === 'email-change' ? 'Yeni e-postanı onayla' : 'E-postanı doğrula';
+  if (lead) lead.textContent = _emailCodeMode === 'email-change'
+    ? 'Yeni adresine gönderilen 6 haneli kodu gir. Kod tamamlanınca e-posta değişimi otomatik onaylanır.'
+    : 'No-reply adresinden gelen 6 haneli kodu gir. Kodu yapıştırırsan kutucuklar otomatik dolar.';
+  if (target) target.textContent = _emailCodeTargetEmail ? 'Hedef: ' + _emailCodeTargetEmail : '';
+  setEmailCodeStatus(options.send ? 'Kod gönderiliyor...' : 'Kodu bekliyorum.', '');
+  if (overlay) overlay.classList.add('active');
+  setTimeout(function(){ focusFirstEmptyEmailCodeCell(); }, 120);
+  if (options.send) sendVerificationCode({ quiet: true });
+}
+
+function closeEmailCodeModal() {
+  const overlay = document.getElementById('emailCodeOverlay');
+  if (overlay) overlay.classList.remove('active');
+  _emailCodeSubmitting = false;
+  if (_emailCodeAutoTimer) clearTimeout(_emailCodeAutoTimer);
+}
+
+function focusFirstEmptyEmailCodeCell() {
+  const cells = getEmailCodeCells();
+  const empty = cells.find(function(cell){ return !cell.value; });
+  (empty || cells[0] || {}).focus && (empty || cells[0]).focus();
+}
+
+function clearEmailCodeCells() {
+  getEmailCodeCells().forEach(function(cell) {
+    cell.value = '';
+    cell.classList.remove('filled');
+  });
+  if (_emailCodeAutoTimer) clearTimeout(_emailCodeAutoTimer);
+}
+
+function fillEmailCodeCells(value) {
+  const digits = String(value || '').replace(/\D+/g, '').slice(0, 6);
+  const cells = getEmailCodeCells();
+  cells.forEach(function(cell, index) {
+    cell.value = digits[index] || '';
+    cell.classList.toggle('filled', !!cell.value);
+  });
+  if (digits.length < 6 && cells[digits.length]) cells[digits.length].focus();
+  maybeAutoConfirmEmailCode();
+}
+
+function getEmailCodeValue() {
+  return getEmailCodeCells().map(function(cell){ return cell.value || ''; }).join('').replace(/\D+/g, '').slice(0, 6);
+}
+
+function maybeAutoConfirmEmailCode() {
+  const code = getEmailCodeValue();
+  if (code.length !== 6 || _emailCodeSubmitting) return;
+  if (_emailCodeAutoTimer) clearTimeout(_emailCodeAutoTimer);
+  _emailCodeAutoTimer = setTimeout(function(){ confirmEmailCodeFromModal(); }, 220);
+}
+
+function setEmailCodeStatus(message, type) {
+  const status = document.getElementById('emailCodeStatus');
+  if (!status) return;
+  status.textContent = message || '';
+  status.className = 'email-code-status' + (type ? ' ' + type : '');
+}
+
+async function sendVerificationCode(options) {
+  options = options || {};
   try {
     const res = await apiFetch('/api/auth/verification/send', { method: 'POST' });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Kod gönderilemedi.');
-    showToast('success', 'Kod gönderildi', 'No-reply adresinden gelen 6 haneli kodu gir.', 5200);
+    setEmailCodeStatus('Kod gönderildi. E-postandaki 6 haneyi gir veya yapıştır.', 'success');
+    if (!options.quiet) showToast('success', 'Kod gönderildi', 'No-reply adresinden gelen 6 haneli kodu gir.', 5200);
+    return true;
   } catch(e) {
-    showToast('warning', 'Kod gönderilemedi', e.message || 'E-posta servisi bağlı değil.', 5600);
+    setEmailCodeStatus(e.message || 'Kod gönderilemedi.', 'error');
+    if (!options.quiet) showToast('warning', 'Kod gönderilemedi', e.message || 'E-posta servisi bağlı değil.', 5600);
+    return false;
   }
 }
 
-async function confirmVerificationCode() {
-  const input = document.getElementById('verificationCodeInput');
-  const code = input ? input.value.trim() : '';
-  if (!/^\d{6}$/.test(code)) {
-    showToast('warning', 'Kod eksik', '6 haneli güvenlik kodunu gir.', 3200);
+async function resendEmailCode() {
+  if (_emailCodeMode === 'email-change') {
+    try {
+      setEmailCodeStatus('Yeni kod gönderiliyor...', '');
+      const res = await apiFetch('/api/auth/email-change/send', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Kod gönderilemedi.');
+      _emailCodeTargetEmail = data.pending_email || _emailCodeTargetEmail;
+      const target = document.getElementById('emailCodeTarget');
+      if (target) target.textContent = _emailCodeTargetEmail ? 'Hedef: ' + _emailCodeTargetEmail : '';
+      clearEmailCodeCells();
+      setEmailCodeStatus('Yeni kod gönderildi. 6 haneyi gir veya yapıştır.', 'success');
+      focusFirstEmptyEmailCodeCell();
+    } catch(e) {
+      setEmailCodeStatus(e.message || 'Kod gönderilemedi.', 'error');
+      showToast('warning', 'Kod gönderilemedi', e.message || 'E-posta servisi bağlı değil.', 5600);
+    }
     return;
   }
+  clearEmailCodeCells();
+  await sendVerificationCode({ quiet: false });
+  focusFirstEmptyEmailCodeCell();
+}
+
+async function confirmEmailCodeFromModal() {
+  const code = getEmailCodeValue();
+  if (!/^\d{6}$/.test(code)) {
+    setEmailCodeStatus('6 haneli güvenlik kodunu tamamla.', 'error');
+    return;
+  }
+  if (_emailCodeSubmitting) return;
+  _emailCodeSubmitting = true;
+  const submit = document.getElementById('emailCodeSubmitBtn');
+  if (submit) submit.disabled = true;
+  setEmailCodeStatus('Kod doğrulanıyor...', '');
   try {
-    const res = await apiFetch('/api/auth/verification/confirm', {
+    const endpoint = _emailCodeMode === 'email-change' ? '/api/auth/email-change/confirm' : '/api/auth/verification/confirm';
+    const res = await apiFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: code })
@@ -9022,10 +9428,24 @@ async function confirmVerificationCode() {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Doğrulama tamamlanamadı.');
     _accountUser = data.user || _accountUser;
+    _pendingProfileAvatarDataUrl = _accountUser.avatar_data_url || '';
+    const emailInput = document.getElementById('settingsEmail');
+    if (emailInput) emailInput.value = _accountUser.email || '';
     updateAccountUI();
-    showToast('success', 'E-posta doğrulandı', 'Hesabın güvenlik doğrulaması tamamlandı.', 3600);
+    updateVerificationPanel();
+    setEmailCodeStatus('Onaylandı. Hesap bilgilerin güncellendi.', 'success');
+    showToast('success', _emailCodeMode === 'email-change' ? 'E-posta değiştirildi' : 'E-posta doğrulandı', 'Hesabın güvenlik doğrulaması tamamlandı.', 3600);
+    setTimeout(function() {
+      closeEmailCodeModal();
+      closeProfileSettings();
+    }, 420);
   } catch(e) {
-    showToast('error', 'Doğrulanamadı', e.message || 'Kod hatalı.', 4600);
+    _emailCodeSubmitting = false;
+    clearEmailCodeCells();
+    setEmailCodeStatus(e.message || 'Kod hatalı veya süresi dolmuş.', 'error');
+    focusFirstEmptyEmailCodeCell();
+  } finally {
+    if (submit) submit.disabled = false;
   }
 }
 
@@ -13010,6 +13430,7 @@ function escHtml(str) {
 // ── Event listeners ────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
   mountAccountMenu();
+  setupEmailCodeInputs();
   const ta = document.getElementById('promptInput');
   if (ta) {
     ta.addEventListener('input', function(){ autoResizeTA(ta); });
@@ -13031,7 +13452,8 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('keydown', function(e) {
   var pdfActive = document.getElementById('pdfViewerOverlay').classList.contains('active');
   if (e.key === 'Escape') {
-    if (document.getElementById('accountMenu') && document.getElementById('accountMenu').classList.contains('active')) { closeAccountMenu(); }
+    if (document.getElementById('emailCodeOverlay') && document.getElementById('emailCodeOverlay').classList.contains('active')) { closeEmailCodeModal(); }
+    else if (document.getElementById('accountMenu') && document.getElementById('accountMenu').classList.contains('active')) { closeAccountMenu(); }
     else if (document.getElementById('profileSettingsOverlay') && document.getElementById('profileSettingsOverlay').classList.contains('active')) { closeProfileSettings(); }
     else if (document.getElementById('adminToolsOverlay') && document.getElementById('adminToolsOverlay').classList.contains('active')) { closeAdminTools(); }
     else if (_activeAnalyzeController) { stopCurrentAnalysis(); }
