@@ -2491,10 +2491,11 @@ body.app-ready #libraryScreen {
   z-index: 360;
 }
 
-.account-menu.active {
+.account-menu.active,
+body.account-menu-open .account-menu {
   opacity: 1;
   transform: translateY(0);
-  pointer-events: all;
+  pointer-events: auto;
 }
 
 .account-menu-head {
@@ -3454,8 +3455,12 @@ body.app-ready #libraryScreen {
 
 /* Network status indicator (footer inline) */
 .net-indicator {
+  display: none !important;
+}
+
+.net-indicator {
   position: relative;
-  display: inline-flex;
+  display: none;
   align-items: center;
   justify-content: center;
   width: 32px;
@@ -7936,7 +7941,7 @@ body::after {
       </div>
     </div>
     <div class="nav-right">
-      <button class="account-chip" id="accountChip" type="button" onclick="toggleAccountMenu()" aria-label="Hesap menüsünü aç">
+      <button class="account-chip" id="accountChip" type="button" onclick="toggleAccountMenu(event)" aria-label="Hesap menüsünü aç" aria-expanded="false">
         <span class="account-avatar" id="accountAvatar">R</span>
         <span class="account-chip-name" id="accountChipName">Hesap</span>
         <span class="account-chip-role" id="accountChipRole">Admin</span>
@@ -7990,7 +7995,6 @@ body::after {
   </div>
   <footer class="lib-footer">
     <span class="footer-copy">\u00a92026 All Copyrights Reserved to <span class="footer-brand">reyli</span></span>
-    <div class="net-indicator" id="netIndicator"></div>
   </footer>
 </div>
 
@@ -8662,14 +8666,32 @@ function updateAccountUI() {
   if (profileInput) profileInput.value = _accountUser ? name : '';
 }
 
-function toggleAccountMenu() {
+function mountAccountMenu() {
   const menu = document.getElementById('accountMenu');
-  if (menu) menu.classList.toggle('active');
+  if (menu && menu.parentElement !== document.body) {
+    document.body.appendChild(menu);
+  }
+}
+
+function toggleAccountMenu(event) {
+  if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+  mountAccountMenu();
+  const menu = document.getElementById('accountMenu');
+  const chip = document.getElementById('accountChip');
+  if (menu) {
+    const nextOpen = !menu.classList.contains('active');
+    menu.classList.toggle('active', nextOpen);
+    document.body.classList.toggle('account-menu-open', nextOpen);
+    if (chip) chip.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+  }
 }
 
 function closeAccountMenu() {
   const menu = document.getElementById('accountMenu');
   if (menu) menu.classList.remove('active');
+  document.body.classList.remove('account-menu-open');
+  const chip = document.getElementById('accountChip');
+  if (chip) chip.setAttribute('aria-expanded', 'false');
 }
 
 async function saveAccountProfile() {
@@ -12815,6 +12837,7 @@ function escHtml(str) {
 
 // ── Event listeners ────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
+  mountAccountMenu();
   const ta = document.getElementById('promptInput');
   if (ta) {
     ta.addEventListener('input', function(){ autoResizeTA(ta); });
