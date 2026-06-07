@@ -25,7 +25,10 @@ const ADMIN_EMAIL = "mynamesreyli@gmail.com";
 const VERIFY_CODE_TTL_MINUTES = 10;
 const VERIFY_CODE_COOLDOWN_SECONDS = 60;
 const PASSWORD_CHANGE_TOKEN_TTL_MINUTES = 8;
+const ADMIN_ACTION_TOKEN_TTL_MINUTES = 20;
 const AVATAR_DATA_URL_LIMIT = 360_000;
+const BOOK_COVER_FILE_LIMIT = 700_000;
+const BOOK_COVER_DATA_URL_LIMIT = 950_000;
 const NO_REPLY_FROM = "no-reply@reyliar.xyz";
 
 type Book = {
@@ -47,6 +50,18 @@ type Book = {
   added_at?: string;
   updated_at?: string;
   cover_updated_at?: string;
+};
+
+type BookAdminChange = {
+  book_key: string;
+  title?: string | null;
+  name?: string | null;
+  cover_data_url?: string | null;
+  cover_mime_type?: string | null;
+  cover_updated_at?: string | null;
+  deleted_at?: string | null;
+  updated_at?: string | null;
+  updated_by?: string | null;
 };
 
 type ScanPage = {
@@ -275,6 +290,18 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     return handleLibrary(url, env);
   }
 
+  if (request.method === "POST" && path === "/api/rename_book") {
+    return handleBookRename(request, env);
+  }
+
+  if (request.method === "POST" && path === "/api/update_cover") {
+    return handleBookCoverUpdate(request, env);
+  }
+
+  if (request.method === "POST" && path === "/api/delete") {
+    return handleBookDelete(request, env);
+  }
+
   if (path === "/api/chat_history") {
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
@@ -340,7 +367,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   if (request.method === "GET" && path.startsWith("/api/cover/")) {
     const id = safeId(path.split("/").pop() || "");
     if (!id) return text("", 404);
-    return redirectIfExists(env, `/reylai_assets/covers/${encodeURIComponent(id)}.jpg`);
+    return handleBookCover(id, env);
   }
 
   if (request.method === "GET" && path.startsWith("/api/serve_pdf/")) {
@@ -355,7 +382,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (
     ["POST", "PUT", "DELETE"].includes(request.method) &&
-    ["/api/upload", "/api/add_book", "/api/delete", "/api/rename_book", "/api/update_cover", "/api/scan_missing_books", "/api/scan_missing_books_cancel"].some((prefix) => path.startsWith(prefix))
+    ["/api/upload", "/api/add_book", "/api/scan_missing_books", "/api/scan_missing_books_cancel"].some((prefix) => path.startsWith(prefix))
   ) {
     return json({ success: false, error: "Bu işlem statik Cloudflare yayında desteklenmiyor." }, 405);
   }
@@ -791,7 +818,13 @@ async function handleAdminPasswordVerify(request: Request, env: Env): Promise<Re
   const payload = await readJson<{ turnstile_token?: string }>(request);
   const turnstileError = await verifyTurnstile(request, env, payload.turnstile_token);
   if (turnstileError) return turnstileError;
-  return json({ success: true, token: randomToken(16) });
+  const token = randomToken(16);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ADMIN_ACTION_TOKEN_TTL_MINUTES * 60 * 1000).toISOString();
+  await env.DB.prepare(
+    "INSERT INTO admin_action_tokens (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)"
+  ).bind(await sha256Base64Url(token), auth.user.id, now.toISOString(), expiresAt).run();
+  return json({ success: true, token, expires_at: expiresAt });
 }
 
 async function handleAdminAccounts(request: Request, env: Env): Promise<Response> {
@@ -1061,6 +1094,27 @@ async function requireAdmin(request: Request, env: Env): Promise<AuthContext | R
     return json({ success: false, auth: false, error: "Bu işlem sadece yönetici hesabı ile yapılabilir." }, 403);
   }
   return auth;
+}
+
+async function requireAdminAction(request: Request, env: Env): Promise<AuthContext | Response> {
+  const admin = await requireAdmin(request, env);
+  if (admin instanceof Response) return admin;
+  const rawToken = String(request.headers.get("x-auth-token") || "").trim();
+  if (!rawToken) {
+    return json({ success: false, auth: false, error: "Cloudflare doğrulaması gerekli." }, 401);
+  }
+
+  const tokenHash = await sha256Base64Url(rawToken);
+  const now = new Date().toISOString();
+  const row = await env.DB.prepare(
+    "SELECT user_id FROM admin_action_tokens WHERE token_hash = ? AND user_id = ? AND expires_at > ?"
+  ).bind(tokenHash, admin.user.id, now).first<{ user_id: string }>();
+
+  if (!row) {
+    await env.DB.prepare("DELETE FROM admin_action_tokens WHERE expires_at <= ?").bind(now).run();
+    return json({ success: false, auth: false, error: "Cloudflare doğrulamasının süresi doldu." }, 401);
+  }
+  return admin;
 }
 
 function roleForEmail(email: string): string {
@@ -1403,6 +1457,95 @@ async function handleLibrary(url: URL, env: Env): Promise<Response> {
   return json(enriched);
 }
 
+async function handleBookRename(request: Request, env: Env): Promise<Response> {
+  const admin = await requireAdminAction(request, env);
+  if (admin instanceof Response) return admin;
+  const payload = await readJson<{ book_id?: string; drive_id?: string; name?: string }>(request);
+  const requestedId = safeId(payload.book_id || payload.drive_id || "");
+  const name = normalizeBookName(payload.name || "");
+  if (!requestedId) return json({ success: false, error: "Kitap kimliği eksik." }, 400);
+  if (!name) return json({ success: false, error: "İsim boş olamaz." }, 400);
+
+  const book = await findVisibleBook(env, requestedId);
+  if (!book) return json({ success: false, error: "Kitap bulunamadı." }, 404);
+  const key = bookKey(book) || requestedId;
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO book_admin_changes (book_key, title, name, deleted_at, updated_at, updated_by) VALUES (?, ?, ?, NULL, ?, ?) " +
+    "ON CONFLICT(book_key) DO UPDATE SET title = excluded.title, name = excluded.name, deleted_at = NULL, updated_at = excluded.updated_at, updated_by = excluded.updated_by"
+  ).bind(key, name, name, now, admin.user.id).run();
+  return json({ success: true, book_id: key, title: name });
+}
+
+async function handleBookCoverUpdate(request: Request, env: Env): Promise<Response> {
+  const admin = await requireAdminAction(request, env);
+  if (admin instanceof Response) return admin;
+  const form = await request.formData();
+  const requestedId = safeId(String(form.get("book_id") || form.get("drive_id") || ""));
+  if (!requestedId) return json({ success: false, error: "Kitap kimliği eksik." }, 400);
+  const book = await findVisibleBook(env, requestedId);
+  if (!book) return json({ success: false, error: "Kitap bulunamadı." }, 404);
+
+  const file = form.get("cover");
+  if (!(file instanceof File) || !file.size) {
+    return json({ success: false, error: "Thumbnail dosyası bulunamadı." }, 400);
+  }
+  const mime = normalizeImageMime(file.type);
+  if (!mime) {
+    return json({ success: false, error: "Sadece JPG, PNG veya WebP görsel yüklenebilir." }, 400);
+  }
+  if (file.size > BOOK_COVER_FILE_LIMIT) {
+    return json({ success: false, error: "Kapak görseli çok büyük. Daha küçük bir görsel seçin." }, 413);
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const dataUrl = `data:${mime};base64,${bytesToBase64(bytes)}`;
+  const dataUrlError = validateCoverDataUrl(dataUrl);
+  if (dataUrlError) return json({ success: false, error: dataUrlError }, 400);
+
+  const key = bookKey(book) || requestedId;
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO book_admin_changes (book_key, cover_data_url, cover_mime_type, cover_updated_at, deleted_at, updated_at, updated_by) VALUES (?, ?, ?, ?, NULL, ?, ?) " +
+    "ON CONFLICT(book_key) DO UPDATE SET cover_data_url = excluded.cover_data_url, cover_mime_type = excluded.cover_mime_type, " +
+    "cover_updated_at = excluded.cover_updated_at, deleted_at = NULL, updated_at = excluded.updated_at, updated_by = excluded.updated_by"
+  ).bind(key, dataUrl, mime, now, now, admin.user.id).run();
+
+  return json({
+    success: true,
+    cover_url: `/api/cover/${encodeURIComponent(key)}?v=${encodeURIComponent(now)}`,
+    cover_data_url: dataUrl
+  });
+}
+
+async function handleBookDelete(request: Request, env: Env): Promise<Response> {
+  const admin = await requireAdminAction(request, env);
+  if (admin instanceof Response) return admin;
+  const payload = await readJson<{ book_id?: string; drive_id?: string }>(request);
+  const requestedId = safeId(payload.book_id || payload.drive_id || "");
+  if (!requestedId) return json({ success: false, error: "Kitap kimliği eksik." }, 400);
+
+  const baseBooks = await fetchBaseLibrary(env);
+  const book = findBook(baseBooks, requestedId);
+  if (!book) return json({ success: false, error: "Kitap bulunamadı." }, 404);
+  const key = bookKey(book) || requestedId;
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO book_admin_changes (book_key, deleted_at, updated_at, updated_by) VALUES (?, ?, ?, ?) " +
+    "ON CONFLICT(book_key) DO UPDATE SET deleted_at = excluded.deleted_at, updated_at = excluded.updated_at, updated_by = excluded.updated_by"
+  ).bind(key, now, now, admin.user.id).run();
+  return json({ success: true, book_id: key });
+}
+
+async function handleBookCover(id: string, env: Env): Promise<Response> {
+  const change = await getBookAdminChange(env, id);
+  if (change?.cover_data_url && !change.deleted_at) {
+    const response = dataUrlImageResponse(change.cover_data_url, change.cover_updated_at || change.updated_at || "");
+    if (response) return response;
+  }
+  return redirectIfExists(env, `/reylai_assets/covers/${encodeURIComponent(id)}.jpg`);
+}
+
 async function handleConfig(env: Env): Promise<Response> {
   const config = await fetchStaticJson<Record<string, unknown>>(env, "/reylai_config.json");
   return json(config || { folder_ids: {} });
@@ -1550,7 +1693,9 @@ async function enrichBook(book: Book, env: Env): Promise<Book> {
     publicBook.pdf_url = new URL(`${encodeURIComponent(publicBook.book_id)}.pdf`, ensureSlash(env.BOOKS_REMOTE_BASE_URL)).toString();
     publicBook.pdf_source ||= "book_archive";
   }
-  if (key && !publicBook.cover_url && await staticExists(env, `/reylai_assets/covers/${encodeURIComponent(key)}.jpg`)) {
+  if (key && publicBook.cover_data_url) {
+    publicBook.cover_url = `/api/cover/${encodeURIComponent(key)}${publicBook.cover_updated_at ? `?v=${encodeURIComponent(publicBook.cover_updated_at)}` : ""}`;
+  } else if (key && !publicBook.cover_url && await staticExists(env, `/reylai_assets/covers/${encodeURIComponent(key)}.jpg`)) {
     publicBook.cover_url = `/api/cover/${encodeURIComponent(key)}`;
   }
   if (key) {
@@ -1565,6 +1710,10 @@ async function enrichBook(book: Book, env: Env): Promise<Book> {
 }
 
 async function fetchLibrary(env: Env): Promise<Book[]> {
+  return applyBookAdminChanges(env, await fetchBaseLibrary(env));
+}
+
+async function fetchBaseLibrary(env: Env): Promise<Book[]> {
   const data = await fetchStaticJson<unknown>(env, "/reylai_library.json");
   const registeredBooks = Array.isArray(data) ? data.filter(isBook) : [];
   const archiveIds = await fetchBookArchiveIds(env);
@@ -1599,6 +1748,46 @@ async function fetchLibrary(env: Env): Promise<Book[]> {
     return !key || !seen.has(key);
   });
   return [...archiveBooks, ...extraBooks];
+}
+
+async function applyBookAdminChanges(env: Env, books: Book[]): Promise<Book[]> {
+  const result = await env.DB.prepare("SELECT * FROM book_admin_changes").all<BookAdminChange>();
+  const changes = new Map<string, BookAdminChange>();
+  for (const row of result.results || []) {
+    if (row.book_key) changes.set(String(row.book_key), row);
+  }
+  if (!changes.size) return books;
+
+  const output: Book[] = [];
+  for (const book of books) {
+    const key = bookKey(book);
+    const change = key ? changes.get(key) : null;
+    if (change?.deleted_at) continue;
+    if (!change) {
+      output.push(book);
+      continue;
+    }
+    const next: Book = { ...book };
+    const title = String(change.title || "").trim();
+    const name = String(change.name || "").trim();
+    if (title) next.title = title;
+    if (name) next.name = name;
+    if (change.cover_data_url) {
+      next.cover_data_url = change.cover_data_url;
+      next.cover_updated_at = change.cover_updated_at || change.updated_at || next.cover_updated_at;
+      next.cover_url = `/api/cover/${encodeURIComponent(key)}${next.cover_updated_at ? `?v=${encodeURIComponent(next.cover_updated_at)}` : ""}`;
+    }
+    if (change.updated_at) next.updated_at = change.updated_at;
+    output.push(next);
+  }
+  return output;
+}
+
+async function getBookAdminChange(env: Env, key: string): Promise<BookAdminChange | null> {
+  if (!key) return null;
+  return await env.DB.prepare("SELECT * FROM book_admin_changes WHERE book_key = ?")
+    .bind(key)
+    .first<BookAdminChange>();
 }
 
 async function fetchBookArchiveIds(env: Env): Promise<string[]> {
@@ -1855,6 +2044,14 @@ function findBook(library: Book[], selectedId: string): Book | undefined {
   return library.find((book) => book.book_id === selectedId) || library.find((book) => book.drive_id === selectedId);
 }
 
+function bookKey(book: Book | undefined): string {
+  return safeId(book?.book_id || book?.drive_id || "");
+}
+
+async function findVisibleBook(env: Env, selectedId: string): Promise<Book | undefined> {
+  return findBook(await fetchLibrary(env), selectedId);
+}
+
 function scanKeysForBook(book: Book | undefined, selectedId: string): string[] {
   return [selectedId, book?.book_id || "", book?.drive_id || ""].filter((value, index, arr) => value && arr.indexOf(value) === index);
 }
@@ -1873,6 +2070,10 @@ function cleanPageText(page: ScanPage): string {
 
 function normalizeText(value: string): string {
   return value.toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim();
+}
+
+function normalizeBookName(value: string): string {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, 180);
 }
 
 function publicScanExtractor(extractor: string): string {
@@ -1898,6 +2099,58 @@ function ensureSlash(url: string): string {
 function safeId(value: string): string {
   const trimmed = String(value || "").trim();
   return VALID_ID.test(trimmed) ? trimmed : "";
+}
+
+function normalizeImageMime(value: string): string {
+  const mime = String(value || "").trim().toLowerCase();
+  if (mime === "image/jpg") return "image/jpeg";
+  return ["image/jpeg", "image/png", "image/webp"].includes(mime) ? mime : "";
+}
+
+function validateCoverDataUrl(value: string): string {
+  const dataUrl = String(value || "").trim();
+  if (!dataUrl) return "Kapak görseli boş.";
+  if (dataUrl.length > BOOK_COVER_DATA_URL_LIMIT) return "Kapak görseli çok büyük. Daha küçük bir görsel seçin.";
+  if (!/^data:image\/(?:png|jpeg|jpg|webp);base64,[a-z0-9+/=]+$/i.test(dataUrl)) {
+    return "Kapak görseli PNG, JPG veya WEBP olmalı.";
+  }
+  return "";
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function dataUrlImageResponse(dataUrl: string, updatedAt = ""): Response | null {
+  const match = String(dataUrl || "").match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([a-z0-9+/=]+)$/i);
+  if (!match) return null;
+  const mime = normalizeImageMime(match[1]);
+  if (!mime) return null;
+  const bytes = base64ToBytes(match[2]);
+  const body = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  return new Response(body, {
+    headers: {
+      "content-type": mime,
+      "cache-control": "public, max-age=3600",
+      ...(updatedAt ? { "etag": `"${awaitlessHash(updatedAt)}"` } : {})
+    }
+  });
+}
+
+function awaitlessHash(value: string): string {
+  return String(value || "").replace(/[^a-z0-9_-]+/gi, "").slice(0, 80) || "cover";
 }
 
 async function readJson<T>(request: Request): Promise<T> {

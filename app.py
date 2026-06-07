@@ -11378,11 +11378,67 @@ function handleRenameCoverChange(event) {
   reader.readAsDataURL(file);
 }
 
+function imageFileToElement(file) {
+  return new Promise(function(resolve, reject) {
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function() {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(url);
+      reject(new Error('Kapak görseli okunamadı.'));
+    };
+    img.src = url;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise(function(resolve, reject) {
+    canvas.toBlob(function(blob) {
+      if (blob) resolve(blob);
+      else reject(new Error('Kapak görseli hazırlanamadı.'));
+    }, type, quality);
+  });
+}
+
+async function prepareRenameCoverUpload(file) {
+  if (!file) return null;
+  if (file.type === 'image/jpeg' && file.size <= 640 * 1024) return file;
+  var img = await imageFileToElement(file);
+  var variants = [
+    { maxW: 1100, maxH: 1500, quality: 0.82 },
+    { maxW: 900, maxH: 1200, quality: 0.78 },
+    { maxW: 720, maxH: 960, quality: 0.72 }
+  ];
+  var lastBlob = null;
+  for (var i = 0; i < variants.length; i++) {
+    var item = variants[i];
+    var scale = Math.min(1, item.maxW / img.naturalWidth, item.maxH / img.naturalHeight);
+    var width = Math.max(1, Math.round(img.naturalWidth * scale));
+    var height = Math.max(1, Math.round(img.naturalHeight * scale));
+    var canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+    lastBlob = await canvasToBlob(canvas, 'image/jpeg', item.quality);
+    if (lastBlob.size <= 640 * 1024) break;
+  }
+  if (!lastBlob) return file;
+  var baseName = String(file.name || 'cover').replace(/\.[^.]+$/, '') || 'cover';
+  return new File([lastBlob], baseName + '.jpg', { type: 'image/jpeg' });
+}
+
 async function uploadRenameCover() {
   if (!_renameCoverFile || !_renameBookId) return true;
   var fd = new FormData();
+  var uploadFile = await prepareRenameCoverUpload(_renameCoverFile);
   fd.append('book_id', _renameBookId);
-  fd.append('cover', _renameCoverFile);
+  fd.append('cover', uploadFile || _renameCoverFile);
   var res = await fetch('/api/update_cover', {
     method: 'POST',
     headers: authHeaders(),
