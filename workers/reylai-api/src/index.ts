@@ -309,6 +309,18 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     return handlePasswordChangeComplete(request, env);
   }
 
+  if (path === "/api/auth/password-reset/send" && request.method === "POST") {
+    return handlePasswordResetSend(request, env);
+  }
+
+  if (path === "/api/auth/password-reset/confirm" && request.method === "POST") {
+    return handlePasswordResetConfirm(request, env);
+  }
+
+  if (path === "/api/auth/password-reset/complete" && request.method === "POST") {
+    return handlePasswordResetComplete(request, env);
+  }
+
   if (path === "/api/admin/accounts" && request.method === "GET") {
     return handleAdminAccounts(request, env);
   }
@@ -495,7 +507,12 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.toLowerCase().includes("unique")) {
-      return json({ success: false, error: "Bu e-posta ile zaten bir hesap var." }, 409);
+      return json({
+        success: false,
+        code: "account_exists",
+        login_email: email,
+        error: "Bu e-posta ile zaten bir hesap var."
+      }, 409);
     }
     throw error;
   }
@@ -876,6 +893,106 @@ async function handlePasswordChangeComplete(request: Request, env: Env): Promise
   ).bind(await hashPassword(newPassword), now, now, user.id).run();
   const freshUser = await getUserById(env, user.id);
   return json({ success: true, user: freshUser ? publicUser(freshUser) : auth.user });
+}
+
+async function handlePasswordResetSend(request: Request, env: Env): Promise<Response> {
+  const payload = await readJson<{ email?: string; turnstile_token?: string }>(request);
+  const turnstileError = await verifyTurnstile(request, env, payload.turnstile_token);
+  if (turnstileError) return turnstileError;
+
+  const email = normalizeEmail(payload.email || "");
+  if (!EMAIL_RE.test(email) || email.length > 254) {
+    return json({ success: false, error: "Geçerli bir e-posta girin." }, 400);
+  }
+
+  const user = await getUserByEmail(env, email);
+  if (!user) {
+    return json({ success: false, error: "Bu e-posta ile kayıtlı hesap bulunamadı." }, 404);
+  }
+
+  const sentAt = user.password_change_sent_at ? Date.parse(user.password_change_sent_at) : 0;
+  const waitMs = sentAt ? VERIFY_CODE_COOLDOWN_SECONDS * 1000 - (Date.now() - sentAt) : 0;
+  if (waitMs > 0) {
+    return json({
+      success: false,
+      error: `Yeni kod için ${Math.ceil(waitMs / 1000)} saniye bekleyin.`,
+      retry_after: Math.ceil(waitMs / 1000)
+    }, 429);
+  }
+
+  const delivery = await sendPasswordChangeCode(env, user);
+  return json({
+    success: delivery.sent,
+    email_delivery_configured: delivery.configured,
+    error: delivery.sent ? undefined : delivery.error || "Şifre sıfırlama kodu gönderilemedi."
+  }, delivery.sent ? 200 : 503);
+}
+
+async function handlePasswordResetConfirm(request: Request, env: Env): Promise<Response> {
+  const payload = await readJson<{ email?: string; code?: string }>(request);
+  const email = normalizeEmail(payload.email || "");
+  const code = String(payload.code || "").replace(/\D+/g, "").slice(0, 12);
+  if (!EMAIL_RE.test(email) || email.length > 254) {
+    return json({ success: false, error: "Geçerli bir e-posta girin." }, 400);
+  }
+  if (code.length !== 6) return json({ success: false, error: "6 haneli kodu girin." }, 400);
+
+  const user = await getUserByEmail(env, email);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+  if (!user.password_change_code_hash || !user.password_change_expires_at) {
+    return json({ success: false, error: "Önce yeni bir şifre kodu isteyin." }, 400);
+  }
+  if (Date.parse(user.password_change_expires_at) <= Date.now()) {
+    return json({ success: false, error: "Kodun süresi doldu. Yeni kod isteyin." }, 400);
+  }
+
+  const expected = await verificationHash(user.id, user.email, code);
+  if (expected !== user.password_change_code_hash) {
+    return json({ success: false, error: "Doğrulama kodu hatalı." }, 400);
+  }
+
+  const token = randomToken(24);
+  const tokenHash = await sha256Base64Url(token);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + PASSWORD_CHANGE_TOKEN_TTL_MINUTES * 60 * 1000).toISOString();
+  await env.DB.prepare(
+    "UPDATE users SET password_change_code_hash = NULL, password_change_expires_at = NULL, " +
+    "password_change_token_hash = ?, password_change_token_expires_at = ?, updated_at = ? WHERE id = ?"
+  ).bind(tokenHash, expiresAt, now.toISOString(), user.id).run();
+  return json({ success: true, token, expires_at: expiresAt });
+}
+
+async function handlePasswordResetComplete(request: Request, env: Env): Promise<Response> {
+  const payload = await readJson<{ email?: string; token?: string; new_password?: string }>(request);
+  const email = normalizeEmail(payload.email || "");
+  const token = String(payload.token || "");
+  const newPassword = String(payload.new_password || "");
+  if (!EMAIL_RE.test(email) || email.length > 254) {
+    return json({ success: false, error: "Geçerli bir e-posta girin." }, 400);
+  }
+  if (newPassword.length < 8 || newPassword.length > 128) {
+    return json({ success: false, error: "Şifre 8-128 karakter olmalı." }, 400);
+  }
+
+  const user = await getUserByEmail(env, email);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+  if (!token || !user.password_change_token_hash || !user.password_change_token_expires_at) {
+    return json({ success: false, error: "Şifre sıfırlama için kod onayı gerekli." }, 400);
+  }
+  if (Date.parse(user.password_change_token_expires_at) <= Date.now()) {
+    return json({ success: false, error: "Şifre sıfırlama oturumunun süresi doldu." }, 400);
+  }
+  const tokenHash = await sha256Base64Url(token);
+  if (tokenHash !== user.password_change_token_hash) {
+    return json({ success: false, error: "Şifre sıfırlama oturumu doğrulanamadı." }, 401);
+  }
+
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE users SET password_hash = ?, password_updated_at = ?, " +
+    "password_change_token_hash = NULL, password_change_token_expires_at = NULL, password_change_sent_at = NULL, updated_at = ? WHERE id = ?"
+  ).bind(await hashPassword(newPassword), now, now, user.id).run();
+  return json({ success: true, email });
 }
 
 async function handleAdminPasswordVerify(request: Request, env: Env): Promise<Response> {

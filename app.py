@@ -5731,7 +5731,8 @@ body.account-menu-open .account-menu {
 
 .avatar-crop-overlay,
 .password-change-overlay,
-.verify-required-overlay {
+.verify-required-overlay,
+.existing-account-overlay {
   position: fixed;
   inset: 0;
   z-index: 346;
@@ -5748,14 +5749,16 @@ body.account-menu-open .account-menu {
 
 .avatar-crop-overlay.active,
 .password-change-overlay.active,
-.verify-required-overlay.active {
+.verify-required-overlay.active,
+.existing-account-overlay.active {
   opacity: 1;
   pointer-events: all;
 }
 
 .avatar-crop-panel,
 .password-change-panel,
-.verify-required-panel {
+.verify-required-panel,
+.existing-account-panel {
   width: min(460px, 100%);
   max-height: calc(100vh - 36px);
   overflow-y: auto;
@@ -5773,9 +5776,39 @@ body.account-menu-open .account-menu {
 
 .avatar-crop-overlay.active .avatar-crop-panel,
 .password-change-overlay.active .password-change-panel,
-.verify-required-overlay.active .verify-required-panel {
+.verify-required-overlay.active .verify-required-panel,
+.existing-account-overlay.active .existing-account-panel {
   transform: none;
   opacity: 1;
+}
+
+.existing-account-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.forgot-password-btn {
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  justify-self: start;
+  margin-top: -4px;
+  padding: 0;
+}
+
+.forgot-password-btn:hover {
+  color: #eef5ff;
+  text-decoration: underline;
+}
+
+.forgot-password-btn.hidden {
+  display: none;
 }
 
 .avatar-crop-canvas {
@@ -9573,6 +9606,7 @@ body::after,
         </div>
       </div>
       <div class="auth-field-note" id="accountPasswordHint">Şifren en az 8 karakter olmalı ve güvenli biçimde korunur.</div>
+      <button class="forgot-password-btn" id="forgotPasswordBtn" type="button" onclick="startForgotPassword()">Şifremi unuttum</button>
       <label class="remember-row">
         <input id="rememberDevice" type="checkbox" checked>
         <span class="remember-check" aria-hidden="true">
@@ -10024,8 +10058,8 @@ body::after,
 <div class="password-change-overlay" id="passwordChangeOverlay" onclick="if(event.target===this)closePasswordChangeModal()">
   <div class="password-change-panel">
     <button class="email-code-back" type="button" onclick="closePasswordChangeModal()">‹ Geri</button>
-    <div class="email-code-kicker">Şifre güvenliği</div>
-    <div class="email-code-title">Şifreyi değiştir</div>
+    <div class="email-code-kicker" id="passwordChangeKicker">Şifre güvenliği</div>
+    <div class="email-code-title" id="passwordChangeTitle">Şifreyi değiştir</div>
     <div class="email-code-lead" id="passwordChangeLead">Önce e-postana gönderilen 6 haneli kodu onayla.</div>
     <div class="email-code-grid password-code-grid" id="passwordCodeGrid" onclick="focusFirstEmptyPasswordCodeCell()">
       <input class="email-code-cell password-code-cell" inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="Şifre kod hanesi 1">
@@ -10049,6 +10083,21 @@ body::after,
     <div class="email-code-actions">
       <button class="account-menu-btn" id="passwordResendBtn" type="button" onclick="sendPasswordChangeCode()">Kodu yeniden gönder</button>
       <button class="btn btn-primary" id="passwordSubmitBtn" type="button" onclick="confirmPasswordCodeOrSave()">Kodu onayla</button>
+    </div>
+  </div>
+</div>
+
+<div class="existing-account-overlay" id="existingAccountOverlay" onclick="if(event.target===this)closeExistingAccountModal()">
+  <div class="existing-account-panel" role="dialog" aria-modal="true" aria-labelledby="existingAccountTitle">
+    <button class="email-code-back" type="button" onclick="closeExistingAccountModal()">‹ Geri</button>
+    <div class="email-code-kicker">Hesap bulundu</div>
+    <div class="email-code-title" id="existingAccountTitle">Zaten böyle bir hesap var</div>
+    <div class="email-code-lead">
+      <span id="existingAccountEmail">Bu e-posta</span> ile kayıtlı bir hesap var. Giriş yapmak istiyor musunuz?
+    </div>
+    <div class="existing-account-actions">
+      <button class="account-menu-btn" type="button" onclick="closeExistingAccountModal()">Vazgeç</button>
+      <button class="btn btn-primary" type="button" onclick="goToLoginFromExistingAccount()">Girişe geç</button>
     </div>
   </div>
 </div>
@@ -10235,6 +10284,9 @@ let _emailCodeAutoTimer = null;
 let _passwordChangeToken = '';
 let _passwordCodeSubmitting = false;
 let _passwordCodeAutoTimer = null;
+let _passwordFlowMode = 'account';
+let _passwordResetEmail = '';
+let _existingAccountEmail = '';
 let _chatStore = { chats: [] };
 let _chatStoreLoaded = false;
 let _chatStoreLoadPromise = null;
@@ -10386,6 +10438,7 @@ function setAccountAuthMode(mode) {
   const panelTitle = document.getElementById('authPanelTitle');
   const panelLead = document.getElementById('authPanelLead');
   const passwordHint = document.getElementById('accountPasswordHint');
+  const forgotBtn = document.getElementById('forgotPasswordBtn');
   if (display) display.classList.toggle('active', signup);
   if (screen) screen.classList.toggle('signup-mode', signup);
   if (displayInput) displayInput.required = signup;
@@ -10400,6 +10453,7 @@ function setAccountAuthMode(mode) {
   if (panelLead) panelLead.textContent = signup ? 'E-posta, şifre ve görünen ad ile ReylAI alanını oluştur.' : 'Kayıtlı e-posta ve şifrenle devam et.';
   if (passwordHint) passwordHint.textContent = signup ? 'En az 8 karakter kullan; şifreler güvenli biçimde korunur.' : 'Şifren korunan oturum doğrulaması için kullanılır.';
   if (switchText) switchText.textContent = signup ? 'Zaten hesabın var mı?' : 'Hesabın yok mu?';
+  if (forgotBtn) forgotBtn.classList.toggle('hidden', signup);
   if (switchBtn) {
     switchBtn.textContent = signup ? 'Giriş yap' : 'Kayıt ol';
     switchBtn.onclick = function() { setAccountAuthMode(signup ? 'login' : 'signup'); };
@@ -10544,6 +10598,60 @@ async function loadAccountAuthConfig() {
   renderAccountTurnstile();
 }
 
+function showExistingAccountModal(email) {
+  _existingAccountEmail = String(email || '').trim();
+  const overlay = document.getElementById('existingAccountOverlay');
+  const emailEl = document.getElementById('existingAccountEmail');
+  if (emailEl) emailEl.textContent = _existingAccountEmail || 'Bu e-posta';
+  if (overlay) overlay.classList.add('active');
+}
+
+function closeExistingAccountModal() {
+  const overlay = document.getElementById('existingAccountOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function goToLoginFromExistingAccount() {
+  const email = _existingAccountEmail || (document.getElementById('accountEmail') || {}).value || '';
+  closeExistingAccountModal();
+  setAccountAuthMode('login');
+  const emailInput = document.getElementById('accountEmail');
+  const passwordInput = document.getElementById('accountPassword');
+  if (emailInput) emailInput.value = email;
+  if (passwordInput) {
+    passwordInput.value = '';
+    setTimeout(function(){ passwordInput.focus(); }, 80);
+  }
+  setAccountAuthError('');
+}
+
+function startForgotPassword() {
+  const email = String((document.getElementById('accountEmail') || {}).value || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setAccountAuthError('Şifre sıfırlama için önce e-postanı yaz.');
+    return;
+  }
+  if (!_turnstileToken) {
+    setAccountAuthError('Şifre sıfırlamak için Cloudflare doğrulamasını tamamlayın.');
+    return;
+  }
+  setAccountAuthError('');
+  _passwordFlowMode = 'reset';
+  _passwordResetEmail = email;
+  _passwordChangeToken = '';
+  _passwordCodeSubmitting = false;
+  clearPasswordCodeCells();
+  setPasswordStage(false);
+  const newInput = document.getElementById('passwordNewInput');
+  const confirmInput = document.getElementById('passwordNewConfirmInput');
+  if (newInput) newInput.value = '';
+  if (confirmInput) confirmInput.value = '';
+  const overlay = document.getElementById('passwordChangeOverlay');
+  if (overlay) overlay.classList.add('active');
+  sendPasswordChangeCode();
+  setTimeout(function(){ focusFirstEmptyPasswordCodeCell(); }, 140);
+}
+
 async function submitAccountAuth(event) {
   if (event) event.preventDefault();
   const btn = document.getElementById('accountSubmitBtn');
@@ -10575,6 +10683,11 @@ async function submitAccountAuth(event) {
       body: JSON.stringify(payload)
     });
     const data = await res.json();
+    if (_accountAuthMode === 'signup' && (res.status === 409 || data.code === 'account_exists')) {
+      showExistingAccountModal(data.login_email || email);
+      resetAccountTurnstile();
+      return;
+    }
     if (!res.ok || !data.success || !data.token) {
       throw new Error(data.error || 'Giriş tamamlanamadı.');
     }
@@ -11145,13 +11258,39 @@ function setPasswordChangeStatus(message, type) {
 function setPasswordStage(ready) {
   const panel = document.querySelector('.password-change-panel');
   if (panel) panel.classList.toggle('password-ready', !!ready);
+  const resetMode = _passwordFlowMode === 'reset';
+  const kicker = document.getElementById('passwordChangeKicker');
+  const title = document.getElementById('passwordChangeTitle');
   const submit = document.getElementById('passwordSubmitBtn');
   if (submit) submit.textContent = ready ? 'Şifreyi kaydet' : 'Kodu onayla';
   const lead = document.getElementById('passwordChangeLead');
+  if (kicker) kicker.textContent = resetMode ? 'Hesap kurtarma' : 'Åifre gÃ¼venliÄŸi';
+  if (title) title.textContent = resetMode ? 'Åifreni sÄ±fÄ±rla' : 'Åifreyi deÄŸiÅŸtir';
   if (lead) lead.textContent = ready
     ? 'Kod onaylandı. Şimdi yeni şifreni belirle.'
     : 'Önce e-postana gönderilen 6 haneli kodu onayla.';
 }
+
+setPasswordStage = function(ready) {
+  const panel = document.querySelector('.password-change-panel');
+  if (panel) panel.classList.toggle('password-ready', !!ready);
+  const resetMode = _passwordFlowMode === 'reset';
+  const kicker = document.getElementById('passwordChangeKicker');
+  const title = document.getElementById('passwordChangeTitle');
+  const submit = document.getElementById('passwordSubmitBtn');
+  const resend = document.getElementById('passwordResendBtn');
+  if (submit) submit.textContent = ready ? '\u015Eifreyi kaydet' : 'Kodu onayla';
+  if (resend) {
+    resend.textContent = resetMode ? 'Yeni kod i\u00E7in geri d\u00F6n' : 'Kodu yeniden g\u00F6nder';
+    resend.onclick = resetMode ? closePasswordChangeModal : sendPasswordChangeCode;
+  }
+  const lead = document.getElementById('passwordChangeLead');
+  if (kicker) kicker.textContent = resetMode ? 'Hesap kurtarma' : '\u015Eifre g\u00FCvenli\u011Fi';
+  if (title) title.textContent = resetMode ? '\u015Eifreni s\u0131f\u0131rla' : '\u015Eifreyi de\u011Fi\u015Ftir';
+  if (lead) lead.textContent = ready
+    ? 'Kod onayland\u0131. \u015Eimdi yeni \u015Fifreni belirle.'
+    : (resetMode ? (_passwordResetEmail + ' adresine g\u00F6nderilen 6 haneli kodu onayla.') : '\u00D6nce e-postana g\u00F6nderilen 6 haneli kodu onayla.');
+};
 
 function openPasswordChangeModal() {
   if (!_accountUser) return;
@@ -11159,6 +11298,8 @@ function openPasswordChangeModal() {
     showVerifyRequiredModal();
     return;
   }
+  _passwordFlowMode = 'account';
+  _passwordResetEmail = '';
   _passwordChangeToken = '';
   _passwordCodeSubmitting = false;
   clearPasswordCodeCells();
@@ -11178,12 +11319,22 @@ function closePasswordChangeModal() {
   if (overlay) overlay.classList.remove('active');
   _passwordChangeToken = '';
   _passwordCodeSubmitting = false;
+  _passwordFlowMode = 'account';
+  _passwordResetEmail = '';
 }
 
 async function sendPasswordChangeCode() {
   try {
     setPasswordChangeStatus('Kod gönderiliyor...', '');
-    const res = await apiFetch('/api/auth/password-change/send', { method: 'POST' });
+    const resetMode = _passwordFlowMode === 'reset';
+    const res = resetMode
+      ? await fetch('/api/auth/password-reset/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: _passwordResetEmail, turnstile_token: _turnstileToken })
+        })
+      : await apiFetch('/api/auth/password-change/send', { method: 'POST' });
+    if (resetMode) resetAccountTurnstile();
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Kod gönderilemedi.');
     clearPasswordCodeCells();
@@ -11210,7 +11361,12 @@ async function confirmPasswordCodeOrSave() {
   _passwordCodeSubmitting = true;
   setPasswordChangeStatus('Kod doğrulanıyor...', '');
   try {
-    const res = await apiFetch('/api/auth/password-change/confirm', {
+    const resetMode = _passwordFlowMode === 'reset';
+    const res = resetMode ? await fetch('/api/auth/password-reset/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: _passwordResetEmail, code: code })
+    }) : await apiFetch('/api/auth/password-change/confirm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: code })
@@ -11243,13 +11399,32 @@ async function completePasswordChange() {
   }
   try {
     setPasswordChangeStatus('Şifre kaydediliyor...', '');
-    const res = await apiFetch('/api/auth/password-change/complete', {
+    const resetMode = _passwordFlowMode === 'reset';
+    const res = resetMode ? await fetch('/api/auth/password-reset/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: _passwordResetEmail, token: _passwordChangeToken, new_password: next })
+    }) : await apiFetch('/api/auth/password-change/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: _passwordChangeToken, new_password: next })
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Şifre değiştirilemedi.');
+    if (resetMode) {
+      const resetEmail = _passwordResetEmail;
+      closePasswordChangeModal();
+      setAccountAuthMode('login');
+      const emailInput = document.getElementById('accountEmail');
+      const passwordInput = document.getElementById('accountPassword');
+      if (emailInput) emailInput.value = resetEmail;
+      if (passwordInput) {
+        passwordInput.value = '';
+        passwordInput.focus();
+      }
+      showToast('success', '\u015Eifre s\u0131f\u0131rland\u0131', 'Yeni \u015Fifrenle giri\u015F yapabilirsin.', 4200);
+      return;
+    }
     _accountUser = data.user || _accountUser;
     updateAccountUI();
     closePasswordChangeModal();
