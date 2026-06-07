@@ -6408,6 +6408,23 @@ body.account-menu-open .account-menu {
   color: #bfdbfe;
 }
 
+.header-dm-btn {
+  position: relative;
+  min-height: 36px;
+  padding: 0 12px;
+  gap: 7px;
+}
+
+.header-dm-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.35;
+}
+
+.header-dm-btn .dm-header-badge {
+  margin-left: -2px;
+}
+
 /* Hidden file input */
 #pdfFileInput { display: none; }
 
@@ -8681,6 +8698,34 @@ body::after {
     gap: 7px;
   }
 
+  .header-dm-btn {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .header-dm-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .header-dm-label {
+    display: none;
+  }
+
+  .header-dm-btn .dm-header-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+    margin-left: 0;
+  }
+
   .account-chip {
     max-width: min(58vw, 236px);
     min-height: 42px;
@@ -9604,6 +9649,11 @@ body::after,
       </div>
     </div>
     <div class="nav-right">
+      <button class="dm-nav-btn header-dm-btn" type="button" onclick="openDmOverlay()" aria-label="Mesajları aç">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 8.7 8.7 0 0 1-3.6-.78L3 21l1.78-5.2A8.28 8.28 0 0 1 4 12a8.5 8.5 0 1 1 17-.5Z"/><path d="M8 10h8"/><path d="M8 14h5"/></svg>
+        <span class="header-dm-label">Mesajlar</span>
+        <span class="dm-bottom-badge dm-header-badge" id="dmHeaderBadge"></span>
+      </button>
       <button class="account-chip" id="accountChip" type="button" onclick="toggleAccountMenu(event)" aria-label="Hesap menüsünü aç" aria-expanded="false">
         <span class="account-avatar" id="accountAvatar">R</span>
         <span class="account-chip-name" id="accountChipName">Hesap</span>
@@ -12133,9 +12183,10 @@ function dmUserById(userId) {
 }
 
 function setDmBadge(count) {
-  const badge = document.getElementById('dmBottomBadge');
-  if (!badge) return;
-  badge.textContent = count > 0 ? String(Math.min(count, 99)) : '';
+  ['dmBottomBadge', 'dmHeaderBadge'].forEach(function(id) {
+    const badge = document.getElementById(id);
+    if (badge) badge.textContent = count > 0 ? String(Math.min(count, 99)) : '';
+  });
 }
 
 async function fetchDmThreads(options) {
