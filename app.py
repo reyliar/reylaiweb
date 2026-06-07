@@ -8054,6 +8054,592 @@ body::after {
 @keyframes spinCW { to { transform: rotate(360deg); } }
 @keyframes pdfRingSpin { to { transform: rotate(360deg); } }
 
+/* Mobile ergonomics -------------------------------------------------------- */
+@media (hover: none) and (pointer: coarse) {
+  .book-card:hover,
+  .bottom-menu-item:hover,
+  .read-btn:hover,
+  .btn-ghost:hover,
+  .account-menu-btn:hover {
+    transform: none;
+  }
+
+  .card-del-btn,
+  .card-edit-btn,
+  .book-card:focus-within .card-del-btn,
+  .book-card:focus-within .card-edit-btn {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 720px) {
+  html,
+  body {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .screen {
+    min-height: 100svh;
+    max-width: 100vw;
+  }
+
+  .account-auth-screen {
+    min-height: 100svh;
+    padding: max(12px, env(safe-area-inset-top, 0px)) 12px max(14px, env(safe-area-inset-bottom, 0px));
+    align-content: center;
+  }
+
+  .account-auth-screen::after {
+    opacity: 0.48;
+  }
+
+  .auth-panel-card {
+    width: min(390px, 100%);
+    max-height: calc(100svh - 28px);
+    overflow-y: auto;
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .auth-tabs {
+    margin-left: -16px;
+    margin-right: -16px;
+  }
+
+  .account-input-shell,
+  .account-submit,
+  .turnstile-wrap {
+    min-height: 48px;
+  }
+
+  .navbar {
+    grid-template-columns: auto 1fr auto;
+    min-height: 58px;
+    margin: max(8px, env(safe-area-inset-top, 0px)) 10px 0;
+    padding: 8px 10px;
+    gap: 8px;
+    border-radius: 22px;
+    position: sticky;
+    top: max(8px, env(safe-area-inset-top, 0px));
+    z-index: 24;
+  }
+
+  .nav-left {
+    display: none !important;
+  }
+
+  .nav-center {
+    justify-self: start;
+    min-width: 0;
+  }
+
+  .nav-logo-shell {
+    width: 48px;
+    height: 42px;
+  }
+
+  .nav-logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .nav-right {
+    justify-self: end;
+    min-width: 0;
+    gap: 7px;
+  }
+
+  .account-chip {
+    max-width: min(58vw, 236px);
+    min-height: 42px;
+    padding: 4px 9px 4px 5px;
+    border-radius: 999px;
+  }
+
+  .account-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+
+  .account-chip-name {
+    min-width: 0;
+    max-width: 128px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12.5px;
+  }
+
+  .account-chip-role {
+    display: none !important;
+  }
+
+  .status-pill {
+    display: none !important;
+  }
+
+  .account-menu {
+    position: fixed;
+    top: calc(62px + env(safe-area-inset-top, 0px));
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: calc(100svh - 86px - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    border-radius: 22px;
+    z-index: 370;
+  }
+
+  .grade-strip {
+    padding: 10px 12px 6px;
+  }
+
+  .search-wrap {
+    width: 100%;
+    max-width: none;
+  }
+
+  .search-input {
+    min-height: 44px;
+    font-size: 15px;
+  }
+
+  .book-grid-wrap {
+    padding: 12px 10px calc(112px + env(safe-area-inset-bottom, 0px));
+    overscroll-behavior: contain;
+  }
+
+  .book-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .book-card {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .card-cover {
+    border-radius: 8px 8px 0 0;
+  }
+
+  .card-name {
+    min-height: 42px;
+    padding: 9px 9px 4px;
+    font-size: 11.8px;
+    line-height: 1.28;
+    -webkit-line-clamp: 2;
+  }
+
+  .card-meta-row {
+    min-height: 36px;
+    padding: 0 9px 10px;
+    gap: 5px;
+  }
+
+  .sync-badge,
+  .scan-badge {
+    max-width: 100%;
+    font-size: 10.5px;
+  }
+
+  .card-actions {
+    top: 7px;
+    right: 7px;
+    gap: 5px;
+  }
+
+  .card-del-btn,
+  .card-edit-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: rgba(8, 6, 17, 0.66);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .library-bottom-menu {
+    left: 8px;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-width: none;
+    min-height: 58px;
+    padding: 6px;
+    gap: 5px;
+    border-radius: 22px;
+    transform: none !important;
+  }
+
+  .bottom-menu-item {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 46px;
+    padding: 4px 5px;
+  }
+
+  .bottom-menu-item svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .bottom-menu-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 11px;
+  }
+
+  .bottom-grade-cluster {
+    flex: 1.28 1 0;
+    min-width: 120px;
+    height: 46px;
+    padding: 4px 5px;
+  }
+
+  .bottom-grade-options {
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .bottom-grade-btn.grade-btn {
+    width: auto;
+    min-width: 0;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  #analysisScreen {
+    min-height: 100svh;
+    padding: 8px;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  #analysisScreen.active,
+  #libraryScreen.active {
+    transform: none !important;
+  }
+
+  .analysis-left {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    max-height: none;
+    padding: 10px;
+    gap: 9px;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+
+  .selected-book-cover {
+    order: 1;
+    flex: 0 0 54px;
+    width: 54px;
+    min-width: 54px;
+    border-radius: 12px;
+    font-size: 24px;
+  }
+
+  .selected-book-info {
+    order: 1;
+    flex: 1 1 calc(100% - 70px);
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .book-label {
+    font-size: 9px;
+  }
+
+  .book-title {
+    font-size: 12.5px;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .analysis-status {
+    order: 2;
+    flex: 1 1 calc(50% - 5px);
+    width: auto;
+    min-height: 30px;
+    padding: 6px 8px;
+    font-size: 11px;
+    border-radius: 12px;
+  }
+
+  .read-btn,
+  .analysis-left .btn {
+    order: 3;
+    flex: 1 1 calc(50% - 5px);
+    min-height: 36px;
+    padding: 7px 9px;
+    font-size: 11.5px;
+    border-radius: 999px;
+  }
+
+  .read-btn {
+    order: 2;
+  }
+
+  .analysis-right {
+    min-height: 0;
+    border-radius: 22px;
+  }
+
+  .chat-flow {
+    padding: 14px 10px 10px;
+    gap: 10px;
+  }
+
+  .chat-msg {
+    gap: 4px;
+  }
+
+  .chat-bubble,
+  .chat-text {
+    max-width: 100%;
+    border-radius: 18px;
+    font-size: 13.5px;
+  }
+
+  .message-actions {
+    opacity: 1;
+  }
+
+  .message-action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 12px;
+  }
+
+  .chat-input-bar {
+    padding: 8px 8px max(8px, env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    border-radius: 0 0 22px 22px;
+  }
+
+  .chat-input-wrap {
+    min-height: 46px;
+    border-radius: 18px;
+  }
+
+  #promptInput {
+    min-height: 58px;
+    max-height: 116px;
+    padding: 10px 11px;
+    font-size: 15px;
+  }
+
+  #analyzeBtn {
+    min-width: 0;
+    height: 46px;
+    border-radius: 999px;
+    padding: 0 14px;
+  }
+
+  .analyze-btn-label {
+    font-size: 12.5px;
+  }
+
+  .chat-sidebar {
+    width: min(360px, 92vw);
+    padding: max(16px, env(safe-area-inset-top, 0px)) 12px max(16px, env(safe-area-inset-bottom, 0px));
+    border-radius: 0 24px 24px 0;
+    z-index: 90;
+  }
+
+  .chat-sidebar:not(.collapsed) + .chat-history-backdrop,
+  .chat-history-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .profile-settings-overlay,
+  .admin-tools-overlay,
+  .email-code-overlay,
+  .cfg-overlay,
+  .add-overlay,
+  .rename-overlay,
+  .del-overlay,
+  .upload-overlay,
+  .task-overlay {
+    align-items: stretch;
+    padding: max(10px, env(safe-area-inset-top, 0px)) 10px max(10px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-settings-panel,
+  .admin-tools-panel,
+  .email-code-panel,
+  .cfg-panel,
+  .add-panel,
+  .rename-panel,
+  .del-panel,
+  .upload-card,
+  .task-panel {
+    width: 100%;
+    max-height: calc(100svh - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    border-radius: 24px;
+  }
+
+  .profile-settings-panel,
+  .admin-tools-panel,
+  .email-code-panel {
+    padding: 18px;
+  }
+
+  .profile-settings-head,
+  .admin-tools-head {
+    position: sticky;
+    top: -18px;
+    z-index: 2;
+    padding-top: 2px;
+    padding-bottom: 10px;
+    background: linear-gradient(180deg, rgba(25, 16, 48, 0.98), rgba(25, 16, 48, 0.86), transparent);
+  }
+
+  .profile-settings-title,
+  .admin-tools-title,
+  .email-code-title {
+    font-size: 20px;
+  }
+
+  .profile-settings-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .profile-photo-card {
+    grid-template-columns: 76px 1fr 1fr;
+    align-items: center;
+    justify-items: stretch;
+  }
+
+  .profile-photo-preview {
+    width: 76px;
+    height: 76px;
+    border-radius: 22px;
+    font-size: 26px;
+    grid-row: span 2;
+  }
+
+  .settings-email-control {
+    grid-template-columns: 1fr;
+  }
+
+  .email-verify-btn,
+  .settings-input,
+  .account-menu-btn,
+  .btn {
+    min-height: 44px;
+  }
+
+  .email-code-grid {
+    gap: 6px;
+  }
+
+  .email-code-cell {
+    min-height: 44px;
+    border-radius: 14px;
+    font-size: 21px;
+  }
+
+  .email-code-actions,
+  .settings-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-stats,
+  .admin-sensitive-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-account-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-account-flags {
+    justify-content: flex-start;
+  }
+
+  .toast-container,
+  #toastContainer {
+    left: 10px;
+    right: 10px;
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+  }
+
+  .toast {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .account-chip {
+    max-width: 52vw;
+  }
+
+  .account-chip-name {
+    max-width: 92px;
+  }
+
+  .book-grid {
+    gap: 8px;
+  }
+
+  .card-name {
+    font-size: 11.2px;
+  }
+
+  .bottom-menu-item span {
+    font-size: 10.5px;
+  }
+
+  .bottom-grade-cluster {
+    min-width: 104px;
+  }
+
+  .email-code-cell {
+    min-height: 40px;
+    font-size: 19px;
+  }
+}
+
+@media (max-width: 360px) {
+  .book-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .book-card {
+    max-width: 250px;
+    justify-self: center;
+    width: 100%;
+  }
+
+  .bottom-menu-item span {
+    display: none;
+  }
+
+  .bottom-menu-item {
+    height: 44px;
+  }
+}
+
 @keyframes authShake {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-6px); }
