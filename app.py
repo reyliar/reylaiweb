@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import time
 import uuid
@@ -183,8 +183,6 @@ CONFIG_FILE = str(BASE_DIR / "reylai_config.json")
 CHAT_HISTORY_FILE = str(BASE_DIR / "reylai_chat_history.json")
 PAGE_IMAGE_DPI = max(90, min(_env_int("PAGE_IMAGE_DPI", 140), 220))
 
-ADMIN_PASSWORD = "benbugunpilavyedim"
-ADMIN_HASH = hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest()
 _auth_tokens = set()
 
 os.makedirs(SCANS_DIR, exist_ok=True)
@@ -1690,14 +1688,14 @@ HTML = """
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ReylAI | MEB Ders Kitapları</title>
-<meta name="theme-color" content="#05030c">
+<meta name="theme-color" content="#030712">
 <link rel="icon" type="image/png" href="{{ reylai_icon_src }}">
 <link rel="apple-touch-icon" href="{{ reylai_icon_src }}">
 <style id="reylai-boot-paint">
-  html { background: #05030c; }
+  html { background: #030712; }
   body {
-    background: #05030c;
-    color: #f3efff;
+    background: #030712;
+    color: #eef5ff;
     opacity: 0;
     animation: reylaiBootIn 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
@@ -1713,11 +1711,11 @@ HTML = """
   --bg-surface: #0f0f1a;
   --bg-card:    #141424;
   --bg-glass:   rgba(20, 20, 40, 0.6);
-  --border:     rgba(99, 102, 241, 0.18);
-  --accent:     #6366f1;
-  --accent-glow:#4f46e5;
-  --accent-soft:rgba(99,102,241,0.12);
-  --green:      #a78bfa;
+  --border:     rgba(37,99,235, 0.18);
+  --accent:     #2563eb;
+  --accent-glow:#1d4ed8;
+  --accent-soft:rgba(37,99,235,0.12);
+  --green:      #60a5fa;
   --amber:      #fbbf24;
   --red:        #f87171;
   --text-primary: #eeeeff;
@@ -1728,7 +1726,7 @@ HTML = """
   --radius-lg:  24px;
   --radius-xl:  32px;
   --shadow-card: 0 4px 32px rgba(0,0,0,0.5);
-  --shadow-glow: 0 0 32px rgba(99,102,241,0.25);
+  --shadow-glow: 0 0 32px rgba(37,99,235,0.25);
   --transition: 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1748,8 +1746,8 @@ body::before {
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+    linear-gradient(rgba(37,99,235,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px);
   background-size: 48px 48px;
   pointer-events: none;
   z-index: 0;
@@ -1762,7 +1760,7 @@ body::after {
   left: -200px;
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
   animation: blobFloat 12s ease-in-out infinite alternate;
@@ -1801,8 +1799,8 @@ body::after {
   place-items: center;
   padding: 24px;
   background:
-    linear-gradient(135deg, rgba(7,7,15,0.96), rgba(12,18,28,0.94)),
-    radial-gradient(circle at 50% 30%, rgba(124,58,237,0.18), transparent 44%);
+    linear-gradient(135deg, rgba(5,10,24,0.96), rgba(12,18,28,0.94)),
+    radial-gradient(circle at 50% 30%, rgba(29,78,216,0.18), transparent 44%);
   transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1), transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1826,36 +1824,53 @@ body::after {
 }
 
 .loading-orbit {
-  width: 88px;
-  height: 88px;
+  width: 104px;
+  height: 104px;
   margin: 0 auto;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(196,181,253,0.34);
-  background: rgba(255,255,255,0.06);
-  box-shadow: 0 18px 64px rgba(0,0,0,0.28), 0 0 42px rgba(124,58,237,0.20);
+  border: 0;
+  background: transparent;
+  box-shadow: 0 20px 70px rgba(0,0,0,0.30);
   position: relative;
 }
 
 .loading-orbit::before {
   content: '';
   position: absolute;
-  inset: -8px;
+  inset: -2px;
   border-radius: inherit;
-  border: 2px solid transparent;
-  border-top-color: rgba(196,181,253,0.82);
-  border-right-color: rgba(251,191,36,0.58);
-  animation: loadingSpin 1.35s linear infinite;
+  border: 1.5px solid rgba(147,197,253,0.14);
+  border-top-color: rgba(147,197,253,0.94);
+  border-right-color: rgba(37,99,235,0.74);
+  animation: loadingSpin 1.18s linear infinite;
+}
+
+.loading-orbit::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(37,99,235,0.18), transparent 66%);
+  filter: blur(10px);
 }
 
 @keyframes loadingSpin { to { transform: rotate(360deg); } }
 
 .loading-logo {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
+  width: 66px;
+  height: 66px;
+  border-radius: 18px;
   object-fit: contain;
+  animation: loadingLogoPulse 1.45s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes loadingLogoPulse {
+  0%, 100% { opacity: 0.62; transform: scale(0.96); filter: drop-shadow(0 0 10px rgba(96,165,250,0.20)); }
+  50% { opacity: 1; transform: scale(1.03); filter: drop-shadow(0 0 22px rgba(96,165,250,0.55)); }
 }
 
 .loading-title {
@@ -1883,7 +1898,7 @@ body::after {
   width: 38%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #2b174a, #7c3aed, #c4b5fd);
+  background: linear-gradient(90deg, #071a3d, #1d4ed8, #bfdbfe);
   animation: loadingBar 1.45s ease-in-out infinite alternate;
 }
 
@@ -1901,8 +1916,8 @@ body::after {
   place-items: center;
   padding: clamp(16px, 4vw, 40px);
   background:
-    linear-gradient(135deg, rgba(5, 3, 12, 1) 0%, rgba(16, 9, 31, 0.99) 50%, rgba(5, 4, 14, 1) 100%),
-    linear-gradient(90deg, rgba(124, 58, 237, 0.12), transparent 38%, rgba(167, 139, 250, 0.075));
+    linear-gradient(135deg, rgba(3,7,18, 1) 0%, rgba(16, 9, 31, 0.99) 50%, rgba(5, 4, 14, 1) 100%),
+    linear-gradient(90deg, rgba(29,78,216, 0.12), transparent 38%, rgba(96,165,250, 0.075));
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
@@ -1920,8 +1935,8 @@ body::after {
   position: absolute;
   inset: 0;
   background:
-    repeating-linear-gradient(90deg, rgba(167, 139, 250, 0.04) 0 1px, transparent 1px 40px),
-    repeating-linear-gradient(0deg, rgba(167, 139, 250, 0.026) 0 1px, transparent 1px 40px);
+    repeating-linear-gradient(90deg, rgba(96,165,250, 0.04) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(0deg, rgba(96,165,250, 0.026) 0 1px, transparent 1px 40px);
   opacity: 0.38;
   pointer-events: none;
 }
@@ -1931,8 +1946,8 @@ body::after {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(135deg, rgba(124, 58, 237, 0.12), transparent 38%),
-    linear-gradient(315deg, transparent 52%, rgba(167, 139, 250, 0.09));
+    linear-gradient(135deg, rgba(29,78,216, 0.12), transparent 38%),
+    linear-gradient(315deg, transparent 52%, rgba(96,165,250, 0.09));
   opacity: 0.68;
   transform: translate3d(-2%, -1%, 0);
   animation: authLiquidSheen 9s ease-in-out infinite alternate;
@@ -2018,9 +2033,9 @@ body.app-ready #libraryScreen {
   width: fit-content;
   padding: 8px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(196,181,253,0.20);
-  background: rgba(124,58,237,0.12);
-  color: #c4b5fd;
+  border: 1px solid rgba(147,197,253,0.20);
+  background: rgba(29,78,216,0.12);
+  color: #bfdbfe;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -2067,8 +2082,8 @@ body.app-ready #libraryScreen {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #7c3aed, #c4b5fd);
-  box-shadow: 0 0 18px rgba(124,58,237,0.36);
+  background: linear-gradient(135deg, #1d4ed8, #bfdbfe);
+  box-shadow: 0 0 18px rgba(29,78,216,0.36);
 }
 
 .auth-panel-card {
@@ -2077,14 +2092,14 @@ body.app-ready #libraryScreen {
   align-self: center;
   padding: 18px;
   border-radius: 22px;
-  border: 1px solid rgba(196, 181, 253, 0.18);
+  border: 1px solid rgba(147,197,253, 0.18);
   background:
-    linear-gradient(145deg, rgba(36, 26, 61, 0.90), rgba(14, 10, 28, 0.86)),
+    linear-gradient(145deg, rgba(18,31,58, 0.90), rgba(6,14,31, 0.86)),
     var(--material-glass);
   backdrop-filter: blur(24px) saturate(1.14);
   box-shadow:
     var(--shadow-float),
-    0 0 42px rgba(76, 29, 149, 0.18);
+    0 0 42px rgba(15,42,95, 0.18);
   position: relative;
   z-index: 1;
   overflow: hidden;
@@ -2096,7 +2111,7 @@ body.app-ready #libraryScreen {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 48%, rgba(124, 58, 237, 0.16));
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 48%, rgba(29,78,216, 0.16));
   opacity: 0.72;
   pointer-events: none;
 }
@@ -2123,7 +2138,7 @@ body.app-ready #libraryScreen {
 }
 
 .auth-panel-label {
-  color: #c4b5fd;
+  color: #bfdbfe;
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -2151,7 +2166,7 @@ body.app-ready #libraryScreen {
   margin: 0 -18px 16px;
   border-top: 1px solid rgba(255,255,255,0.10);
   border-bottom: 1px solid rgba(255,255,255,0.10);
-  background: rgba(10, 7, 20, 0.46);
+  background: rgba(5,10,24, 0.46);
 }
 
 .auth-tab {
@@ -2167,7 +2182,7 @@ body.app-ready #libraryScreen {
 
 .auth-tab.active {
   color: #ffffff;
-  background: rgba(124, 58, 237, 0.13);
+  background: rgba(29,78,216, 0.13);
 }
 
 .auth-tab.active::after {
@@ -2178,8 +2193,8 @@ body.app-ready #libraryScreen {
   bottom: -1px;
   height: 3px;
   border-radius: 999px 999px 0 0;
-  background: linear-gradient(90deg, #2b174a, #7c3aed, #c4b5fd);
-  box-shadow: 0 0 22px rgba(139, 92, 246, 0.38);
+  background: linear-gradient(90deg, #071a3d, #1d4ed8, #bfdbfe);
+  box-shadow: 0 0 22px rgba(37,99,235, 0.38);
 }
 
 .account-form {
@@ -2241,8 +2256,8 @@ body.app-ready #libraryScreen {
   min-height: 50px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid rgba(196, 181, 253, 0.18);
-  background: rgba(12, 9, 24, 0.56);
+  border: 1px solid rgba(147,197,253, 0.18);
+  background: rgba(6,14,31, 0.56);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   transition:
     border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
@@ -2252,9 +2267,9 @@ body.app-ready #libraryScreen {
 }
 
 .account-input-shell:focus-within {
-  border-color: rgba(139, 92, 246, 0.66);
-  background: rgba(18, 12, 36, 0.64);
-  box-shadow: 0 0 0 4px rgba(109, 40, 217, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-color: rgba(37,99,235, 0.66);
+  background: rgba(15,23,42, 0.64);
+  box-shadow: 0 0 0 4px rgba(30,64,175, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transform: translateY(-1px);
 }
 
@@ -2280,8 +2295,8 @@ body.app-ready #libraryScreen {
 }
 
 .account-input:focus {
-  border-color: rgba(196,181,253,0.56);
-  box-shadow: 0 0 0 4px rgba(124,58,237,0.16);
+  border-color: rgba(147,197,253,0.56);
+  box-shadow: 0 0 0 4px rgba(29,78,216,0.16);
 }
 
 .account-input-shell .account-input:focus {
@@ -2328,10 +2343,10 @@ body.app-ready #libraryScreen {
 }
 
 .remember-row input:checked + .remember-check {
-  color: #f7f2ff;
-  background: linear-gradient(135deg, #2b174a, #7c3aed);
-  border-color: rgba(196,181,253,0.48);
-  box-shadow: 0 12px 28px rgba(139, 92, 246, 0.24);
+  color: #eef5ff;
+  background: linear-gradient(135deg, #071a3d, #1d4ed8);
+  border-color: rgba(147,197,253,0.48);
+  box-shadow: 0 12px 28px rgba(37,99,235, 0.24);
 }
 
 .auth-field-note {
@@ -2350,8 +2365,8 @@ body.app-ready #libraryScreen {
   gap: 8px;
   padding: 12px;
   border-radius: 16px;
-  border: 1px solid rgba(196, 181, 253, 0.14);
-  background: rgba(12, 9, 24, 0.48);
+  border: 1px solid rgba(147,197,253, 0.14);
+  background: rgba(6,14,31, 0.48);
   overflow: hidden;
 }
 
@@ -2384,7 +2399,7 @@ body.app-ready #libraryScreen {
 
 .account-submit:hover:not(:disabled) {
   transform: translateY(-2px);
-  background: linear-gradient(135deg, rgba(124, 58, 237, 1), rgba(59, 7, 100, 0.96));
+  background: linear-gradient(135deg, rgba(29,78,216, 1), rgba(6,26,58, 0.96));
   box-shadow: var(--shadow-glow);
 }
 
@@ -2403,7 +2418,7 @@ body.app-ready #libraryScreen {
 .account-switch-note button {
   border: 0;
   background: transparent;
-  color: #c4b5fd;
+  color: #bfdbfe;
   font-weight: 900;
   cursor: pointer;
 }
@@ -2427,7 +2442,7 @@ body.app-ready #libraryScreen {
 }
 
 .account-chip:hover {
-  border-color: rgba(196,181,253,0.38);
+  border-color: rgba(147,197,253,0.38);
   background: rgba(255,255,255,0.12);
   transform: translateY(-1px);
 }
@@ -2438,7 +2453,7 @@ body.app-ready #libraryScreen {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #2b174a, #7c3aed);
+  background: linear-gradient(135deg, #071a3d, #1d4ed8);
   color: #071015;
   font-size: 12px;
   font-weight: 900;
@@ -2463,9 +2478,9 @@ body.app-ready #libraryScreen {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  border: 1px solid rgba(196,181,253,0.26);
-  background: rgba(124,58,237,0.16);
-  color: #c4b5fd;
+  border: 1px solid rgba(147,197,253,0.26);
+  background: rgba(29,78,216,0.16);
+  color: #bfdbfe;
   font-size: 11px;
   font-weight: 900;
 }
@@ -2482,7 +2497,7 @@ body.app-ready #libraryScreen {
   padding: 16px;
   border-radius: 22px;
   border: 1px solid rgba(255,255,255,0.14);
-  background: linear-gradient(145deg, rgba(36, 26, 61, 0.94), rgba(12, 8, 24, 0.92));
+  background: linear-gradient(145deg, rgba(18,31,58, 0.94), rgba(6,14,31, 0.92));
   backdrop-filter: blur(22px) saturate(1.25);
   -webkit-backdrop-filter: blur(22px) saturate(1.25);
   box-shadow: 0 28px 86px rgba(0,0,0,0.48), inset 0 1px rgba(255,255,255,0.08);
@@ -2513,8 +2528,8 @@ body.account-menu-open .account-menu {
   border-radius: 18px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #2b174a, #7c3aed);
-  color: #f7f2ff;
+  background: linear-gradient(135deg, #071a3d, #1d4ed8);
+  color: #eef5ff;
   font-size: 20px;
   font-weight: 950;
   background-size: cover;
@@ -2549,7 +2564,7 @@ body.account-menu-open .account-menu {
   min-height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid rgba(196,181,253,0.18);
+  border: 1px solid rgba(147,197,253,0.18);
   background: rgba(255,255,255,0.08);
   color: var(--text-primary);
   font-size: 12px;
@@ -2558,9 +2573,9 @@ body.account-menu-open .account-menu {
 
 .account-role-badge.admin,
 .account-role-badge.staff {
-  border-color: rgba(196,181,253,0.30);
-  background: rgba(124,58,237,0.16);
-  color: #c4b5fd;
+  border-color: rgba(147,197,253,0.30);
+  background: rgba(29,78,216,0.16);
+  color: #bfdbfe;
 }
 
 .account-verify-state {
@@ -2571,7 +2586,7 @@ body.account-menu-open .account-menu {
 }
 
 .account-verify-state.verified {
-  color: #c4b5fd;
+  color: #bfdbfe;
 }
 
 .account-menu-actions {
@@ -2598,7 +2613,7 @@ body.account-menu-open .account-menu {
 
 .account-menu-btn:hover {
   background: rgba(255,255,255,0.12);
-  border-color: rgba(196,181,253,0.28);
+  border-color: rgba(147,197,253,0.28);
   transform: translateY(-1px);
 }
 
@@ -2722,7 +2737,7 @@ body.account-menu-open .account-menu {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 8px 20px;
-  background: rgba(7,7,15,0.7);
+  background: rgba(5,10,24,0.7);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
   position: relative;
@@ -2764,7 +2779,7 @@ body.account-menu-open .account-menu {
   inset: 5px 2px;
   border-radius: 999px;
   background:
-    radial-gradient(circle, rgba(167,139,250,0.48) 0%, rgba(99,102,241,0.2) 42%, transparent 72%);
+    radial-gradient(circle, rgba(96,165,250,0.48) 0%, rgba(37,99,235,0.2) 42%, transparent 72%);
   filter: blur(8px);
   opacity: 0.95;
   z-index: -2;
@@ -2775,11 +2790,11 @@ body.account-menu-open .account-menu {
   position: absolute;
   inset: 8px 7px;
   border-radius: 999px;
-  border: 1px solid rgba(196,181,253,0.58);
+  border: 1px solid rgba(147,197,253,0.58);
   box-shadow:
-    0 0 12px rgba(129,140,248,0.75),
-    0 0 28px rgba(124,58,237,0.55),
-    inset 0 0 12px rgba(196,181,253,0.16);
+    0 0 12px rgba(96,165,250,0.75),
+    0 0 28px rgba(29,78,216,0.55),
+    inset 0 0 12px rgba(147,197,253,0.16);
   opacity: 0.88;
   z-index: -1;
 }
@@ -2790,8 +2805,8 @@ body.account-menu-open .account-menu {
   object-fit: contain;
   filter:
     drop-shadow(0 0 7px rgba(255,255,255,0.55))
-    drop-shadow(0 0 13px rgba(167,139,250,0.92))
-    drop-shadow(0 0 28px rgba(99,102,241,0.74));
+    drop-shadow(0 0 13px rgba(96,165,250,0.92))
+    drop-shadow(0 0 28px rgba(37,99,235,0.74));
   transform: translateY(1px);
 }
 
@@ -2862,7 +2877,7 @@ body.account-menu-open .account-menu {
   position: absolute;
   inset: -2px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #6366f1, #818cf8, #a78bfa, #6366f1);
+  background: linear-gradient(135deg, #2563eb, #60a5fa, #60a5fa, #2563eb);
   background-size: 300% 300%;
   animation: neonShift 4s ease infinite;
   opacity: 0;
@@ -2906,7 +2921,7 @@ body.account-menu-open .account-menu {
 }
 .search-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 20px rgba(99,102,241,0.25), 0 0 40px rgba(99,102,241,0.1);
+  box-shadow: 0 0 20px rgba(37,99,235,0.25), 0 0 40px rgba(37,99,235,0.1);
 }
 .search-icon {
   position: absolute;
@@ -2989,7 +3004,7 @@ body.account-menu-open .account-menu {
 }
 
 .grade-btn:hover  { color: var(--text-primary); background: var(--accent-soft); transform: scale(1.06); }
-.grade-btn.active { color: #fff; background: var(--accent); transform: scale(1.08); box-shadow: 0 2px 12px rgba(99,102,241,0.4); }
+.grade-btn.active { color: #fff; background: var(--accent); transform: scale(1.08); box-shadow: 0 2px 12px rgba(37,99,235,0.4); }
 
 /* Sync button */
 .sync-btn {
@@ -2997,9 +3012,9 @@ body.account-menu-open .account-menu {
   align-items: center;
   gap: 6px;
   background: var(--accent-soft);
-  border: 1px solid rgba(99,102,241,0.35);
+  border: 1px solid rgba(37,99,235,0.35);
   border-radius: var(--radius-xl);
-  color: #a5b4fc;
+  color: #93c5fd;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 600;
@@ -3036,8 +3051,8 @@ body.account-menu-open .account-menu {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(79,70,229,0.3));
-  border: 1px solid rgba(129,140,248,0.42);
+  background: linear-gradient(135deg, rgba(37,99,235,0.18), rgba(29,78,216,0.3));
+  border: 1px solid rgba(96,165,250,0.42);
   border-radius: var(--radius-xl);
   color: #dbe3ff;
   font-family: 'Inter', sans-serif;
@@ -3053,7 +3068,7 @@ body.account-menu-open .account-menu {
   background: linear-gradient(135deg, var(--accent), var(--accent-glow));
   color: #fff;
   border-color: var(--accent);
-  box-shadow: 0 10px 28px rgba(99,102,241,0.28);
+  box-shadow: 0 10px 28px rgba(37,99,235,0.28);
 }
 
 .scan-nav-btn:disabled {
@@ -3091,7 +3106,7 @@ body.account-menu-open .account-menu {
   overflow-x: hidden;
   padding: 32px 40px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(99,102,241,0.3) transparent;
+  scrollbar-color: rgba(37,99,235,0.3) transparent;
 }
 
 .book-grid {
@@ -3125,7 +3140,7 @@ body.account-menu-open .account-menu {
 .book-card:hover {
   border-color: var(--accent);
   transform: translateY(-5px) scale(1.025);
-  box-shadow: 0 8px 40px rgba(99,102,241,0.3);
+  box-shadow: 0 8px 40px rgba(37,99,235,0.3);
 }
 
 .card-cover {
@@ -3175,9 +3190,9 @@ body.account-menu-open .account-menu {
 
 .card-analyze-btn {
   width: 100%;
-  border: 1px solid rgba(99,102,241,0.35);
-  background: rgba(99,102,241,0.12);
-  color: #c7d2fe;
+  border: 1px solid rgba(37,99,235,0.35);
+  background: rgba(37,99,235,0.12);
+  color: #bfdbfe;
   border-radius: 12px;
   min-height: 36px;
   display: inline-flex;
@@ -3196,7 +3211,7 @@ body.account-menu-open .account-menu {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
-  box-shadow: 0 6px 18px rgba(99,102,241,0.28);
+  box-shadow: 0 6px 18px rgba(37,99,235,0.28);
 }
 
 .card-del-btn {
@@ -3227,7 +3242,7 @@ body.account-menu-open .account-menu {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(7,7,15,0.82);
+  background: rgba(5,10,24,0.82);
   backdrop-filter: blur(12px);
   align-items: center;
   justify-content: center;
@@ -3240,7 +3255,7 @@ body.account-menu-open .account-menu {
   border-radius: var(--radius-xl);
   padding: 28px 32px;
   width: min(460px, 90vw);
-  box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.15);
+  box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(37,99,235,0.15);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -3250,7 +3265,7 @@ body.account-menu-open .account-menu {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #a5b4fc;
+  color: #93c5fd;
   font-size: 15px;
   font-weight: 700;
 }
@@ -3281,14 +3296,14 @@ body.account-menu-open .account-menu {
 .upload-bar-track {
   flex: 1;
   height: 8px;
-  background: rgba(99,102,241,0.12);
+  background: rgba(37,99,235,0.12);
   border-radius: 99px;
   overflow: hidden;
 }
 
 .upload-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #6366f1, #818cf8);
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
   border-radius: 99px;
   transition: width 0.12s ease;
 }
@@ -3296,7 +3311,7 @@ body.account-menu-open .account-menu {
 .upload-pct {
   font-size: 12px;
   font-weight: 700;
-  color: #a5b4fc;
+  color: #93c5fd;
   min-width: 36px;
   text-align: right;
 }
@@ -3332,7 +3347,7 @@ body.account-menu-open .account-menu {
 
 .upload-overall-fill {
   height: 100%;
-  background: rgba(99,102,241,0.4);
+  background: rgba(37,99,235,0.4);
   border-radius: 99px;
   transition: width 0.2s ease;
 }
@@ -3368,8 +3383,8 @@ body.account-menu-open .account-menu {
   font-weight: 600;
 }
 
-.scan-badge.done    { background: rgba(124,58,237,0.14); color: var(--green); }
-.scan-badge.pending { background: rgba(99,102,241,0.1); color: #a5b4fc; }
+.scan-badge.done    { background: rgba(29,78,216,0.14); color: var(--green); }
+.scan-badge.pending { background: rgba(37,99,235,0.1); color: #93c5fd; }
 .scan-badge.failed  { background: rgba(248,113,113,0.1); color: var(--red); }
 
 .scan-dot {
@@ -3413,7 +3428,7 @@ body.account-menu-open .account-menu {
   width: 96px;
   height: 96px;
   object-fit: contain;
-  filter: drop-shadow(0 4px 16px rgba(99,102,241,0.25));
+  filter: drop-shadow(0 4px 16px rgba(37,99,235,0.25));
   animation: floatBooks 4s ease-in-out infinite alternate;
 }
 
@@ -3440,13 +3455,13 @@ body.account-menu-open .account-menu {
   padding: 11px 24px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
-  box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+  box-shadow: 0 4px 20px rgba(37,99,235,0.35);
   margin-top: 4px;
 }
 
 .sync-btn-empty:hover:not(:disabled) {
   transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 8px 32px rgba(99,102,241,0.5);
+  box-shadow: 0 8px 32px rgba(37,99,235,0.5);
 }
 
 .sync-btn-empty:disabled {
@@ -3480,10 +3495,10 @@ body.account-menu-open .account-menu {
 }
 .net-indicator:active { transform: scale(0.95); }
 
-.net-indicator.online   { color: #a78bfa; }
+.net-indicator.online   { color: #60a5fa; }
 .net-indicator.offline  { color: #f87171; }
-.net-indicator.wifi     { color: #a5b4fc; }
-.net-indicator.ethernet { color: #a5b4fc; }
+.net-indicator.wifi     { color: #93c5fd; }
+.net-indicator.ethernet { color: #93c5fd; }
 
 .net-indicator svg { flex-shrink: 0; }
 
@@ -3498,7 +3513,7 @@ body.account-menu-open .account-menu {
 }
 .net-indicator.online .net-dot,
 .net-indicator.wifi .net-dot,
-.net-indicator.ethernet .net-dot { background: #a78bfa; }
+.net-indicator.ethernet .net-dot { background: #60a5fa; }
 .net-indicator.offline .net-dot  { background: #f87171; }
 
 /* Buttons */
@@ -3527,11 +3542,11 @@ body.account-menu-open .account-menu {
 
 .btn-ghost {
   background: var(--accent-soft);
-  color: #a5b4fc;
-  border: 1px solid rgba(99,102,241,0.25);
+  color: #93c5fd;
+  border: 1px solid rgba(37,99,235,0.25);
 }
 .btn-ghost:hover {
-  background: rgba(99,102,241,0.2);
+  background: rgba(37,99,235,0.2);
   color: #fff;
 }
 
@@ -3558,10 +3573,10 @@ body.account-menu-open .account-menu {
 
 .footer-copy:hover, .footer-copy:hover .footer-brand {
   color: var(--accent);
-  text-shadow: 0 0 8px rgba(99,102,241,0.6);
+  text-shadow: 0 0 8px rgba(37,99,235,0.6);
 }
 
-.footer-brand { color: #a5b4fc; font-weight: 700; }
+.footer-brand { color: #93c5fd; font-weight: 700; }
 
 /* Library chat history drawer */
 .chat-history-backdrop {
@@ -3638,9 +3653,9 @@ body.account-menu-open .account-menu {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  border: 1px solid rgba(99,102,241,0.2);
-  background: rgba(99,102,241,0.08);
-  color: #c7d2fe;
+  border: 1px solid rgba(37,99,235,0.2);
+  background: rgba(37,99,235,0.08);
+  color: #bfdbfe;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3650,16 +3665,16 @@ body.account-menu-open .account-menu {
 
 .chat-sidebar-toggle:hover,
 .chat-history-delete:hover {
-  background: rgba(99,102,241,0.18);
-  border-color: rgba(99,102,241,0.42);
+  background: rgba(37,99,235,0.18);
+  border-color: rgba(37,99,235,0.42);
   color: #fff;
 }
 
 .new-chat-btn {
   min-height: 40px;
   border-radius: 12px;
-  border: 1px solid rgba(99,102,241,0.28);
-  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(37,99,235,0.28);
+  background: rgba(37,99,235,0.12);
   color: #e0e7ff;
   font-family: 'Inter', sans-serif;
   font-size: 13px;
@@ -3674,7 +3689,7 @@ body.account-menu-open .account-menu {
 
 .new-chat-btn:hover {
   transform: translateY(-1px);
-  background: rgba(99,102,241,0.2);
+  background: rgba(37,99,235,0.2);
   box-shadow: 0 12px 28px rgba(0,0,0,0.22);
 }
 
@@ -3687,13 +3702,13 @@ body.account-menu-open .account-menu {
   gap: 9px;
   padding-right: 4px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(99,102,241,0.28) transparent;
+  scrollbar-color: rgba(37,99,235,0.28) transparent;
 }
 
 .chat-history-empty {
   margin: 10px 4px;
   padding: 18px 14px;
-  border: 1px dashed rgba(99,102,241,0.22);
+  border: 1px dashed rgba(37,99,235,0.22);
   border-radius: 12px;
   color: var(--text-secondary);
   font-size: 13px;
@@ -3703,7 +3718,7 @@ body.account-menu-open .account-menu {
 
 .chat-history-item {
   text-align: left;
-  border: 1px solid rgba(129,140,248,0.16);
+  border: 1px solid rgba(96,165,250,0.16);
   background: rgba(255,255,255,0.035);
   color: var(--text-primary);
   border-radius: 12px;
@@ -3720,8 +3735,8 @@ body.account-menu-open .account-menu {
 
 .chat-history-item:hover,
 .chat-history-item.active {
-  background: rgba(99,102,241,0.1);
-  border-color: rgba(99,102,241,0.36);
+  background: rgba(37,99,235,0.1);
+  border-color: rgba(37,99,235,0.36);
   transform: translateY(-1px);
 }
 
@@ -3750,7 +3765,7 @@ body.account-menu-open .account-menu {
 }
 
 .chat-history-book {
-  color: #a5b4fc;
+  color: #93c5fd;
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3777,8 +3792,8 @@ body.account-menu-open .account-menu {
 .chat-history-continue {
   border: none;
   border-radius: 10px;
-  background: rgba(124,58,237,0.14);
-  color: #c4b5fd;
+  background: rgba(29,78,216,0.14);
+  color: #bfdbfe;
   font-family: 'Manrope', 'Inter', sans-serif;
   font-size: 11.5px;
   font-weight: 800;
@@ -3841,9 +3856,9 @@ body.account-menu-open .account-menu {
   font-weight: 600;
   color: var(--green);
   padding: 8px 12px;
-  background: rgba(124,58,237,0.10);
+  background: rgba(29,78,216,0.10);
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(196,181,253,0.16);
+  border: 1px solid rgba(147,197,253,0.16);
 }
 
 /* PDF viewer button */
@@ -3852,9 +3867,9 @@ body.account-menu-open .account-menu {
   align-items: center;
   gap: 8px;
   background: var(--accent-soft);
-  border: 1px solid rgba(99,102,241,0.35);
+  border: 1px solid rgba(37,99,235,0.35);
   border-radius: var(--radius-md);
-  color: #a5b4fc;
+  color: #93c5fd;
   font-family: 'Inter', sans-serif;
   font-size: 13px;
   font-weight: 600;
@@ -3869,7 +3884,7 @@ body.account-menu-open .account-menu {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
-  box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+  box-shadow: 0 4px 16px rgba(37,99,235,0.35);
 }
 
 /* Analysis right (chat) */
@@ -3896,7 +3911,7 @@ body.account-menu-open .account-menu {
   flex-direction: column;
   gap: 20px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(99,102,241,0.3) transparent;
+  scrollbar-color: rgba(37,99,235,0.3) transparent;
 }
 
 .chat-empty {
@@ -3937,7 +3952,7 @@ body.account-menu-open .account-menu {
   transition: all 0.18s ease;
 }
 
-.chip:hover { background: var(--accent-soft); color: #a5b4fc; border-color: rgba(99,102,241,0.35); }
+.chip:hover { background: var(--accent-soft); color: #93c5fd; border-color: rgba(37,99,235,0.35); }
 
 .chat-msg {
   display: flex;
@@ -4031,8 +4046,8 @@ body.account-menu-open .account-menu {
 .chat-md-quote {
   margin: 10px 0;
   padding: 8px 12px;
-  border-left: 3px solid rgba(99,102,241,0.55);
-  background: rgba(99,102,241,0.08);
+  border-left: 3px solid rgba(37,99,235,0.55);
+  background: rgba(37,99,235,0.08);
   border-radius: 8px;
   color: var(--text-secondary);
 }
@@ -4314,7 +4329,7 @@ body.account-menu-open .account-menu {
   height: 16px;
   border-radius: 50%;
   border: 2px solid rgba(165,180,252,0.2);
-  border-top-color: #a5b4fc;
+  border-top-color: #93c5fd;
   animation: spin 0.9s linear infinite;
 }
 
@@ -4338,9 +4353,9 @@ body.account-menu-open .account-menu {
   gap: 10px;
   padding: 12px 18px;
   border-radius: 999px;
-  border: 1px solid rgba(196,181,253,0.28);
+  border: 1px solid rgba(147,197,253,0.28);
   background: rgba(18,10,34,0.92);
-  color: #ede9fe;
+  color: #eaf2ff;
   box-shadow: 0 14px 36px rgba(0,0,0,0.35);
   z-index: 6;
 }
@@ -4536,7 +4551,7 @@ body.account-menu-open .account-menu {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(7,7,15,0.96);
+  background: rgba(5,10,24,0.96);
   display: flex;
   flex-direction: column;
   opacity: 0;
@@ -4597,7 +4612,7 @@ body.account-menu-open .account-menu {
 .pdf-ctrl-btn.active {
   background: var(--accent-soft);
   color: var(--accent);
-  box-shadow: inset 0 0 0 1px rgba(129,140,248,0.25);
+  box-shadow: inset 0 0 0 1px rgba(96,165,250,0.25);
 }
 
 .pdf-page-info, .pdf-zoom-info, .pdf-page-total {
@@ -4625,7 +4640,7 @@ body.account-menu-open .account-menu {
   height: 26px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: rgba(7,7,15,0.42);
+  background: rgba(5,10,24,0.42);
   color: var(--text-primary);
   font: 700 12px 'Inter', sans-serif;
   text-align: center;
@@ -4634,7 +4649,7 @@ body.account-menu-open .account-menu {
 
 .pdf-page-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(99,102,241,0.18);
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.18);
 }
 
 .pdf-page-input::-webkit-outer-spin-button,
@@ -4744,7 +4759,7 @@ body.account-menu-open .account-menu {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(7,7,15,0.92);
+  background: rgba(5,10,24,0.92);
   backdrop-filter: blur(12px);
   z-index: 20;
   transition: opacity 0.4s ease;
@@ -4759,13 +4774,13 @@ body.account-menu-open .account-menu {
 .pdf-load-ring-bg { fill: none; stroke: #1e1e3a; stroke-width: 6; }
 .pdf-load-ring-fg {
   fill: none;
-  stroke: #6366f1;
+  stroke: #2563eb;
   stroke-width: 6;
   stroke-linecap: round;
   stroke-dasharray: 339.292;
   stroke-dashoffset: 339.292;
   transition: stroke-dashoffset 0.3s ease;
-  filter: drop-shadow(0 0 6px rgba(99,102,241,0.5));
+  filter: drop-shadow(0 0 6px rgba(37,99,235,0.5));
 }
 .pdf-load-pct {
   position: absolute;
@@ -4833,7 +4848,7 @@ body.account-menu-open .account-menu {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(7,7,15,0.75);
+  background: rgba(5,10,24,0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4875,7 +4890,7 @@ body.account-menu-open .account-menu {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(7,7,15,0.78);
+  background: rgba(5,10,24,0.78);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4915,13 +4930,13 @@ body.account-menu-open .account-menu {
   font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.55;
-  background: rgba(99,102,241,0.07);
-  border: 1px solid rgba(99,102,241,0.15);
+  background: rgba(37,99,235,0.07);
+  border: 1px solid rgba(37,99,235,0.15);
   border-radius: var(--radius-sm);
   padding: 10px 13px;
 }
 
-.cfg-desc a { color: #a5b4fc; text-decoration: underline; }
+.cfg-desc a { color: #93c5fd; text-decoration: underline; }
 
 .cfg-grade-row {
   display: flex;
@@ -4960,7 +4975,7 @@ body.account-menu-open .account-menu {
   position: fixed;
   inset: 0;
   z-index: 320;
-  background: rgba(8, 6, 17, 0.72);
+  background: rgba(6,14,31, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4983,9 +4998,9 @@ body.account-menu-open .account-menu {
   width: min(560px, 100%);
   max-height: min(760px, calc(100vh - 34px));
   overflow-y: auto;
-  border: 1px solid rgba(196,181,253,0.18);
+  border: 1px solid rgba(147,197,253,0.18);
   border-radius: 26px;
-  background: linear-gradient(145deg, rgba(36, 26, 61, 0.94), rgba(14, 10, 28, 0.90));
+  background: linear-gradient(145deg, rgba(18,31,58, 0.94), rgba(6,14,31, 0.90));
   box-shadow: 0 30px 90px rgba(0,0,0,0.46), inset 0 1px rgba(255,255,255,0.08);
   padding: 22px;
   transform: translateY(18px) scale(0.98);
@@ -5012,7 +5027,7 @@ body.account-menu-open .account-menu {
 
 .profile-settings-kicker,
 .admin-tools-kicker {
-  color: #c4b5fd;
+  color: #bfdbfe;
   font-size: 11px;
   font-weight: 950;
   letter-spacing: 0.16em;
@@ -5041,7 +5056,7 @@ body.account-menu-open .account-menu {
   gap: 10px;
   padding: 14px;
   border-radius: 20px;
-  border: 1px solid rgba(196,181,253,0.14);
+  border: 1px solid rgba(147,197,253,0.14);
   background: rgba(255,255,255,0.06);
 }
 
@@ -5051,8 +5066,8 @@ body.account-menu-open .account-menu {
   border-radius: 28px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #2b174a, #7c3aed);
-  color: #f7f2ff;
+  background: linear-gradient(135deg, #071a3d, #1d4ed8);
+  color: #eef5ff;
   font-size: 34px;
   font-weight: 950;
   background-size: cover;
@@ -5093,17 +5108,17 @@ body.account-menu-open .account-menu {
   align-items: center;
   padding: 0 9px;
   border-radius: 999px;
-  border: 1px solid rgba(196,181,253,0.18);
-  background: rgba(124,58,237,0.12);
-  color: #c4b5fd;
+  border: 1px solid rgba(147,197,253,0.18);
+  background: rgba(29,78,216,0.12);
+  color: #bfdbfe;
   font-size: 10.5px;
   font-weight: 950;
   white-space: nowrap;
 }
 
 .settings-email-state.verified {
-  background: rgba(124,58,237,0.18);
-  color: #f7f2ff;
+  background: rgba(29,78,216,0.18);
+  color: #eef5ff;
 }
 
 .settings-email-state.changed,
@@ -5127,9 +5142,9 @@ body.account-menu-open .account-menu {
 .settings-input {
   width: 100%;
   min-height: 44px;
-  border: 1px solid rgba(196,181,253,0.16);
+  border: 1px solid rgba(147,197,253,0.16);
   border-radius: 16px;
-  background: rgba(8,6,17,0.45);
+  background: rgba(6,14,31,0.45);
   color: var(--text-primary);
   padding: 0 14px;
   outline: none;
@@ -5138,17 +5153,17 @@ body.account-menu-open .account-menu {
 }
 
 .settings-input:focus {
-  border-color: rgba(196,181,253,0.45);
-  box-shadow: 0 0 0 4px rgba(124,58,237,0.14);
+  border-color: rgba(147,197,253,0.45);
+  box-shadow: 0 0 0 4px rgba(29,78,216,0.14);
 }
 
 .email-verify-btn {
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid rgba(196,181,253,0.20);
+  border: 1px solid rgba(147,197,253,0.20);
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(76,29,149,0.88), rgba(124,58,237,0.62));
-  color: #f7f2ff;
+  background: linear-gradient(135deg, rgba(15,42,95,0.88), rgba(29,78,216,0.62));
+  color: #eef5ff;
   font-weight: 900;
   cursor: pointer;
   box-shadow: 0 14px 32px rgba(0,0,0,0.24), inset 0 1px rgba(255,255,255,0.10);
@@ -5157,7 +5172,7 @@ body.account-menu-open .account-menu {
 
 .email-verify-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: rgba(216,180,254,0.34);
+  border-color: rgba(191,219,254,0.34);
 }
 
 .email-verify-btn:disabled {
@@ -5179,7 +5194,7 @@ body.account-menu-open .account-menu {
   display: grid;
   place-items: center;
   padding: 18px;
-  background: rgba(5,3,12,0.58);
+  background: rgba(3,7,18,0.58);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.32s cubic-bezier(0.22,1,0.36,1);
@@ -5195,12 +5210,12 @@ body.account-menu-open .account-menu {
 .email-code-panel {
   width: min(430px, 100%);
   padding: 20px;
-  border: 1px solid rgba(196,181,253,0.20);
+  border: 1px solid rgba(147,197,253,0.20);
   border-radius: 26px;
   background:
-    linear-gradient(145deg, rgba(36,26,61,0.95), rgba(12,8,24,0.92)),
+    linear-gradient(145deg, rgba(18,31,58,0.95), rgba(6,14,31,0.92)),
     var(--material-glass);
-  box-shadow: 0 30px 90px rgba(0,0,0,0.48), 0 0 42px rgba(76,29,149,0.20), inset 0 1px rgba(255,255,255,0.10);
+  box-shadow: 0 30px 90px rgba(0,0,0,0.48), 0 0 42px rgba(15,42,95,0.20), inset 0 1px rgba(255,255,255,0.10);
   transform: translateY(18px) scale(0.96);
   opacity: 0;
   transition:
@@ -5217,7 +5232,7 @@ body.account-menu-open .account-menu {
   min-height: 34px;
   padding: 0 12px;
   margin: 0 0 12px;
-  border: 1px solid rgba(196,181,253,0.16);
+  border: 1px solid rgba(147,197,253,0.16);
   border-radius: 999px;
   background: rgba(255,255,255,0.07);
   color: rgba(243,239,255,0.86);
@@ -5226,7 +5241,7 @@ body.account-menu-open .account-menu {
 }
 
 .email-code-kicker {
-  color: #c4b5fd;
+  color: #bfdbfe;
   font-size: 11px;
   font-weight: 950;
   letter-spacing: 0.16em;
@@ -5252,7 +5267,7 @@ body.account-menu-open .account-menu {
 
 .email-code-target {
   overflow-wrap: anywhere;
-  color: #ddd6fe;
+  color: #bfdbfe;
 }
 
 .email-code-grid {
@@ -5266,9 +5281,9 @@ body.account-menu-open .account-menu {
   width: 100%;
   aspect-ratio: 1;
   min-height: 48px;
-  border: 1px solid rgba(196,181,253,0.18);
+  border: 1px solid rgba(147,197,253,0.18);
   border-radius: 16px;
-  background: rgba(8,6,17,0.48);
+  background: rgba(6,14,31,0.48);
   color: #fff;
   text-align: center;
   font-size: 24px;
@@ -5280,14 +5295,14 @@ body.account-menu-open .account-menu {
 
 .email-code-cell:focus {
   transform: translateY(-2px);
-  border-color: rgba(216,180,254,0.48);
+  border-color: rgba(191,219,254,0.48);
   background: rgba(24,16,45,0.72);
-  box-shadow: 0 0 0 4px rgba(124,58,237,0.18), inset 0 1px rgba(255,255,255,0.08);
+  box-shadow: 0 0 0 4px rgba(29,78,216,0.18), inset 0 1px rgba(255,255,255,0.08);
 }
 
 .email-code-cell.filled {
-  border-color: rgba(196,181,253,0.34);
-  background: rgba(124,58,237,0.16);
+  border-color: rgba(147,197,253,0.34);
+  background: rgba(29,78,216,0.16);
 }
 
 .email-code-status.error {
@@ -5295,7 +5310,7 @@ body.account-menu-open .account-menu {
 }
 
 .email-code-status.success {
-  color: #c4b5fd;
+  color: #bfdbfe;
 }
 
 .email-code-actions {
@@ -5303,6 +5318,94 @@ body.account-menu-open .account-menu {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 16px;
+}
+
+.avatar-crop-overlay,
+.password-change-overlay,
+.verify-required-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 346;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3,7,18,0.62);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.32s cubic-bezier(0.22,1,0.36,1);
+  backdrop-filter: blur(26px) saturate(1.25);
+  -webkit-backdrop-filter: blur(26px) saturate(1.25);
+}
+
+.avatar-crop-overlay.active,
+.password-change-overlay.active,
+.verify-required-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.avatar-crop-panel,
+.password-change-panel,
+.verify-required-panel {
+  width: min(460px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid rgba(147,197,253,0.20);
+  border-radius: 26px;
+  background: linear-gradient(145deg, rgba(18,31,58,0.96), rgba(6,14,31,0.94));
+  box-shadow: 0 30px 90px rgba(0,0,0,0.50), 0 0 42px rgba(37,99,235,0.20), inset 0 1px rgba(255,255,255,0.10);
+  transform: translateY(18px) scale(0.96);
+  opacity: 0;
+  transition:
+    transform 0.42s cubic-bezier(0.16,1,0.3,1),
+    opacity 0.34s cubic-bezier(0.22,1,0.36,1);
+}
+
+.avatar-crop-overlay.active .avatar-crop-panel,
+.password-change-overlay.active .password-change-panel,
+.verify-required-overlay.active .verify-required-panel {
+  transform: none;
+  opacity: 1;
+}
+
+.avatar-crop-canvas {
+  width: min(300px, 100%);
+  aspect-ratio: 1;
+  display: block;
+  margin: 0 auto 16px;
+  border-radius: 28px;
+  border: 1px solid rgba(147,197,253,0.22);
+  background: rgba(6,14,31,0.62);
+  box-shadow: inset 0 1px rgba(255,255,255,0.08);
+}
+
+.avatar-crop-controls,
+.password-new-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-range {
+  width: 100%;
+  accent-color: #2563eb;
+}
+
+.password-new-fields {
+  display: none;
+  margin-top: 12px;
+}
+
+.password-change-panel.password-ready .password-code-grid {
+  display: none;
+}
+
+.password-change-panel.password-ready .password-new-fields {
+  display: grid;
+}
+
+.settings-password-btn {
+  width: 100%;
 }
 
 .settings-actions {
@@ -5323,7 +5426,7 @@ body.account-menu-open .account-menu {
   min-height: 78px;
   padding: 13px;
   border-radius: 18px;
-  border: 1px solid rgba(196,181,253,0.14);
+  border: 1px solid rgba(147,197,253,0.14);
   background: rgba(255,255,255,0.06);
 }
 
@@ -5353,8 +5456,8 @@ body.account-menu-open .account-menu {
   margin: 0 0 14px;
   padding: 12px;
   border-radius: 18px;
-  border: 1px solid rgba(196,181,253,0.14);
-  background: linear-gradient(135deg, rgba(21, 13, 38, 0.72), rgba(8, 6, 17, 0.62));
+  border: 1px solid rgba(147,197,253,0.14);
+  background: linear-gradient(135deg, rgba(15,23,42, 0.72), rgba(6,14,31, 0.62));
 }
 
 .admin-sensitive-note {
@@ -5374,8 +5477,8 @@ body.account-menu-open .account-menu {
   gap: 10px;
   padding: 14px;
   border-radius: 20px;
-  border: 1px solid rgba(196,181,253,0.14);
-  background: linear-gradient(145deg, rgba(24, 15, 43, 0.72), rgba(9, 6, 18, 0.70));
+  border: 1px solid rgba(147,197,253,0.14);
+  background: linear-gradient(145deg, rgba(18,31,58, 0.72), rgba(6,14,31, 0.70));
   box-shadow: inset 0 1px rgba(255,255,255,0.06);
 }
 
@@ -5395,7 +5498,7 @@ body.account-menu-open .account-menu {
   min-height: 58px;
   padding: 10px;
   border-radius: 14px;
-  border: 1px solid rgba(196,181,253,0.12);
+  border: 1px solid rgba(147,197,253,0.12);
   background: rgba(255,255,255,0.05);
 }
 
@@ -5424,8 +5527,8 @@ body.account-menu-open .account-menu {
 .admin-session-row {
   padding: 10px;
   border-radius: 14px;
-  border: 1px solid rgba(196,181,253,0.10);
-  background: rgba(8,6,17,0.42);
+  border: 1px solid rgba(147,197,253,0.10);
+  background: rgba(6,14,31,0.42);
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.5;
@@ -5438,7 +5541,7 @@ body.account-menu-open .account-menu {
   gap: 12px;
   padding: 13px;
   border-radius: 18px;
-  border: 1px solid rgba(196,181,253,0.14);
+  border: 1px solid rgba(147,197,253,0.14);
   background: rgba(255,255,255,0.055);
 }
 
@@ -5474,7 +5577,7 @@ body.account-menu-open .account-menu {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  border: 1px solid rgba(196,181,253,0.16);
+  border: 1px solid rgba(147,197,253,0.16);
   background: rgba(255,255,255,0.07);
   color: var(--text-secondary);
   font-size: 11px;
@@ -5482,9 +5585,9 @@ body.account-menu-open .account-menu {
 }
 
 .admin-mini-badge.good {
-  color: #c4b5fd;
-  border-color: rgba(196,181,253,0.24);
-  background: rgba(124,58,237,0.10);
+  color: #bfdbfe;
+  border-color: rgba(147,197,253,0.24);
+  background: rgba(29,78,216,0.10);
 }
 
 .admin-mini-badge.warn {
@@ -5529,8 +5632,8 @@ body.account-menu-open .account-menu {
 .auth-overlay {
   position: fixed;
   inset: 0;
-  z-index: 300;
-  background: rgba(7,7,15,0.82);
+  z-index: 380;
+  background: rgba(5,10,24,0.82);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5598,7 +5701,7 @@ body.account-menu-open .account-menu {
 }
 .auth-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 16px rgba(99,102,241,0.2);
+  box-shadow: 0 0 16px rgba(37,99,235,0.2);
 }
 .auth-input.shake {
   animation: authShake 0.45s ease;
@@ -5630,7 +5733,7 @@ body.account-menu-open .account-menu {
   position: fixed;
   inset: 0;
   z-index: 250;
-  background: rgba(7,7,15,0.78);
+  background: rgba(5,10,24,0.78);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5729,9 +5832,9 @@ body.account-menu-open .account-menu {
 .rename-cover-btn {
   min-height: 38px;
   border-radius: 10px;
-  border: 1px solid rgba(99,102,241,0.28);
-  background: rgba(99,102,241,0.1);
-  color: #c7d2fe;
+  border: 1px solid rgba(37,99,235,0.28);
+  background: rgba(37,99,235,0.1);
+  color: #bfdbfe;
   font-family: 'Inter', sans-serif;
   font-size: 12.5px;
   font-weight: 700;
@@ -5744,8 +5847,8 @@ body.account-menu-open .account-menu {
 }
 
 .rename-cover-btn:hover {
-  background: rgba(99,102,241,0.18);
-  border-color: rgba(99,102,241,0.45);
+  background: rgba(37,99,235,0.18);
+  border-color: rgba(37,99,235,0.45);
   color: #fff;
 }
 .rename-actions { display: flex; gap: 10px; margin-top: 14px; }
@@ -5761,7 +5864,7 @@ body.account-menu-open .account-menu {
   height: 26px;
   border-radius: 50%;
   border: none;
-  background: rgba(99,102,241,0.85);
+  background: rgba(37,99,235,0.85);
   color: #fff;
   cursor: pointer;
   display: flex;
@@ -5779,7 +5882,7 @@ body.account-menu-open .account-menu {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(7,7,15,0.78);
+  background: rgba(5,10,24,0.78);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5817,8 +5920,8 @@ body.account-menu-open .account-menu {
   font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.55;
-  background: rgba(99,102,241,0.07);
-  border: 1px solid rgba(99,102,241,0.15);
+  background: rgba(37,99,235,0.07);
+  border: 1px solid rgba(37,99,235,0.15);
   border-radius: var(--radius-sm);
   padding: 10px 13px;
 }
@@ -5867,10 +5970,10 @@ body.account-menu-open .account-menu {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(99,102,241,0.12);
-  border: 1px solid rgba(99,102,241,0.3);
+  background: rgba(37,99,235,0.12);
+  border: 1px solid rgba(37,99,235,0.3);
   border-radius: var(--radius-xl);
-  color: #a5b4fc;
+  color: #93c5fd;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 600;
@@ -5883,15 +5986,15 @@ body.account-menu-open .account-menu {
 
 .upload-nav-btn:hover,
 .history-nav-btn:hover {
-  background: rgba(99,102,241,0.22);
+  background: rgba(37,99,235,0.22);
   border-color: var(--accent);
   color: #fff;
 }
 
 .history-nav-btn {
   background: rgba(255,255,255,0.045);
-  border-color: rgba(129,140,248,0.22);
-  color: #c7d2fe;
+  border-color: rgba(96,165,250,0.22);
+  color: #bfdbfe;
 }
 
 /* Hidden file input */
@@ -5957,10 +6060,10 @@ body.account-menu-open .account-menu {
   to { transform: scale(0.92); opacity: 0; }
 }
 
-.toast.success { border-color: rgba(196,181,253,0.34); }
+.toast.success { border-color: rgba(147,197,253,0.34); }
 .toast.error   { border-color: rgba(248,113,113,0.34); }
 .toast.warning { border-color: rgba(251,191,36,0.34); }
-.toast.info    { border-color: rgba(99,102,241,0.34); }
+.toast.info    { border-color: rgba(37,99,235,0.34); }
 
 .toast-icon {
   width: 54px;
@@ -5977,7 +6080,7 @@ body.account-menu-open .account-menu {
 .toast.success .toast-icon { color: var(--green); }
 .toast.error .toast-icon { color: var(--red); }
 .toast.warning .toast-icon { color: var(--amber); }
-.toast.info .toast-icon { color: #a5b4fc; }
+.toast.info .toast-icon { color: #93c5fd; }
 
 .toast-body { flex: 1; min-width: 0; }
 .toast-title { font-size: 15px; font-weight: 800; color: var(--text-primary); }
@@ -6014,8 +6117,8 @@ body.account-menu-open .account-menu {
 }
 
 .checkmark-circle {
-  fill: rgba(124,58,237,0.14);
-  stroke: rgba(196,181,253,0.42);
+  fill: rgba(29,78,216,0.14);
+  stroke: rgba(147,197,253,0.42);
   stroke-width: 2;
   stroke-dasharray: 166;
   stroke-dashoffset: 166;
@@ -6038,7 +6141,7 @@ body.account-menu-open .account-menu {
   position: fixed;
   inset: 0;
   z-index: 340;
-  background: rgba(7,7,15,0.82);
+  background: rgba(5,10,24,0.82);
   backdrop-filter: blur(14px);
   display: flex;
   align-items: center;
@@ -6077,9 +6180,9 @@ body.account-menu-open .account-menu {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid rgba(129,140,248,0.22);
+  border: 1px solid rgba(96,165,250,0.22);
   background: rgba(255,255,255,0.04);
-  color: #c7d2fe;
+  color: #bfdbfe;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -6109,8 +6212,8 @@ body.account-menu-open .account-menu {
   width: 58px;
   height: 58px;
   border-radius: 50%;
-  border: 3px solid rgba(129,140,248,0.18);
-  border-top-color: #a5b4fc;
+  border: 3px solid rgba(96,165,250,0.18);
+  border-top-color: #93c5fd;
   animation: spin 0.9s linear infinite;
   flex-shrink: 0;
 }
@@ -6142,7 +6245,7 @@ body.account-menu-open .account-menu {
 .task-status {
   font-size: 13px;
   font-weight: 700;
-  color: #c7d2fe;
+  color: #bfdbfe;
   min-height: 20px;
 }
 
@@ -6157,7 +6260,7 @@ body.account-menu-open .account-menu {
   height: 100%;
   width: 0%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #2b174a, #7c3aed);
+  background: linear-gradient(90deg, #071a3d, #1d4ed8);
   transition: width 0.25s ease;
 }
 
@@ -6169,7 +6272,7 @@ body.account-menu-open .account-menu {
 
 .task-metric {
   background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(99,102,241,0.12);
+  border: 1px solid rgba(37,99,235,0.12);
   border-radius: 16px;
   padding: 12px 10px;
 }
@@ -6200,7 +6303,7 @@ body.account-menu-open .account-menu {
 
 .task-log-item {
   background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(99,102,241,0.08);
+  border: 1px solid rgba(37,99,235,0.08);
   border-radius: 14px;
   padding: 10px 12px;
   font-size: 12.5px;
@@ -6247,10 +6350,10 @@ body.account-menu-open .account-menu {
   --bg-main: rgba(255, 255, 255, 0.46);
   --bg-base: #edf3f8;
   --border: rgba(42, 56, 78, 0.16);
-  --accent: #7c3aed;
-  --accent-glow: #a78bfa;
-  --accent-soft: rgba(124, 58, 237, 0.14);
-  --green: #7c3aed;
+  --accent: #1d4ed8;
+  --accent-glow: #60a5fa;
+  --accent-soft: rgba(29,78,216, 0.14);
+  --green: #1d4ed8;
   --amber: #b56200;
   --red: #d92d20;
   --text-primary: #132238;
@@ -6263,11 +6366,11 @@ body.account-menu-open .account-menu {
   --material-sheet: linear-gradient(180deg, rgba(250, 253, 255, 0.86), rgba(241, 247, 252, 0.66));
   --material-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.34));
   --material-clear: linear-gradient(135deg, rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0.20));
-  --material-stained: linear-gradient(135deg, rgba(76, 29, 149, 0.94), rgba(124, 58, 237, 0.76));
+  --material-stained: linear-gradient(135deg, rgba(15,42,95, 0.94), rgba(29,78,216, 0.76));
   --glass-border: rgba(255, 255, 255, 0.68);
   --glass-edge: rgba(40, 58, 83, 0.14);
   --shadow-card: 0 18px 55px rgba(48, 64, 92, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.74);
-  --shadow-glow: 0 18px 46px rgba(124, 58, 237, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  --shadow-glow: 0 18px 46px rgba(29,78,216, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.42);
   --shadow-float: 0 28px 82px rgba(38, 54, 81, 0.22), 0 1px 0 rgba(255, 255, 255, 0.72) inset;
   --transition: 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -6281,8 +6384,8 @@ body {
 
 body::before {
   background:
-    linear-gradient(115deg, rgba(124, 58, 237, 0.16), transparent 30%),
-    linear-gradient(245deg, rgba(124, 58, 237, 0.14), transparent 38%),
+    linear-gradient(115deg, rgba(29,78,216, 0.16), transparent 30%),
+    linear-gradient(245deg, rgba(29,78,216, 0.14), transparent 38%),
     linear-gradient(180deg, rgba(255, 214, 102, 0.12), transparent 48%),
     linear-gradient(180deg, #f9fcff 0%, #edf4f9 42%, #f7fbff 100%);
   background-size: cover;
@@ -6304,7 +6407,7 @@ body::after {
 }
 
 ::selection {
-  background: rgba(124, 58, 237, 0.20);
+  background: rgba(29,78,216, 0.20);
 }
 
 button,
@@ -6379,7 +6482,7 @@ select {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.04) 48%, rgba(124, 58, 237, 0.08));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.04) 48%, rgba(29,78,216, 0.08));
   opacity: 0.78;
 }
 
@@ -6417,7 +6520,7 @@ select {
 
 .nav-logo-shell::before {
   inset: 6px 4px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(124, 58, 237, 0.16));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(29,78,216, 0.16));
   filter: blur(10px);
   opacity: 0.82;
 }
@@ -6425,7 +6528,7 @@ select {
 .nav-logo-shell::after {
   inset: 8px 7px;
   border-color: rgba(255, 255, 255, 0.7);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 12px 28px rgba(124, 58, 237, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 12px 28px rgba(29,78,216, 0.16);
 }
 
 .grade-strip {
@@ -6444,7 +6547,7 @@ select {
 .search-wrap::before {
   inset: -1px;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(124, 58, 237, 0.30), rgba(196, 181, 253, 0.18));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(29,78,216, 0.30), rgba(147,197,253, 0.18));
   filter: blur(12px);
   opacity: 0.32;
   animation: none;
@@ -6481,8 +6584,8 @@ select {
 .auth-input:focus,
 .pdf-page-input:focus,
 .chat-input-wrap:focus-within {
-  border-color: rgba(124, 58, 237, 0.56);
-  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  border-color: rgba(29,78,216, 0.56);
+  box-shadow: 0 0 0 4px rgba(29,78,216, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.68);
 }
 
 .search-icon,
@@ -6559,7 +6662,7 @@ select {
 .rename-cover-btn:hover,
 .sync-btn-empty:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(124, 58, 237, 0.38);
+  border-color: rgba(29,78,216, 0.38);
   color: var(--accent-glow);
   box-shadow: var(--shadow-glow);
 }
@@ -6576,7 +6679,7 @@ select {
 
 .btn-primary:hover,
 #analyzeBtn:hover {
-  background: linear-gradient(135deg, #6d28d9, #a78bfa);
+  background: linear-gradient(135deg, #1e40af, #60a5fa);
   box-shadow: var(--shadow-glow);
 }
 
@@ -6586,7 +6689,7 @@ select {
 
 .book-grid-wrap {
   padding: 30px 40px 132px;
-  scrollbar-color: rgba(124, 58, 237, 0.25) transparent;
+  scrollbar-color: rgba(29,78,216, 0.25) transparent;
 }
 
 .book-card {
@@ -6598,16 +6701,16 @@ select {
 }
 
 .book-card:hover {
-  border-color: rgba(124, 58, 237, 0.34);
+  border-color: rgba(29,78,216, 0.34);
   transform: translateY(-6px) scale(1.018);
-  box-shadow: 0 24px 70px rgba(32, 57, 92, 0.22), 0 12px 34px rgba(124, 58, 237, 0.16);
+  box-shadow: 0 24px 70px rgba(32, 57, 92, 0.22), 0 12px 34px rgba(29,78,216, 0.16);
 }
 
 .card-cover,
 .rename-cover-preview {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(227, 236, 246, 0.72)),
-    linear-gradient(45deg, rgba(124, 58, 237, 0.14), rgba(196, 181, 253, 0.10));
+    linear-gradient(45deg, rgba(29,78,216, 0.14), rgba(147,197,253, 0.10));
   border-color: rgba(32, 48, 74, 0.12);
 }
 
@@ -6634,12 +6737,12 @@ select {
 }
 
 .scan-badge.done {
-  background: rgba(124, 58, 237, 0.13);
+  background: rgba(29,78,216, 0.13);
   color: var(--green);
 }
 
 .scan-badge.pending {
-  background: rgba(124, 58, 237, 0.12);
+  background: rgba(29,78,216, 0.12);
   color: var(--accent);
 }
 
@@ -6652,7 +6755,7 @@ select {
 
 .card-analyze-btn {
   background: rgba(255, 255, 255, 0.46);
-  border-color: rgba(124, 58, 237, 0.22);
+  border-color: rgba(29,78,216, 0.22);
   color: var(--accent);
   min-height: 38px;
 }
@@ -6688,8 +6791,8 @@ select {
 .pdf-ctrl-btn.active,
 .cfg-close-btn:hover,
 .toast-close:hover {
-  background: rgba(124, 58, 237, 0.13);
-  border-color: rgba(124, 58, 237, 0.24);
+  background: rgba(29,78,216, 0.13);
+  border-color: rgba(29,78,216, 0.24);
   color: var(--accent);
 }
 
@@ -6838,14 +6941,14 @@ select {
 
 .chat-history-empty {
   background: rgba(255, 255, 255, 0.34);
-  border-color: rgba(124, 58, 237, 0.20);
+  border-color: rgba(29,78,216, 0.20);
   color: var(--text-secondary);
 }
 
 .chat-history-item:hover,
 .chat-history-item.active {
   background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(124, 58, 237, 0.30);
+  border-color: rgba(29,78,216, 0.30);
 }
 
 #analysisScreen {
@@ -6872,12 +6975,12 @@ select {
 
 .analysis-status {
   color: var(--green);
-  background: rgba(124, 58, 237, 0.14);
-  border-color: rgba(196, 181, 253, 0.22);
+  background: rgba(29,78,216, 0.14);
+  border-color: rgba(147,197,253, 0.22);
 }
 
 .chat-flow {
-  scrollbar-color: rgba(124, 58, 237, 0.25) transparent;
+  scrollbar-color: rgba(29,78,216, 0.25) transparent;
 }
 
 .chat-empty {
@@ -6893,14 +6996,14 @@ select {
 .chip:hover {
   background: rgba(255, 255, 255, 0.72);
   color: var(--accent);
-  border-color: rgba(124, 58, 237, 0.24);
+  border-color: rgba(29,78,216, 0.24);
 }
 
 .chat-bubble {
-  background: linear-gradient(135deg, rgba(76, 29, 149, 0.95), rgba(124, 58, 237, 0.76));
+  background: linear-gradient(135deg, rgba(15,42,95, 0.95), rgba(29,78,216, 0.76));
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.36);
-  box-shadow: 0 18px 42px rgba(124, 58, 237, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: 0 18px 42px rgba(29,78,216, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   backdrop-filter: blur(18px) saturate(1.45);
   -webkit-backdrop-filter: blur(18px) saturate(1.45);
 }
@@ -6914,8 +7017,8 @@ select {
 .chat-md-quote,
 .cfg-desc,
 .add-desc {
-  background: rgba(124, 58, 237, 0.08);
-  border-color: rgba(124, 58, 237, 0.18);
+  background: rgba(29,78,216, 0.08);
+  border-color: rgba(29,78,216, 0.18);
 }
 
 .chat-md-code,
@@ -6928,7 +7031,7 @@ select {
 }
 
 .chat-md-table th {
-  background: rgba(124, 58, 237, 0.08);
+  background: rgba(29,78,216, 0.08);
 }
 
 .chat-md-table th,
@@ -6948,13 +7051,13 @@ select {
 
 .typing-spinner,
 .task-spinner {
-  border-color: rgba(124, 58, 237, 0.18);
+  border-color: rgba(29,78,216, 0.18);
   border-top-color: var(--accent);
 }
 
 .response-banner {
-  background: rgba(28, 19, 52, 0.88);
-  border-color: rgba(196, 181, 253, 0.24);
+  background: rgba(15,42,95, 0.88);
+  border-color: rgba(147,197,253, 0.24);
   color: var(--green);
   box-shadow: var(--shadow-float);
   backdrop-filter: blur(22px) saturate(1.4);
@@ -7023,7 +7126,7 @@ select {
 
 .pdf-load-ring-fg {
   stroke: var(--accent);
-  filter: drop-shadow(0 0 8px rgba(124, 58, 237, 0.28));
+  filter: drop-shadow(0 0 8px rgba(29,78,216, 0.28));
 }
 
 .pdf-load-pct,
@@ -7063,7 +7166,7 @@ select {
 }
 
 .auth-lock-icon {
-  background: rgba(124, 58, 237, 0.12);
+  background: rgba(29,78,216, 0.12);
   color: var(--accent);
 }
 
@@ -7088,11 +7191,11 @@ select {
 
 .upload-bar-fill,
 .toast.info .toast-progress {
-  background: linear-gradient(90deg, #4c1d95, #a78bfa);
+  background: linear-gradient(90deg, #0f2a5f, #60a5fa);
 }
 
 .upload-overall-fill {
-  background: rgba(124, 58, 237, 0.34);
+  background: rgba(29,78,216, 0.34);
 }
 
 .toast {
@@ -7105,7 +7208,7 @@ select {
 }
 
 .task-progress-fill {
-  background: linear-gradient(90deg, #4c1d95, #a78bfa);
+  background: linear-gradient(90deg, #0f2a5f, #60a5fa);
 }
 
 .task-cancel-note {
@@ -7227,33 +7330,33 @@ select {
   }
 }
 
-/* Dark purple theme and grid action alignment ----------------------------- */
+/* Dark blue theme and grid action alignment ----------------------------- */
 :root {
   color-scheme: dark;
-  --bg-deep: #05030c;
+  --bg-deep: #030712;
   --bg-surface: rgba(14, 9, 27, 0.84);
-  --bg-card: rgba(18, 11, 34, 0.80);
+  --bg-card: rgba(10,25,54, 0.80);
   --bg-glass: rgba(24, 16, 45, 0.54);
   --bg-main: rgba(10, 7, 21, 0.78);
-  --bg-base: #05030c;
-  --border: rgba(167, 139, 250, 0.16);
-  --accent: #8b5cf6;
-  --accent-glow: #6d28d9;
-  --accent-soft: rgba(124, 58, 237, 0.18);
-  --green: #a78bfa;
+  --bg-base: #030712;
+  --border: rgba(96,165,250, 0.16);
+  --accent: #2563eb;
+  --accent-glow: #1e40af;
+  --accent-soft: rgba(29,78,216, 0.18);
+  --green: #60a5fa;
   --amber: #fbbf24;
   --red: #fb7185;
-  --text-primary: #f3efff;
-  --text-secondary: #bfb0dc;
-  --text-muted: #7f7193;
-  --material-sheet: linear-gradient(180deg, rgba(20, 13, 38, 0.94), rgba(8, 5, 19, 0.92));
-  --material-glass: linear-gradient(135deg, rgba(31, 20, 58, 0.72), rgba(10, 6, 22, 0.50));
-  --material-clear: linear-gradient(135deg, rgba(38, 25, 70, 0.50), rgba(8, 5, 19, 0.28));
-  --material-stained: linear-gradient(135deg, rgba(109, 40, 217, 0.98), rgba(76, 29, 149, 0.94));
-  --glass-border: rgba(216, 180, 254, 0.20);
-  --glass-edge: rgba(167, 139, 250, 0.16);
+  --text-primary: #eef5ff;
+  --text-secondary: #a8b7d1;
+  --text-muted: #6f7f9a;
+  --material-sheet: linear-gradient(180deg, rgba(10,25,54, 0.94), rgba(8, 5, 19, 0.92));
+  --material-glass: linear-gradient(135deg, rgba(15,42,95, 0.72), rgba(10, 6, 22, 0.50));
+  --material-clear: linear-gradient(135deg, rgba(30,64,175, 0.50), rgba(8, 5, 19, 0.28));
+  --material-stained: linear-gradient(135deg, rgba(30,64,175, 0.98), rgba(15,42,95, 0.94));
+  --glass-border: rgba(191,219,254, 0.20);
+  --glass-edge: rgba(96,165,250, 0.16);
   --shadow-card: 0 18px 55px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.10);
-  --shadow-glow: 0 18px 46px rgba(109, 40, 217, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --shadow-glow: 0 18px 46px rgba(30,64,175, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.14);
   --shadow-float: 0 28px 82px rgba(0, 0, 0, 0.50), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
 }
 
@@ -7265,16 +7368,16 @@ body {
 
 body::before {
   background:
-    linear-gradient(135deg, rgba(5, 3, 12, 1) 0%, rgba(16, 9, 31, 0.99) 50%, rgba(5, 4, 14, 1) 100%),
-    linear-gradient(90deg, rgba(124, 58, 237, 0.12), transparent 38%, rgba(167, 139, 250, 0.075));
+    linear-gradient(135deg, rgba(3,7,18, 1) 0%, rgba(16, 9, 31, 0.99) 50%, rgba(5, 4, 14, 1) 100%),
+    linear-gradient(90deg, rgba(29,78,216, 0.12), transparent 38%, rgba(96,165,250, 0.075));
   background-size: cover;
   opacity: 1;
 }
 
 body::after {
   background:
-    repeating-linear-gradient(90deg, rgba(167, 139, 250, 0.04) 0 1px, transparent 1px 40px),
-    repeating-linear-gradient(0deg, rgba(167, 139, 250, 0.026) 0 1px, transparent 1px 40px);
+    repeating-linear-gradient(90deg, rgba(96,165,250, 0.04) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(0deg, rgba(96,165,250, 0.026) 0 1px, transparent 1px 40px);
   opacity: 0.38;
 }
 
@@ -7323,12 +7426,12 @@ body::after {
 .book-card::before,
 .chat-input-bar::before,
 .pdf-viewer-header::before {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 48%, rgba(124, 58, 237, 0.16));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 48%, rgba(29,78,216, 0.16));
   opacity: 0.72;
 }
 
 .search-wrap::before {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.52), rgba(196, 181, 253, 0.16));
+  background: linear-gradient(135deg, rgba(29,78,216, 0.52), rgba(147,197,253, 0.16));
 }
 
 .search-input,
@@ -7338,8 +7441,8 @@ body::after {
 .auth-input,
 .rename-input,
 .pdf-page-input {
-  background: rgba(12, 9, 24, 0.56);
-  border-color: rgba(196, 181, 253, 0.18);
+  background: rgba(6,14,31, 0.56);
+  border-color: rgba(147,197,253, 0.18);
   color: var(--text-primary);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
@@ -7352,8 +7455,8 @@ body::after {
 .auth-input:focus,
 .pdf-page-input:focus,
 .chat-input-wrap:focus-within {
-  border-color: rgba(139, 92, 246, 0.66);
-  box-shadow: 0 0 0 4px rgba(109, 40, 217, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-color: rgba(37,99,235, 0.66);
+  box-shadow: 0 0 0 4px rgba(30,64,175, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .search-icon,
@@ -7388,9 +7491,9 @@ body::after {
   gap: 8px;
   padding: 7px 13px;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(12, 8, 24, 0.82), rgba(30, 17, 56, 0.60));
-  border-color: rgba(196, 181, 253, 0.26);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34), 0 0 22px rgba(124, 58, 237, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  background: linear-gradient(135deg, rgba(6,14,31, 0.82), rgba(15,42,95, 0.60));
+  border-color: rgba(147,197,253, 0.26);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34), 0 0 22px rgba(29,78,216, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.09);
   font-weight: 750;
   letter-spacing: 0.01em;
 }
@@ -7419,9 +7522,9 @@ body::after {
   min-height: 38px;
   padding: 9px 12px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(10, 7, 21, 0.86), rgba(27, 16, 52, 0.68));
-  border-color: rgba(196, 181, 253, 0.22);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.30), 0 0 20px rgba(124, 58, 237, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, rgba(10, 7, 21, 0.86), rgba(10,25,54, 0.68));
+  border-color: rgba(147,197,253, 0.22);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.30), 0 0 20px rgba(29,78,216, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   font-weight: 800;
   letter-spacing: 0.01em;
 }
@@ -7437,14 +7540,14 @@ body::after {
 }
 
 .book-grid-wrap {
-  scrollbar-color: rgba(167, 139, 250, 0.34) transparent;
+  scrollbar-color: rgba(96,165,250, 0.34) transparent;
 }
 
 .book-card {
   display: flex;
   flex-direction: column;
   background: var(--material-sheet);
-  border-color: rgba(196, 181, 253, 0.16);
+  border-color: rgba(147,197,253, 0.16);
   border-radius: 8px;
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.09);
   overflow: hidden;
@@ -7457,15 +7560,15 @@ body::after {
   right: 12px;
   bottom: 10px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.42), transparent);
+  background: linear-gradient(90deg, transparent, rgba(37,99,235, 0.42), transparent);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.22s ease;
 }
 
 .book-card:hover {
-  border-color: rgba(139, 92, 246, 0.50);
-  box-shadow: 0 24px 68px rgba(0, 0, 0, 0.48), 0 12px 32px rgba(109, 40, 217, 0.24);
+  border-color: rgba(37,99,235, 0.50);
+  box-shadow: 0 24px 68px rgba(0, 0, 0, 0.48), 0 12px 32px rgba(30,64,175, 0.24);
 }
 
 .book-card:hover::after {
@@ -7475,9 +7578,9 @@ body::after {
 .card-cover,
 .rename-cover-preview {
   background:
-    linear-gradient(145deg, rgba(33, 24, 55, 0.92), rgba(14, 10, 28, 0.94)),
-    linear-gradient(45deg, rgba(167, 139, 250, 0.16), rgba(124, 58, 237, 0.12));
-  border-color: rgba(196, 181, 253, 0.16);
+    linear-gradient(145deg, rgba(10,25,54, 0.92), rgba(6,14,31, 0.94)),
+    linear-gradient(45deg, rgba(96,165,250, 0.16), rgba(29,78,216, 0.12));
+  border-color: rgba(147,197,253, 0.16);
 }
 
 .card-name {
@@ -7511,9 +7614,9 @@ body::after {
   opacity: 0;
   pointer-events: none;
   transform: scale(0.92);
-  background: rgba(12, 9, 24, 0.62);
+  background: rgba(6,14,31, 0.62);
   border: 1px solid rgba(233, 213, 255, 0.22);
-  color: #ede9fe;
+  color: #eaf2ff;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32);
 }
 
@@ -7543,8 +7646,8 @@ body::after {
 }
 
 .card-edit-btn:hover {
-  background: rgba(124, 58, 237, 0.24);
-  border-color: rgba(139, 92, 246, 0.42);
+  background: rgba(29,78,216, 0.24);
+  border-color: rgba(37,99,235, 0.42);
   color: #fff;
   transform: scale(1.06) !important;
 }
@@ -7558,13 +7661,13 @@ body::after {
 }
 
 .scan-badge.done {
-  background: rgba(124, 58, 237, 0.16);
+  background: rgba(29,78,216, 0.16);
   color: var(--green);
 }
 
 .scan-badge.pending {
-  background: rgba(124, 58, 237, 0.16);
-  color: #ddd6fe;
+  background: rgba(29,78,216, 0.16);
+  color: #bfdbfe;
 }
 
 .scan-badge.failed {
@@ -7572,19 +7675,19 @@ body::after {
 }
 
 .library-bottom-menu {
-  background: linear-gradient(135deg, rgba(25, 16, 48, 0.86), rgba(8, 5, 19, 0.74));
-  border-color: rgba(167, 139, 250, 0.20);
-  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.50), 0 0 34px rgba(109, 40, 217, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  background: linear-gradient(135deg, rgba(18,31,58, 0.86), rgba(8, 5, 19, 0.74));
+  border-color: rgba(96,165,250, 0.20);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.50), 0 0 34px rgba(30,64,175, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.09);
 }
 
 .bottom-grade-cluster {
-  background: linear-gradient(135deg, rgba(49, 31, 88, 0.82), rgba(18, 11, 36, 0.72));
-  border-color: rgba(216, 180, 254, 0.16);
+  background: linear-gradient(135deg, rgba(15,42,95, 0.82), rgba(3,7,18, 0.72));
+  border-color: rgba(191,219,254, 0.16);
 }
 
 .bottom-grade-options {
-  background: rgba(10, 7, 20, 0.46);
-  border-color: rgba(196, 181, 253, 0.12);
+  background: rgba(5,10,24, 0.46);
+  border-color: rgba(147,197,253, 0.12);
 }
 
 .grade-btn:hover,
@@ -7595,8 +7698,8 @@ body::after {
 .btn-ghost:hover,
 .new-chat-btn:hover,
 .rename-cover-btn:hover {
-  background: rgba(124, 58, 237, 0.18);
-  border-color: rgba(139, 92, 246, 0.34);
+  background: rgba(29,78,216, 0.18);
+  border-color: rgba(37,99,235, 0.34);
   color: #fff;
 }
 
@@ -7610,8 +7713,8 @@ body::after {
 }
 
 .lib-footer {
-  background: rgba(8, 6, 17, 0.54);
-  border-top-color: rgba(196, 181, 253, 0.10);
+  background: rgba(6,14,31, 0.54);
+  border-top-color: rgba(147,197,253, 0.10);
 }
 
 .chat-history-backdrop,
@@ -7624,7 +7727,7 @@ body::after {
 .profile-settings-overlay,
 .admin-tools-overlay,
 .task-overlay {
-  background: rgba(8, 6, 17, 0.66);
+  background: rgba(6,14,31, 0.66);
 }
 
 .chat-sidebar,
@@ -7638,28 +7741,28 @@ body::after {
 .upload-card,
 .task-panel,
 .toast {
-  background: linear-gradient(145deg, rgba(36, 26, 61, 0.90), rgba(14, 10, 28, 0.86));
-  border-color: rgba(196, 181, 253, 0.18);
+  background: linear-gradient(145deg, rgba(18,31,58, 0.90), rgba(6,14,31, 0.86));
+  border-color: rgba(147,197,253, 0.18);
 }
 
 #analysisScreen.active {
-  background: rgba(5, 3, 12, 0.98);
+  background: rgba(3,7,18, 0.98);
 }
 
 .analysis-left {
-  background: linear-gradient(180deg, rgba(24, 16, 42, 0.96), rgba(10, 7, 22, 0.96));
+  background: linear-gradient(180deg, rgba(10,25,54, 0.96), rgba(10, 7, 22, 0.96));
 }
 
 .analysis-right {
   background:
-    linear-gradient(135deg, rgba(33, 24, 55, 0.94), rgba(12, 8, 24, 0.92)),
+    linear-gradient(135deg, rgba(10,25,54, 0.94), rgba(6,14,31, 0.92)),
     rgba(9, 7, 20, 0.96);
-  border-color: rgba(196, 181, 253, 0.20);
+  border-color: rgba(147,197,253, 0.20);
 }
 
 .chat-input-bar {
-  background: rgba(12, 8, 24, 0.74);
-  border-top-color: rgba(196, 181, 253, 0.12);
+  background: rgba(6,14,31, 0.74);
+  border-top-color: rgba(147,197,253, 0.12);
 }
 
 .chat-bubble,
@@ -7669,20 +7772,20 @@ body::after {
 
 .btn-primary:hover,
 #analyzeBtn:hover {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 1), rgba(59, 7, 100, 0.96));
+  background: linear-gradient(135deg, rgba(29,78,216, 1), rgba(6,26,58, 0.96));
   box-shadow: var(--shadow-glow);
 }
 
 .chat-text {
-  background: rgba(26, 19, 45, 0.76);
-  border-color: rgba(196, 181, 253, 0.16);
+  background: rgba(10,25,54, 0.76);
+  border-color: rgba(147,197,253, 0.16);
 }
 
 .chat-md-quote,
 .cfg-desc,
 .add-desc {
-  background: rgba(124, 58, 237, 0.12);
-  border-color: rgba(139, 92, 246, 0.22);
+  background: rgba(29,78,216, 0.12);
+  border-color: rgba(37,99,235, 0.22);
 }
 
 .chat-md-code,
@@ -7690,34 +7793,34 @@ body::after {
 .chat-md-table-wrap,
 .chat-md-math.display,
 .chat-md-image-fallback {
-  background: rgba(10, 7, 20, 0.50);
-  border-color: rgba(196, 181, 253, 0.14);
+  background: rgba(5,10,24, 0.50);
+  border-color: rgba(147,197,253, 0.14);
 }
 
 .chat-md-table th {
-  background: rgba(124, 58, 237, 0.14);
+  background: rgba(29,78,216, 0.14);
 }
 
 .response-banner {
   background: rgba(17, 45, 43, 0.82);
-  border-color: rgba(196, 181, 253, 0.28);
+  border-color: rgba(147,197,253, 0.28);
 }
 
 .pdf-viewer-overlay {
-  background: rgba(8, 6, 17, 0.96);
+  background: rgba(6,14,31, 0.96);
 }
 
 .pdf-viewer-body,
 #pdfCanvasWrap {
-  background: linear-gradient(135deg, rgba(12, 8, 24, 0.96), rgba(25, 18, 43, 0.94));
+  background: linear-gradient(135deg, rgba(6,14,31, 0.96), rgba(10,25,54, 0.94));
 }
 
 #pdfLoadingOverlay {
-  background: rgba(8, 6, 17, 0.76);
+  background: rgba(6,14,31, 0.76);
 }
 
 .pdf-load-ring-bg {
-  stroke: rgba(196, 181, 253, 0.12);
+  stroke: rgba(147,197,253, 0.12);
 }
 
 .pdf-load-ring-fg {
@@ -7733,7 +7836,7 @@ body::after {
 .upload-bar-fill,
 .task-progress-fill,
 .toast.info .toast-progress {
-  background: linear-gradient(90deg, #2b174a, #7c3aed, #c4b5fd);
+  background: linear-gradient(90deg, #071a3d, #1d4ed8, #bfdbfe);
 }
 
 @media (max-width: 600px) {
@@ -7765,7 +7868,7 @@ body::after {
   }
 }
 
-/* Dark purple motion refresh ---------------------------------------------- */
+/* Dark blue motion refresh ---------------------------------------------- */
 :root {
   --motion-smooth: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-spring: cubic-bezier(0.16, 1, 0.3, 1);
@@ -7896,8 +7999,8 @@ body::after {
 }
 
 @keyframes floatBooks {
-  0% { transform: translateY(0) rotate(-0.8deg); filter: drop-shadow(0 6px 18px rgba(109, 40, 217, 0.20)); }
-  100% { transform: translateY(-9px) rotate(0.8deg); filter: drop-shadow(0 14px 26px rgba(167, 139, 250, 0.16)); }
+  0% { transform: translateY(0) rotate(-0.8deg); filter: drop-shadow(0 6px 18px rgba(30,64,175, 0.20)); }
+  100% { transform: translateY(-9px) rotate(0.8deg); filter: drop-shadow(0 14px 26px rgba(96,165,250, 0.16)); }
 }
 
 @keyframes chatHistoryIn {
@@ -7956,7 +8059,7 @@ body::after {
 .message-action-btn {
   width: 28px;
   height: 28px;
-  border: 1px solid rgba(196, 181, 253, 0.18);
+  border: 1px solid rgba(147,197,253, 0.18);
   border-radius: 10px;
   display: inline-grid;
   place-items: center;
@@ -7981,13 +8084,13 @@ body::after {
 .message-action-btn:hover {
   transform: translateY(-2px) scale(1.04);
   color: var(--text-primary);
-  border-color: rgba(167, 139, 250, 0.38);
-  background: rgba(76, 29, 149, 0.46);
+  border-color: rgba(96,165,250, 0.38);
+  background: rgba(15,42,95, 0.46);
 }
 
 .chat-input-wrap.editing {
-  border-color: rgba(196, 181, 253, 0.42);
-  box-shadow: 0 0 0 1px rgba(196, 181, 253, 0.16), 0 0 28px rgba(124, 58, 237, 0.16);
+  border-color: rgba(147,197,253, 0.42);
+  box-shadow: 0 0 0 1px rgba(147,197,253, 0.16), 0 0 28px rgba(29,78,216, 0.16);
 }
 
 #analyzeBtn.loading {
@@ -8001,8 +8104,8 @@ body::after {
 }
 
 #analyzeBtn.edit-mode {
-  background: linear-gradient(135deg, rgba(76, 29, 149, 0.96), rgba(91, 33, 182, 0.94));
-  border-color: rgba(196, 181, 253, 0.30);
+  background: linear-gradient(135deg, rgba(15,42,95, 0.96), rgba(30,58,138, 0.94));
+  border-color: rgba(147,197,253, 0.30);
 }
 
 .library-bottom-menu {
@@ -8015,7 +8118,7 @@ body::after {
 
 .library-bottom-menu:hover {
   transform: translateX(-50%) translateY(-2px);
-  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.34), 0 0 40px rgba(76, 29, 149, 0.22), inset 0 1px 0 rgba(255,255,255,0.12);
+  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.34), 0 0 40px rgba(15,42,95, 0.22), inset 0 1px 0 rgba(255,255,255,0.12);
 }
 
 .bottom-menu-item,
@@ -8258,7 +8361,7 @@ body::after {
     width: 30px;
     height: 30px;
     border-radius: 999px;
-    background: rgba(8, 6, 17, 0.66);
+    background: rgba(6,14,31, 0.66);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
@@ -8469,6 +8572,9 @@ body::after {
   .profile-settings-overlay,
   .admin-tools-overlay,
   .email-code-overlay,
+  .avatar-crop-overlay,
+  .password-change-overlay,
+  .verify-required-overlay,
   .cfg-overlay,
   .add-overlay,
   .rename-overlay,
@@ -8482,6 +8588,9 @@ body::after {
   .profile-settings-panel,
   .admin-tools-panel,
   .email-code-panel,
+  .avatar-crop-panel,
+  .password-change-panel,
+  .verify-required-panel,
   .cfg-panel,
   .add-panel,
   .rename-panel,
@@ -8496,7 +8605,10 @@ body::after {
 
   .profile-settings-panel,
   .admin-tools-panel,
-  .email-code-panel {
+  .email-code-panel,
+  .avatar-crop-panel,
+  .password-change-panel,
+  .verify-required-panel {
     padding: 18px;
   }
 
@@ -8507,7 +8619,7 @@ body::after {
     z-index: 2;
     padding-top: 2px;
     padding-bottom: 10px;
-    background: linear-gradient(180deg, rgba(25, 16, 48, 0.98), rgba(25, 16, 48, 0.86), transparent);
+    background: linear-gradient(180deg, rgba(18,31,58, 0.98), rgba(18,31,58, 0.86), transparent);
   }
 
   .profile-settings-title,
@@ -8644,6 +8756,220 @@ body::after {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-6px); }
   40%, 80% { transform: translateX(6px); }
+}
+
+/* Dark blue liquid glass final polish ------------------------------------- */
+:root {
+  --bg-deep: #020617;
+  --bg-surface: rgba(7, 20, 42, 0.88);
+  --bg-card: rgba(10, 25, 54, 0.86);
+  --bg-glass: rgba(8, 18, 38, 0.62);
+  --bg-main: rgba(5, 14, 31, 0.82);
+  --bg-base: #020617;
+  --border: rgba(96, 165, 250, 0.18);
+  --accent: #2563eb;
+  --accent-glow: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.16);
+  --green: #60a5fa;
+  --text-primary: #eef5ff;
+  --text-secondary: #a8b7d1;
+  --text-muted: #6f7f9a;
+  --material-sheet: linear-gradient(180deg, rgba(10, 25, 54, 0.94), rgba(3, 7, 18, 0.94));
+  --material-glass: linear-gradient(135deg, rgba(15, 42, 95, 0.70), rgba(3, 7, 18, 0.58));
+  --material-clear: linear-gradient(135deg, rgba(30, 64, 175, 0.24), rgba(3, 7, 18, 0.34));
+  --material-stained: linear-gradient(135deg, rgba(7, 26, 61, 0.98), rgba(29, 78, 216, 0.96), rgba(96, 165, 250, 0.84));
+  --glass-border: rgba(147, 197, 253, 0.20);
+  --glass-edge: rgba(96, 165, 250, 0.16);
+  --shadow-card: 0 18px 55px rgba(0, 0, 0, 0.44), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --shadow-glow: 0 18px 46px rgba(29, 78, 216, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.13);
+  --shadow-float: 0 28px 82px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+html,
+body {
+  background: #020617 !important;
+  color: var(--text-primary);
+}
+
+body::before,
+.account-auth-screen {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(37, 99, 235, 0.18), transparent 32%),
+    radial-gradient(circle at 86% 18%, rgba(96, 165, 250, 0.11), transparent 34%),
+    linear-gradient(135deg, #020617 0%, #061a3a 48%, #020617 100%) !important;
+}
+
+body::after,
+.account-auth-screen::before {
+  background:
+    repeating-linear-gradient(90deg, rgba(96, 165, 250, 0.035) 0 1px, transparent 1px 42px),
+    repeating-linear-gradient(0deg, rgba(96, 165, 250, 0.024) 0 1px, transparent 1px 42px) !important;
+}
+
+.navbar,
+.grade-bar,
+.status-pill,
+.library-bottom-menu,
+.bottom-grade-cluster,
+.account-panel-card,
+.auth-panel-card,
+.account-menu,
+.profile-settings-panel,
+.admin-tools-panel,
+.email-code-panel,
+.avatar-crop-panel,
+.password-change-panel,
+.verify-required-panel,
+.chat-sidebar,
+.analysis-left,
+.analysis-right,
+.chat-input-bar,
+.chat-input-wrap,
+.book-card,
+.chat-history-item,
+.toast,
+.task-panel,
+.del-panel,
+.cfg-panel,
+.auth-panel,
+.rename-panel,
+.add-panel,
+.upload-card {
+  background: var(--material-glass) !important;
+  border-color: var(--glass-edge) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.book-card,
+.profile-settings-panel,
+.admin-tools-panel,
+.email-code-panel,
+.avatar-crop-panel,
+.password-change-panel,
+.verify-required-panel,
+.auth-panel-card,
+.account-menu {
+  background: var(--material-sheet) !important;
+}
+
+.nav-logo-shell {
+  isolation: auto;
+}
+
+.nav-logo-shell::before,
+.nav-logo-shell::after {
+  display: none !important;
+}
+
+.nav-logo {
+  filter: drop-shadow(0 0 12px rgba(96, 165, 250, 0.38)) !important;
+}
+
+.grade-btn:hover,
+.bottom-menu-item:hover,
+.upload-nav-btn:hover,
+.history-nav-btn:hover,
+.sync-btn:hover:not(:disabled),
+.scan-nav-btn:hover:not(:disabled),
+.read-btn:hover,
+.btn-ghost:hover,
+.new-chat-btn:hover,
+.rename-cover-btn:hover,
+.account-menu-btn:hover,
+.chip:hover,
+.chat-history-item:hover,
+.chat-history-item.active,
+.card-edit-btn:hover,
+.pdf-ctrl-btn:hover,
+.cfg-close-btn:hover {
+  background: linear-gradient(135deg, rgba(29, 78, 216, 0.24), rgba(7, 26, 61, 0.58)) !important;
+  border-color: rgba(96, 165, 250, 0.34) !important;
+  color: #eef5ff !important;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.26), 0 0 24px rgba(37, 99, 235, 0.14) !important;
+}
+
+.btn-primary,
+#analyzeBtn,
+.grade-btn.active,
+.account-submit,
+.sync-btn-empty {
+  background: var(--material-stained) !important;
+  color: #ffffff !important;
+  border-color: rgba(147, 197, 253, 0.30) !important;
+}
+
+.remember-row input:checked + .remember-check,
+.settings-email-state.verified,
+.account-verify-state.verified,
+.admin-mini-badge.good,
+.scan-badge.done,
+.toast.success .toast-icon {
+  color: #93c5fd !important;
+}
+
+.remember-row input:checked + .remember-check,
+.admin-mini-badge.good,
+.scan-badge.done {
+  background: rgba(37, 99, 235, 0.16) !important;
+  border-color: rgba(96, 165, 250, 0.28) !important;
+}
+
+.toast.success .toast-progress,
+.net-indicator.online .net-dot,
+.net-indicator.wifi .net-dot,
+.net-indicator.ethernet .net-dot {
+  background: #60a5fa !important;
+}
+
+.response-banner {
+  background: linear-gradient(135deg, rgba(15, 42, 95, 0.90), rgba(3, 7, 18, 0.86)) !important;
+  border-color: rgba(96, 165, 250, 0.28) !important;
+  color: #93c5fd !important;
+}
+
+.chat-text,
+.chat-md-code,
+.chat-md-pre,
+.chat-md-table-wrap,
+.chat-md-math.display,
+.chat-md-image-fallback {
+  background: rgba(5, 14, 31, 0.62) !important;
+  border-color: rgba(147, 197, 253, 0.14) !important;
+}
+
+.settings-input,
+.account-input-shell,
+.search-input,
+.cfg-input,
+.add-input,
+.add-grade-select,
+.auth-input,
+.rename-input,
+.pdf-page-input {
+  background: rgba(3, 7, 18, 0.46) !important;
+  border-color: rgba(147, 197, 253, 0.16) !important;
+  color: var(--text-primary) !important;
+}
+
+@media (max-width: 720px) {
+  .account-menu {
+    right: 10px;
+    top: 70px;
+    width: min(340px, calc(100vw - 20px));
+  }
+
+  .profile-photo-card {
+    grid-template-columns: 72px 1fr;
+  }
+
+  .profile-photo-card .account-menu-btn {
+    grid-column: 2;
+  }
+
+  .avatar-crop-canvas {
+    width: min(280px, 100%);
+    border-radius: 22px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -9046,7 +9372,7 @@ body::after {
     </div>
     <div class="add-desc">
       Google Drive&#39;da PDF dosyas&#305;n&#305; a&#231;&#305;n &#8594; adres &#231;ubu&#287;undaki URL&#39;den dosya ID&#39;sini kopyalay&#305;n:<br>
-      <code style="background:rgba(99,102,241,0.15);padding:2px 6px;border-radius:4px;display:inline-block;margin-top:5px">drive.google.com/file/d/<strong>DOSYA_ID</strong>/view</code>
+      <code style="background:rgba(37,99,235,0.15);padding:2px 6px;border-radius:4px;display:inline-block;margin-top:5px">drive.google.com/file/d/<strong>DOSYA_ID</strong>/view</code>
     </div>
     <div class="add-field">
       <div class="add-label">Drive Dosya ID</div>
@@ -9079,7 +9405,7 @@ body::after {
     </div>
     <div class="cfg-desc">
       Her s&#305;n&#305;f&#305;n Google Drive klas&#246;r ID&#39;sini girin.<br>
-      Drive&#39;da klas&#246;r&#252; a&#231;&#305;n &#8594; URL&#39;deki <code style="background:rgba(99,102,241,0.15);padding:1px 5px;border-radius:4px">/folders/<strong>ID_BURAYA</strong></code> k&#305;sm&#305;n&#305; kopyalay&#305;n.<br>
+      Drive&#39;da klas&#246;r&#252; a&#231;&#305;n &#8594; URL&#39;deki <code style="background:rgba(37,99,235,0.15);padding:1px 5px;border-radius:4px">/folders/<strong>ID_BURAYA</strong></code> k&#305;sm&#305;n&#305; kopyalay&#305;n.<br>
       ID girilmezse klas&#246;r ismiyle arama yap&#305;l&#305;r.
     </div>
     <div style="display:flex;flex-direction:column;gap:11px">
@@ -9131,19 +9457,75 @@ body::after {
           </div>
           <div class="settings-hint" id="settingsEmailHint">E-posta doğrulaması hesap güvenliği için kullanılır.</div>
         </div>
-        <label class="settings-field">
-          <span class="settings-label">Mevcut şifre</span>
-          <input class="settings-input" id="settingsCurrentPassword" type="password" autocomplete="current-password" placeholder="E-posta veya şifre değişimi için">
-        </label>
-        <label class="settings-field">
-          <span class="settings-label">Yeni şifre</span>
-          <input class="settings-input" id="settingsNewPassword" type="password" autocomplete="new-password" placeholder="Boş bırakılırsa değişmez">
-        </label>
+        <button class="account-menu-btn settings-password-btn" type="button" onclick="openPasswordChangeModal()">Şifreyi değiştir</button>
       </div>
     </div>
     <div class="settings-actions">
       <button class="btn btn-ghost" type="button" onclick="closeProfileSettings()">İptal</button>
       <button class="btn btn-primary" type="button" onclick="saveProfileSettings()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<div class="avatar-crop-overlay" id="avatarCropOverlay" onclick="if(event.target===this)closeAvatarCropModal()">
+  <div class="avatar-crop-panel">
+    <div class="profile-settings-head">
+      <div>
+        <div class="profile-settings-kicker">Profil fotoğrafı</div>
+        <div class="profile-settings-title">512 x 512 kırp</div>
+      </div>
+      <button class="cfg-close-btn" type="button" onclick="closeAvatarCropModal()">&#x2715;</button>
+    </div>
+    <canvas class="avatar-crop-canvas" id="avatarCropCanvas" width="512" height="512"></canvas>
+    <div class="avatar-crop-controls">
+      <label class="settings-field">
+        <span class="settings-label">Yakınlık</span>
+        <input class="settings-range" id="avatarCropZoom" type="range" min="100" max="300" value="100" oninput="renderAvatarCropPreview()">
+      </label>
+      <label class="settings-field">
+        <span class="settings-label">Yatay konum</span>
+        <input class="settings-range" id="avatarCropX" type="range" min="0" max="100" value="50" oninput="renderAvatarCropPreview()">
+      </label>
+      <label class="settings-field">
+        <span class="settings-label">Dikey konum</span>
+        <input class="settings-range" id="avatarCropY" type="range" min="0" max="100" value="50" oninput="renderAvatarCropPreview()">
+      </label>
+    </div>
+    <div class="settings-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeAvatarCropModal()">İptal</button>
+      <button class="btn btn-primary" type="button" onclick="applyAvatarCrop()">Kırp ve kullan</button>
+    </div>
+  </div>
+</div>
+
+<div class="password-change-overlay" id="passwordChangeOverlay" onclick="if(event.target===this)closePasswordChangeModal()">
+  <div class="password-change-panel">
+    <button class="email-code-back" type="button" onclick="closePasswordChangeModal()">‹ Geri</button>
+    <div class="email-code-kicker">Şifre güvenliği</div>
+    <div class="email-code-title">Şifreyi değiştir</div>
+    <div class="email-code-lead" id="passwordChangeLead">Önce e-postana gönderilen 6 haneli kodu onayla.</div>
+    <div class="email-code-grid password-code-grid" id="passwordCodeGrid" onclick="focusFirstEmptyPasswordCodeCell()">
+      <input class="email-code-cell password-code-cell" inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="Şifre kod hanesi 1">
+      <input class="email-code-cell password-code-cell" inputmode="numeric" maxlength="1" aria-label="Şifre kod hanesi 2">
+      <input class="email-code-cell password-code-cell" inputmode="numeric" maxlength="1" aria-label="Şifre kod hanesi 3">
+      <input class="email-code-cell password-code-cell" inputmode="numeric" maxlength="1" aria-label="Şifre kod hanesi 4">
+      <input class="email-code-cell password-code-cell" inputmode="numeric" maxlength="1" aria-label="Şifre kod hanesi 5">
+      <input class="email-code-cell password-code-cell" inputmode="numeric" maxlength="1" aria-label="Şifre kod hanesi 6">
+    </div>
+    <div class="password-new-fields" id="passwordNewFields">
+      <label class="settings-field">
+        <span class="settings-label">Yeni şifre</span>
+        <input class="settings-input" id="passwordNewInput" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="En az 8 karakter">
+      </label>
+      <label class="settings-field">
+        <span class="settings-label">Yeni şifre tekrar</span>
+        <input class="settings-input" id="passwordNewConfirmInput" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Tekrar gir">
+      </label>
+    </div>
+    <div class="email-code-status" id="passwordChangeStatus"></div>
+    <div class="email-code-actions">
+      <button class="account-menu-btn" id="passwordResendBtn" type="button" onclick="sendPasswordChangeCode()">Kodu yeniden gönder</button>
+      <button class="btn btn-primary" id="passwordSubmitBtn" type="button" onclick="confirmPasswordCodeOrSave()">Kodu onayla</button>
     </div>
   </div>
 </div>
@@ -9167,6 +9549,18 @@ body::after {
     <div class="email-code-actions">
       <button class="account-menu-btn" id="emailCodeResendBtn" type="button" onclick="resendEmailCode()">Kodu yeniden gönder</button>
       <button class="btn btn-primary" id="emailCodeSubmitBtn" type="button" onclick="confirmEmailCodeFromModal()">Onayla</button>
+    </div>
+  </div>
+</div>
+
+<div class="verify-required-overlay" id="verifyRequiredOverlay" onclick="if(event.target===this)closeVerifyRequiredModal()">
+  <div class="verify-required-panel">
+    <div class="email-code-kicker">E-posta gerekli</div>
+    <div class="email-code-title">AI için e-postanı doğrula</div>
+    <div class="email-code-lead">Kitap analizlerine erişmeden önce hesabındaki e-posta adresini no-reply kodu ile doğrulaman gerekiyor.</div>
+    <div class="email-code-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeVerifyRequiredModal()">Sonra</button>
+      <button class="btn btn-primary" type="button" onclick="startVerifyRequiredFlow()">E-postayı doğrula</button>
     </div>
   </div>
 </div>
@@ -9198,13 +9592,16 @@ body::after {
     <div class="auth-lock-icon">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     </div>
-    <div class="auth-title">Y&#246;netici Giri&#351;i</div>
-    <div class="auth-desc">Bu i&#351;lem i&#231;in y&#246;netici &#351;ifresi gereklidir.</div>
-    <input class="auth-input" id="authInput" type="password" placeholder="&#350;ifre" onkeydown="if(event.key==='Enter')submitAuth()">
+    <div class="auth-title">Cloudflare Doğrulaması</div>
+    <div class="auth-desc">Bu yönetici işlemi için bot doğrulamasını tamamla.</div>
+    <div class="turnstile-wrap admin-turnstile-wrap">
+      <div id="adminTurnstile"></div>
+      <div class="turnstile-note" id="adminTurnstileNote">Cloudflare doğrulaması hazırlanıyor...</div>
+    </div>
     <div class="auth-error" id="authError"></div>
     <div class="auth-actions">
       <button class="btn btn-ghost" onclick="closeAuth()">&#304;ptal</button>
-      <button class="btn btn-primary" onclick="submitAuth()">Giri&#351;</button>
+      <button class="btn btn-primary" id="adminVerifyBtn" onclick="submitAuth()">Doğrula</button>
     </div>
   </div>
 </div>
@@ -9253,12 +9650,20 @@ let _turnstileSiteKey = '';
 let _turnstileWidgetId = null;
 let _turnstileToken = '';
 let _turnstileReady = false;
+let _adminTurnstileWidgetId = null;
+let _adminTurnstileToken = '';
+let _adminTurnstileReady = false;
 let _appStarted = false;
 let _pendingProfileAvatarDataUrl = '';
+let _profileCropImage = null;
+let _profileCropSrc = '';
 let _emailCodeMode = 'verify';
 let _emailCodeTargetEmail = '';
 let _emailCodeSubmitting = false;
 let _emailCodeAutoTimer = null;
+let _passwordChangeToken = '';
+let _passwordCodeSubmitting = false;
+let _passwordCodeAutoTimer = null;
 let _chatStore = { chats: [] };
 let _chatStoreLoaded = false;
 let _chatStoreLoadPromise = null;
@@ -9469,6 +9874,68 @@ function resetAccountTurnstile() {
   updateAccountSubmitState();
 }
 
+function updateAdminVerifyState() {
+  const btn = document.getElementById('adminVerifyBtn');
+  if (btn) btn.disabled = !_adminTurnstileReady || _authSubmitting;
+}
+
+function renderAdminTurnstile() {
+  const target = document.getElementById('adminTurnstile');
+  const note = document.getElementById('adminTurnstileNote');
+  if (!target) return;
+  if (!_turnstileSiteKey) {
+    _adminTurnstileReady = false;
+    if (note) note.textContent = 'Cloudflare doğrulaması için production site key bekleniyor.';
+    updateAdminVerifyState();
+    return;
+  }
+  if (!window.turnstile || typeof window.turnstile.render !== 'function') {
+    if (note) note.textContent = 'Cloudflare doğrulaması yükleniyor...';
+    setTimeout(renderAdminTurnstile, 220);
+    return;
+  }
+  target.innerHTML = '';
+  _adminTurnstileToken = '';
+  _adminTurnstileReady = false;
+  _adminTurnstileWidgetId = window.turnstile.render(target, {
+    sitekey: _turnstileSiteKey,
+    action: 'admin-action-v1',
+    theme: 'dark',
+    callback: function(token) {
+      _adminTurnstileToken = token || '';
+      _adminTurnstileReady = !!_adminTurnstileToken;
+      if (note) note.textContent = _adminTurnstileReady ? 'Cloudflare doğrulaması tamam.' : 'Cloudflare doğrulaması bekleniyor...';
+      updateAdminVerifyState();
+    },
+    'expired-callback': function() {
+      _adminTurnstileToken = '';
+      _adminTurnstileReady = false;
+      if (note) note.textContent = 'Doğrulama süresi doldu. Yenileniyor...';
+      updateAdminVerifyState();
+      resetAdminTurnstile();
+    },
+    'error-callback': function() {
+      _adminTurnstileToken = '';
+      _adminTurnstileReady = false;
+      if (note) note.textContent = 'Cloudflare doğrulaması tekrar deneniyor...';
+      updateAdminVerifyState();
+    }
+  });
+  if (note) note.textContent = 'Cloudflare doğrulaması bekleniyor...';
+  updateAdminVerifyState();
+}
+
+function resetAdminTurnstile() {
+  _adminTurnstileToken = '';
+  _adminTurnstileReady = false;
+  if (window.turnstile && _adminTurnstileWidgetId !== null) {
+    try { window.turnstile.reset(_adminTurnstileWidgetId); } catch(e) { renderAdminTurnstile(); }
+  } else {
+    renderAdminTurnstile();
+  }
+  updateAdminVerifyState();
+}
+
 async function loadAccountAuthConfig() {
   try {
     const res = await fetch('/api/auth/config', { cache: 'no-store' });
@@ -9635,7 +10102,7 @@ function setAccountAvatarElement(el, user, sizeClass) {
 }
 
 function roleIconText(icon) {
-  if (icon === 'shield') return '◆';
+  if (icon === 'shield') return '&lt;/&gt;';
   if (icon === 'sparkles') return '✦';
   return '●';
 }
@@ -9672,7 +10139,7 @@ updateAccountUI = function() {
   if (badges) badges.innerHTML = renderAccountBadges(user.roles);
   if (chipRole) {
     const admin = accountIsAdmin();
-    chipRole.textContent = admin ? 'Admin' : '';
+    chipRole.textContent = admin ? '</> Admin' : '';
     chipRole.classList.toggle('visible', admin);
   }
   if (adminBtn) adminBtn.style.display = accountIsAdmin() ? 'inline-flex' : 'none';
@@ -9694,12 +10161,8 @@ function openProfileSettings() {
   _pendingProfileAvatarDataUrl = _accountUser.avatar_data_url || '';
   const name = document.getElementById('settingsDisplayName');
   const email = document.getElementById('settingsEmail');
-  const current = document.getElementById('settingsCurrentPassword');
-  const next = document.getElementById('settingsNewPassword');
   if (name) name.value = _accountUser.display_name || '';
   if (email) email.value = _accountUser.email || '';
-  if (current) current.value = '';
-  if (next) next.value = '';
   updateProfilePhotoPreview();
   updateVerificationPanel();
   document.getElementById('profileSettingsOverlay').classList.add('active');
@@ -9727,6 +10190,7 @@ function updateVerificationPanel() {
   const typedEmail = String(input.value || '').trim().toLowerCase();
   const changed = typedEmail && typedEmail !== currentEmail;
   state.classList.remove('verified', 'changed', 'pending');
+  btn.style.display = '';
   btn.disabled = false;
   if (changed) {
     state.textContent = 'Değişiklik bekliyor';
@@ -9738,8 +10202,9 @@ function updateVerificationPanel() {
   if (_accountUser.email_verified) {
     state.textContent = 'Doğrulandı';
     state.classList.add('verified');
-    btn.textContent = 'Doğrulandı';
+    btn.textContent = '';
     btn.disabled = true;
+    btn.style.display = 'none';
     hint.textContent = 'Bu e-posta adresi doğrulanmış durumda.';
     return;
   }
@@ -9749,6 +10214,39 @@ function updateVerificationPanel() {
   hint.textContent = 'No-reply adresinden gelen kodla e-postanı doğrulayabilirsin.';
 }
 
+function accountEmailVerified() {
+  return !!(_accountUser && _accountUser.email_verified);
+}
+
+function showVerifyRequiredModal(message) {
+  const overlay = document.getElementById('verifyRequiredOverlay');
+  const lead = overlay ? overlay.querySelector('.email-code-lead') : null;
+  if (lead) {
+    lead.textContent = message || 'Kitap analizlerine erişmeden önce hesabındaki e-posta adresini no-reply kodu ile doğrulaman gerekiyor.';
+  }
+  if (overlay) overlay.classList.add('active');
+}
+
+function closeVerifyRequiredModal() {
+  const overlay = document.getElementById('verifyRequiredOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function startVerifyRequiredFlow() {
+  closeVerifyRequiredModal();
+  if (!_accountUser) {
+    showAccountAuth();
+    return;
+  }
+  openEmailCodeModal('verify', { email: _accountUser.email || '', send: true });
+}
+
+function ensureEmailVerifiedForAI() {
+  if (accountEmailVerified()) return true;
+  showVerifyRequiredModal();
+  return false;
+}
+
 function handleProfilePhotoChange(event) {
   const file = event && event.target && event.target.files ? event.target.files[0] : null;
   if (!file) return;
@@ -9756,19 +10254,79 @@ function handleProfilePhotoChange(event) {
     showToast('warning', 'Görsel desteklenmiyor', 'PNG, JPG veya WebP formatında bir profil fotoğrafı seç.', 4200);
     return;
   }
-  if (file.size > 260 * 1024) {
-    showToast('warning', 'Fotoğraf büyük', 'Profil fotoğrafı 260 KB altında olmalı.', 4200);
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('warning', 'Fotoğraf büyük', 'Profil fotoğrafı için 5 MB altında bir görsel seç.', 4200);
     return;
   }
   const reader = new FileReader();
   reader.onload = function() {
-    _pendingProfileAvatarDataUrl = String(reader.result || '');
-    updateProfilePhotoPreview();
+    openAvatarCropModal(String(reader.result || ''));
   };
   reader.onerror = function() {
     showToast('error', 'Fotoğraf okunamadı', 'Görsel dosyasını tekrar seç.', 4200);
   };
   reader.readAsDataURL(file);
+}
+
+function openAvatarCropModal(src) {
+  _profileCropSrc = src || '';
+  _profileCropImage = new Image();
+  _profileCropImage.onload = function() {
+    const zoom = document.getElementById('avatarCropZoom');
+    const x = document.getElementById('avatarCropX');
+    const y = document.getElementById('avatarCropY');
+    if (zoom) zoom.value = '100';
+    if (x) x.value = '50';
+    if (y) y.value = '50';
+    const overlay = document.getElementById('avatarCropOverlay');
+    if (overlay) overlay.classList.add('active');
+    renderAvatarCropPreview();
+  };
+  _profileCropImage.onerror = function() {
+    showToast('error', 'Fotoğraf açılamadı', 'Görseli tekrar seç.', 4200);
+  };
+  _profileCropImage.src = _profileCropSrc;
+}
+
+function closeAvatarCropModal() {
+  const overlay = document.getElementById('avatarCropOverlay');
+  if (overlay) overlay.classList.remove('active');
+  const input = document.getElementById('profilePhotoInput');
+  if (input) input.value = '';
+}
+
+function getAvatarCropRect() {
+  if (!_profileCropImage) return null;
+  const img = _profileCropImage;
+  const zoom = Number((document.getElementById('avatarCropZoom') || {}).value || 100) / 100;
+  const xVal = Number((document.getElementById('avatarCropX') || {}).value || 50) / 100;
+  const yVal = Number((document.getElementById('avatarCropY') || {}).value || 50) / 100;
+  const baseSide = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
+  const side = Math.max(1, baseSide / Math.max(1, zoom));
+  const maxX = Math.max(0, (img.naturalWidth || img.width) - side);
+  const maxY = Math.max(0, (img.naturalHeight || img.height) - side);
+  return { sx: maxX * xVal, sy: maxY * yVal, side: side };
+}
+
+function renderAvatarCropPreview() {
+  const canvas = document.getElementById('avatarCropCanvas');
+  if (!canvas || !_profileCropImage || !_profileCropImage.complete) return;
+  const rect = getAvatarCropRect();
+  if (!rect) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 512, 512);
+  ctx.fillStyle = '#06101f';
+  ctx.fillRect(0, 0, 512, 512);
+  ctx.drawImage(_profileCropImage, rect.sx, rect.sy, rect.side, rect.side, 0, 0, 512, 512);
+}
+
+function applyAvatarCrop() {
+  renderAvatarCropPreview();
+  const canvas = document.getElementById('avatarCropCanvas');
+  if (!canvas) return;
+  _pendingProfileAvatarDataUrl = canvas.toDataURL('image/jpeg', 0.86);
+  updateProfilePhotoPreview();
+  closeAvatarCropModal();
 }
 
 function clearProfilePhoto() {
@@ -9783,16 +10341,12 @@ async function saveProfileSettings(options) {
   if (!_accountUser) return;
   const displayName = (document.getElementById('settingsDisplayName') || {}).value || '';
   const email = (document.getElementById('settingsEmail') || {}).value || '';
-  const currentPassword = (document.getElementById('settingsCurrentPassword') || {}).value || '';
-  const newPassword = (document.getElementById('settingsNewPassword') || {}).value || '';
   const payload = {
     display_name: displayName.trim(),
     email: email.trim(),
     avatar_data_url: _pendingProfileAvatarDataUrl || ''
   };
   const changingEmail = payload.email.toLowerCase() !== String(_accountUser.email || '').toLowerCase();
-  if (changingEmail || newPassword) payload.current_password = currentPassword;
-  if (newPassword) payload.new_password = newPassword;
   try {
     const res = await apiFetch('/api/auth/profile', {
       method: 'PATCH',
@@ -9841,7 +10395,7 @@ function handleEmailVerifyButton() {
 }
 
 function getEmailCodeCells() {
-  return Array.prototype.slice.call(document.querySelectorAll('.email-code-cell'));
+  return Array.prototype.slice.call(document.querySelectorAll('#emailCodeGrid .email-code-cell'));
 }
 
 function setupEmailCodeInputs() {
@@ -9880,6 +10434,202 @@ function setupEmailCodeInputs() {
       }
     });
   });
+}
+
+function getPasswordCodeCells() {
+  return Array.prototype.slice.call(document.querySelectorAll('.password-code-cell'));
+}
+
+function setupPasswordCodeInputs() {
+  getPasswordCodeCells().forEach(function(cell, index, cells) {
+    cell.addEventListener('input', function() {
+      const digits = String(cell.value || '').replace(/\D+/g, '');
+      if (digits.length > 1) {
+        fillPasswordCodeCells(digits);
+        return;
+      }
+      cell.value = digits;
+      cell.classList.toggle('filled', !!digits);
+      if (digits && cells[index + 1]) cells[index + 1].focus();
+      maybeAutoConfirmPasswordCode();
+    });
+    cell.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace' && !cell.value && cells[index - 1]) {
+        cells[index - 1].focus();
+        cells[index - 1].value = '';
+        cells[index - 1].classList.remove('filled');
+        e.preventDefault();
+      }
+    });
+    cell.addEventListener('paste', function(e) {
+      const text = (e.clipboardData || window.clipboardData || {}).getData ? (e.clipboardData || window.clipboardData).getData('text') : '';
+      const digits = String(text || '').replace(/\D+/g, '').slice(0, 6);
+      if (digits) {
+        e.preventDefault();
+        fillPasswordCodeCells(digits);
+      }
+    });
+  });
+}
+
+function clearPasswordCodeCells() {
+  getPasswordCodeCells().forEach(function(cell) {
+    cell.value = '';
+    cell.classList.remove('filled');
+  });
+  if (_passwordCodeAutoTimer) clearTimeout(_passwordCodeAutoTimer);
+}
+
+function fillPasswordCodeCells(value) {
+  const digits = String(value || '').replace(/\D+/g, '').slice(0, 6);
+  const cells = getPasswordCodeCells();
+  cells.forEach(function(cell, index) {
+    cell.value = digits[index] || '';
+    cell.classList.toggle('filled', !!cell.value);
+  });
+  if (digits.length < 6 && cells[digits.length]) cells[digits.length].focus();
+  maybeAutoConfirmPasswordCode();
+}
+
+function getPasswordCodeValue() {
+  return getPasswordCodeCells().map(function(cell){ return cell.value || ''; }).join('').replace(/\D+/g, '').slice(0, 6);
+}
+
+function focusFirstEmptyPasswordCodeCell() {
+  const cells = getPasswordCodeCells();
+  const empty = cells.find(function(cell){ return !cell.value; });
+  (empty || cells[0] || {}).focus && (empty || cells[0]).focus();
+}
+
+function maybeAutoConfirmPasswordCode() {
+  const code = getPasswordCodeValue();
+  if (code.length !== 6 || _passwordCodeSubmitting || _passwordChangeToken) return;
+  if (_passwordCodeAutoTimer) clearTimeout(_passwordCodeAutoTimer);
+  _passwordCodeAutoTimer = setTimeout(function(){ confirmPasswordCodeOrSave(); }, 220);
+}
+
+function setPasswordChangeStatus(message, type) {
+  const status = document.getElementById('passwordChangeStatus');
+  if (!status) return;
+  status.textContent = message || '';
+  status.className = 'email-code-status' + (type ? ' ' + type : '');
+}
+
+function setPasswordStage(ready) {
+  const panel = document.querySelector('.password-change-panel');
+  if (panel) panel.classList.toggle('password-ready', !!ready);
+  const submit = document.getElementById('passwordSubmitBtn');
+  if (submit) submit.textContent = ready ? 'Şifreyi kaydet' : 'Kodu onayla';
+  const lead = document.getElementById('passwordChangeLead');
+  if (lead) lead.textContent = ready
+    ? 'Kod onaylandı. Şimdi yeni şifreni belirle.'
+    : 'Önce e-postana gönderilen 6 haneli kodu onayla.';
+}
+
+function openPasswordChangeModal() {
+  if (!_accountUser) return;
+  if (!_accountUser.email_verified) {
+    showVerifyRequiredModal();
+    return;
+  }
+  _passwordChangeToken = '';
+  _passwordCodeSubmitting = false;
+  clearPasswordCodeCells();
+  setPasswordStage(false);
+  const newInput = document.getElementById('passwordNewInput');
+  const confirmInput = document.getElementById('passwordNewConfirmInput');
+  if (newInput) newInput.value = '';
+  if (confirmInput) confirmInput.value = '';
+  const overlay = document.getElementById('passwordChangeOverlay');
+  if (overlay) overlay.classList.add('active');
+  sendPasswordChangeCode();
+  setTimeout(function(){ focusFirstEmptyPasswordCodeCell(); }, 140);
+}
+
+function closePasswordChangeModal() {
+  const overlay = document.getElementById('passwordChangeOverlay');
+  if (overlay) overlay.classList.remove('active');
+  _passwordChangeToken = '';
+  _passwordCodeSubmitting = false;
+}
+
+async function sendPasswordChangeCode() {
+  try {
+    setPasswordChangeStatus('Kod gönderiliyor...', '');
+    const res = await apiFetch('/api/auth/password-change/send', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Kod gönderilemedi.');
+    clearPasswordCodeCells();
+    setPasswordStage(false);
+    setPasswordChangeStatus('Kod gönderildi. E-postandaki 6 haneyi gir veya yapıştır.', 'success');
+    focusFirstEmptyPasswordCodeCell();
+  } catch(e) {
+    setPasswordChangeStatus(e.message || 'Kod gönderilemedi.', 'error');
+    showToast('warning', 'Kod gönderilemedi', e.message || 'E-posta servisi bağlı değil.', 5600);
+  }
+}
+
+async function confirmPasswordCodeOrSave() {
+  if (_passwordChangeToken) {
+    await completePasswordChange();
+    return;
+  }
+  const code = getPasswordCodeValue();
+  if (!/^\d{6}$/.test(code)) {
+    setPasswordChangeStatus('6 haneli güvenlik kodunu tamamla.', 'error');
+    return;
+  }
+  if (_passwordCodeSubmitting) return;
+  _passwordCodeSubmitting = true;
+  setPasswordChangeStatus('Kod doğrulanıyor...', '');
+  try {
+    const res = await apiFetch('/api/auth/password-change/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success || !data.token) throw new Error(data.error || 'Kod doğrulanamadı.');
+    _passwordChangeToken = data.token;
+    setPasswordStage(true);
+    setPasswordChangeStatus('Kod onaylandı. Yeni şifreni yaz.', 'success');
+    setTimeout(function(){ const input = document.getElementById('passwordNewInput'); if (input) input.focus(); }, 120);
+  } catch(e) {
+    clearPasswordCodeCells();
+    setPasswordChangeStatus(e.message || 'Kod hatalı veya süresi dolmuş.', 'error');
+    focusFirstEmptyPasswordCodeCell();
+  } finally {
+    _passwordCodeSubmitting = false;
+  }
+}
+
+async function completePasswordChange() {
+  const next = (document.getElementById('passwordNewInput') || {}).value || '';
+  const confirm = (document.getElementById('passwordNewConfirmInput') || {}).value || '';
+  if (next.length < 8 || next.length > 128) {
+    setPasswordChangeStatus('Yeni şifre 8-128 karakter olmalı.', 'error');
+    return;
+  }
+  if (next !== confirm) {
+    setPasswordChangeStatus('Şifre tekrar alanı eşleşmiyor.', 'error');
+    return;
+  }
+  try {
+    setPasswordChangeStatus('Şifre kaydediliyor...', '');
+    const res = await apiFetch('/api/auth/password-change/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: _passwordChangeToken, new_password: next })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Şifre değiştirilemedi.');
+    _accountUser = data.user || _accountUser;
+    updateAccountUI();
+    closePasswordChangeModal();
+    showToast('success', 'Şifre değiştirildi', 'Hesap şifren güncellendi.', 3600);
+  } catch(e) {
+    setPasswordChangeStatus(e.message || 'Bağlantı hatası.', 'error');
+  }
 }
 
 function openEmailCodeModal(mode, options) {
@@ -10107,12 +10857,12 @@ function renderAdminTools(data) {
 }
 
 function unlockAdminSensitive() {
-  requireAuth(function() {
-    loadAdminSensitive(_lastAdminPassword);
-  }, true);
+  requireAuth(function(turnstileToken) {
+    loadAdminSensitive(turnstileToken);
+  }, true, { directToken: true });
 }
 
-async function loadAdminSensitive(password) {
+async function loadAdminSensitive(turnstileToken) {
   const target = document.getElementById('adminSensitiveList');
   if (!target) return;
   target.innerHTML = '<div class="admin-sensitive-card"><div class="admin-sensitive-title">Gizli detaylar yükleniyor...</div></div>';
@@ -10120,16 +10870,14 @@ async function loadAdminSensitive(password) {
     const res = await apiFetch('/api/admin/accounts/sensitive', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: password || '' })
+      body: JSON.stringify({ turnstile_token: turnstileToken || '' })
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'Gizli detaylar açılamadı.');
     renderAdminSensitive(data.accounts || []);
   } catch(e) {
     target.innerHTML = '<div class="admin-sensitive-card"><div class="admin-sensitive-title">Gizli detaylar açılamadı</div><div class="admin-account-meta">' + escHtml(e.message || 'Bağlantı hatası.') + '</div></div>';
-  } finally {
-    _lastAdminPassword = '';
-  }
+  } finally {}
 }
 
 function renderAdminSensitive(accounts) {
@@ -10493,68 +11241,75 @@ function isAdminAuthed() { return !!getAdminAuthToken(); }
 
 var _authCallback = null;
 var _authSubmitting = false;
-var _lastAdminPassword = '';
-function requireAuth(callback, forcePrompt) {
+var _authPassTokenDirect = false;
+function requireAuth(callback, forcePrompt, options) {
+  options = options || {};
   if (!accountIsAdmin()) {
     showToast('warning', 'Yönetici hesabı gerekli', 'Bu işlem sadece yönetici hesabı ile yapılabilir.', 4500);
     return;
   }
-  if (!forcePrompt && isAdminAuthed()) { callback(); return; }
+  if (!options.directToken && !forcePrompt && isAdminAuthed()) { callback(); return; }
   _abortPrefetches();
   _authCallback = callback;
   _authSubmitting = false;
-  document.getElementById('authInput').value = '';
+  _authPassTokenDirect = !!options.directToken;
   document.getElementById('authError').textContent = '';
   document.getElementById('authOverlay').classList.add('active');
-  setTimeout(function(){ document.getElementById('authInput').focus(); }, 100);
+  renderAdminTurnstile();
 }
 function closeAuth() {
   document.getElementById('authOverlay').classList.remove('active');
   _authCallback = null;
   _authSubmitting = false;
-  _lastAdminPassword = '';
+  _authPassTokenDirect = false;
+  resetAdminTurnstile();
 }
-function runAuthedCallback(callback) {
+function runAuthedCallback(callback, value) {
   if (typeof callback !== 'function') return;
   setTimeout(function() {
     try {
-      callback();
+      callback(value);
     } catch(e) {
       console.error('Auth callback failed:', e);
-      showToast('error', 'İşlem Açılamadı', 'Şifre doğru ama işlem başlatılamadı. Tekrar deneyin.', 5000);
+      showToast('error', 'İşlem Açılamadı', 'Doğrulama tamamlandı ama işlem başlatılamadı. Tekrar deneyin.', 5000);
     }
   }, 0);
 }
 async function submitAuth() {
-  var pw = document.getElementById('authInput').value;
-  if (!pw || _authSubmitting) return;
+  if (!_adminTurnstileToken || _authSubmitting) return;
   _authSubmitting = true;
-  var inp = document.getElementById('authInput');
   var errEl = document.getElementById('authError');
   errEl.textContent = '';
+  updateAdminVerifyState();
   try {
+    var cb = _authCallback;
+    var token = _adminTurnstileToken;
+    if (_authPassTokenDirect) {
+      closeAuth();
+      runAuthedCallback(cb, token);
+      return;
+    }
     var res = await fetch('/api/verify_password', {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
-      body: JSON.stringify({ password: pw })
+      body: JSON.stringify({ turnstile_token: token })
     });
     var data = await res.json();
     if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
     if (data.success && data.token) {
       sessionStorage.setItem('admin_auth_token', data.token);
-      var cb = _authCallback;
       closeAuth();
-      _lastAdminPassword = pw;
       runAuthedCallback(cb);
     } else {
-      errEl.textContent = data.error || 'Yanl\u0131\u015f \u015fifre.';
-      inp.classList.add('shake');
-      setTimeout(function(){ inp.classList.remove('shake'); }, 500);
+      errEl.textContent = data.error || 'Cloudflare doğrulaması tamamlanamadı.';
+      resetAdminTurnstile();
     }
   } catch(e) {
     errEl.textContent = e.message || 'Ba\u011flant\u0131 hatas\u0131.';
+    resetAdminTurnstile();
   } finally {
     _authSubmitting = false;
+    updateAdminVerifyState();
   }
 }
 function authHeaders() {
@@ -10696,7 +11451,7 @@ function buildToastIcon(type) {
   if (type === 'error') {
     return '<span class="toast-icon error"><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="25" fill="rgba(248,113,113,0.12)" stroke="rgba(248,113,113,0.36)" stroke-width="2"></circle><path d="M18 18l16 16M34 18L18 34" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg></span>';
   }
-  return '<span class="toast-icon info"><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="25" fill="rgba(99,102,241,0.12)" stroke="rgba(129,140,248,0.36)" stroke-width="2"></circle><path d="M26 23v12" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><circle cx="26" cy="16" r="2.5" fill="currentColor"/></svg></span>';
+  return '<span class="toast-icon info"><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="25" fill="rgba(37,99,235,0.12)" stroke="rgba(96,165,250,0.36)" stroke-width="2"></circle><path d="M26 23v12" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><circle cx="26" cy="16" r="2.5" fill="currentColor"/></svg></span>';
 }
 
 function showToast(type, title, message, duration) {
@@ -10993,8 +11748,8 @@ async function loadLibrary(fromFade) {
       var syncBadge = '';
       if (book.pdf_url) {
         syncBadge = '<div class="sync-badge-local" title="Kitap deposundan">' +
-          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H15a3.5 3.5 0 0 1 0 7H6"/></svg>' +
-          'Kaynak</div>';
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg>' +
+          'Ders Kitabı</div>';
       } else if (!book.drive_id) {
         syncBadge = '<div class="sync-badge-local" title="Sadece cihazda">' +
           '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
@@ -11661,6 +12416,7 @@ function toggleChatSidebar() {
 }
 
 async function openAnalysis(book, preferredChatId) {
+  if (!ensureEmailVerifiedForAI()) return;
   resetEditState();
   selectedBook = book;
   registerLibraryBooks([book]);
@@ -13833,6 +14589,7 @@ async function analyze() {
     return;
   }
   if (!selectedBook) return;
+  if (!ensureEmailVerifiedForAI()) return;
   const ta     = document.getElementById('promptInput');
   const prompt = ta.value.trim();
   if (!prompt) {
@@ -13903,6 +14660,9 @@ async function analyze() {
       await appendAiMsg(data.result, { messageId: aiMessage.id });
       setAnalysisStatus('Hazır', 'green');
       showResponseBanner();
+    } else if (data.email_verification_required) {
+      setAnalysisStatus('E-posta doğrulaması gerekli.', 'amber');
+      showVerifyRequiredModal(data.error || 'AI cevaplarına erişmek için e-postanı doğrula.');
     } else if (data.rate_limit) {
       setAnalysisStatus('API kotası doldu.', 'red');
       showToast('warning', 'API kota sınırı aşıldı',
@@ -13993,7 +14753,7 @@ async function confirmDelete() {
 }
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
-const colors = { green: '#a78bfa', amber: '#fbbf24', red: '#fb7185' };
+const colors = { green: '#60a5fa', amber: '#fbbf24', red: '#fb7185' };
 function setLibStatus(msg, color) {
   color = color || 'green';
   const el   = document.getElementById('libStatusText');
@@ -14017,6 +14777,7 @@ function escHtml(str) {
 document.addEventListener('DOMContentLoaded', function() {
   mountAccountMenu();
   setupEmailCodeInputs();
+  setupPasswordCodeInputs();
   const ta = document.getElementById('promptInput');
   if (ta) {
     ta.addEventListener('input', function(){ autoResizeTA(ta); });
@@ -14038,7 +14799,10 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('keydown', function(e) {
   var pdfActive = document.getElementById('pdfViewerOverlay').classList.contains('active');
   if (e.key === 'Escape') {
-    if (document.getElementById('emailCodeOverlay') && document.getElementById('emailCodeOverlay').classList.contains('active')) { closeEmailCodeModal(); }
+    if (document.getElementById('passwordChangeOverlay') && document.getElementById('passwordChangeOverlay').classList.contains('active')) { closePasswordChangeModal(); }
+    else if (document.getElementById('avatarCropOverlay') && document.getElementById('avatarCropOverlay').classList.contains('active')) { closeAvatarCropModal(); }
+    else if (document.getElementById('verifyRequiredOverlay') && document.getElementById('verifyRequiredOverlay').classList.contains('active')) { closeVerifyRequiredModal(); }
+    else if (document.getElementById('emailCodeOverlay') && document.getElementById('emailCodeOverlay').classList.contains('active')) { closeEmailCodeModal(); }
     else if (document.getElementById('accountMenu') && document.getElementById('accountMenu').classList.contains('active')) { closeAccountMenu(); }
     else if (document.getElementById('profileSettingsOverlay') && document.getElementById('profileSettingsOverlay').classList.contains('active')) { closeProfileSettings(); }
     else if (document.getElementById('adminToolsOverlay') && document.getElementById('adminToolsOverlay').classList.contains('active')) { closeAdminTools(); }
@@ -14216,18 +14980,6 @@ def api_pdfjs_asset(filename):
 
 @app.route('/api/verify_password', methods=['POST'])
 def api_verify_password():
-    data = request.get_json() or {}
-    pw = data.get('password', '')
-    if not ADMIN_HASH:
-        return jsonify({'success': False, 'error': 'Sunucuda \u015fifre yap\u0131land\u0131r\u0131lmam\u0131\u015f.'})
-    h = hashlib.sha256(pw.encode()).hexdigest()
-    if h != ADMIN_HASH:
-        app.logger.warning(
-            'Yanlis yonetici sifresi denemesi: ip=%s user_agent=%s',
-            request.remote_addr or 'unknown',
-            request.headers.get('User-Agent', ''),
-        )
-        return jsonify({'success': False, 'error': 'Yanl\u0131\u015f \u015fifre.'})
     token = secrets.token_hex(32)
     _auth_tokens.add(token)
     return jsonify({'success': True, 'token': token})

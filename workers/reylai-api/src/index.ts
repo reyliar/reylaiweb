@@ -1,4 +1,4 @@
-﻿const JSON_HEADERS = {
+const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store"
 };
@@ -22,9 +22,9 @@ const MAX_CHAT_HISTORY_TEXT_CHARS = 12000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BOOK_ARCHIVE_PDF_RE = /(?:href|data-name)=["'](?:\.\/)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.pdf["']/gi;
 const ADMIN_EMAIL = "mynamesreyli@gmail.com";
-const ADMIN_PANEL_PASSWORD = "benbugunpilavyedim";
 const VERIFY_CODE_TTL_MINUTES = 10;
 const VERIFY_CODE_COOLDOWN_SECONDS = 60;
+const PASSWORD_CHANGE_TOKEN_TTL_MINUTES = 8;
 const AVATAR_DATA_URL_LIMIT = 360_000;
 const NO_REPLY_FROM = "no-reply@reyliar.xyz";
 
@@ -94,6 +94,11 @@ type UserRow = {
   pending_email_code_hash?: string | null;
   pending_email_expires_at?: string | null;
   pending_email_sent_at?: string | null;
+  password_change_code_hash?: string | null;
+  password_change_expires_at?: string | null;
+  password_change_sent_at?: string | null;
+  password_change_token_hash?: string | null;
+  password_change_token_expires_at?: string | null;
 };
 
 type PublicUser = {
@@ -120,8 +125,6 @@ type AuthPayload = {
 type ProfilePayload = {
   display_name?: string;
   email?: string;
-  current_password?: string;
-  new_password?: string;
   avatar_data_url?: string;
 };
 
@@ -168,7 +171,12 @@ const USER_SELECT_COLUMNS = [
   "pending_email",
   "pending_email_code_hash",
   "pending_email_expires_at",
-  "pending_email_sent_at"
+  "pending_email_sent_at",
+  "password_change_code_hash",
+  "password_change_expires_at",
+  "password_change_sent_at",
+  "password_change_token_hash",
+  "password_change_token_expires_at"
 ].join(", ");
 
 export default {
@@ -180,7 +188,7 @@ export default {
         level: "error",
         message: error instanceof Error ? error.message : String(error)
       }));
-      return json({ error: "Sunucu hatasÄ±." }, 500);
+      return json({ error: "Sunucu hatası." }, 500);
     }
   }
 } satisfies ExportedHandler<Env>;
@@ -243,6 +251,18 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     return handleEmailChangeConfirm(request, env);
   }
 
+  if (path === "/api/auth/password-change/send" && request.method === "POST") {
+    return handlePasswordChangeSend(request, env);
+  }
+
+  if (path === "/api/auth/password-change/confirm" && request.method === "POST") {
+    return handlePasswordChangeConfirm(request, env);
+  }
+
+  if (path === "/api/auth/password-change/complete" && request.method === "POST") {
+    return handlePasswordChangeComplete(request, env);
+  }
+
   if (path === "/api/admin/accounts" && request.method === "GET") {
     return handleAdminAccounts(request, env);
   }
@@ -270,7 +290,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (path === "/api/config") {
     if (request.method === "GET") return handleConfig(env);
-    if (request.method === "POST") return json({ success: false, error: "Statik yayÄ±nda ayar kaydetme kapalÄ±." }, 405);
+    if (request.method === "POST") return json({ success: false, error: "Statik yayında ayar kaydetme kapalı." }, 405);
   }
 
   if (request.method === "GET" && path === "/api/debug_gas") {
@@ -284,19 +304,25 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   if (request.method === "POST" && path === "/api/analyze") {
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
+    if (!auth.user.email_verified) {
+      return json({ success: false, error: "AI kullanmak için e-posta doğrulaması gerekli.", email_verification_required: true }, 403);
+    }
     return handleAnalyze(request, env);
   }
 
   if (request.method === "POST" && path === "/api/analyze_start") {
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
+    if (!auth.user.email_verified) {
+      return json({ success: false, error: "AI kullanmak için e-posta doğrulaması gerekli.", email_verification_required: true }, 403);
+    }
     const data = await readJson<AnalyzePayload>(request);
     const response = await analyzePayload(data, env);
     return json({ success: !response.error, analysis_id: crypto.randomUUID(), ...response });
   }
 
   if (request.method === "GET" && path.startsWith("/api/analyze_status/")) {
-    return json({ done: true, message: "HazÄ±r" });
+    return json({ done: true, message: "Hazır" });
   }
 
   if (request.method === "GET" && path.startsWith("/api/scan_status/")) {
@@ -319,19 +345,19 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (request.method === "GET" && path.startsWith("/api/serve_pdf/")) {
     const id = safeId(path.split("/").pop() || "");
-    if (!id) return text("PDF bulunamadÄ±", 404);
+    if (!id) return text("PDF bulunamadı", 404);
     return handleServePdf(id, env);
   }
 
   if (request.method === "GET" && path.startsWith("/api/page_image/")) {
-    return text("Statik yayÄ±nda sayfa gÃ¶rseli Ã¼retimi desteklenmiyor.", 404);
+    return text("Statik yayında sayfa görseli üretimi desteklenmiyor.", 404);
   }
 
   if (
     ["POST", "PUT", "DELETE"].includes(request.method) &&
     ["/api/upload", "/api/add_book", "/api/delete", "/api/rename_book", "/api/update_cover", "/api/scan_missing_books", "/api/scan_missing_books_cancel"].some((prefix) => path.startsWith(prefix))
   ) {
-    return json({ success: false, error: "Bu iÅŸlem statik Cloudflare yayÄ±nda desteklenmiyor." }, 405);
+    return json({ success: false, error: "Bu işlem statik Cloudflare yayında desteklenmiyor." }, 405);
   }
 
   if (request.method === "GET" && path === "/api/scan_missing_books_status") {
@@ -343,7 +369,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       success: 0,
       failed: 0,
       already_ready: 0,
-      current_message: "Statik yayÄ±nda tarama iÅŸi yok.",
+      current_message: "Statik yayında tarama işi yok.",
       logs: []
     });
   }
@@ -352,7 +378,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     return handleAdminPasswordVerify(request, env);
   }
 
-  return json({ error: "API endpoint bulunamadÄ±." }, 404);
+  return json({ error: "API endpoint bulunamadı." }, 404);
 }
 
 function handleAuthConfig(env: Env): Response {
@@ -397,7 +423,7 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
   }
 
   const user = await getUserById(env, userId);
-  if (!user) return json({ success: false, error: "Hesap oluÅŸturuldu ama oturum aÃ§Ä±lamadÄ±." }, 500);
+  if (!user) return json({ success: false, error: "Hesap oluşturuldu ama oturum açılamadı." }, 500);
   const delivery = await sendVerificationCode(env, user);
   const session = await createSession(request, env, user, payload.remember_device !== false);
   return json({
@@ -417,12 +443,12 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
   const email = normalizeEmail(payload.email || "");
   const password = String(payload.password || "");
   if (!EMAIL_RE.test(email) || password.length < 1) {
-    return json({ success: false, error: "E-posta veya ÅŸifre hatalÄ±." }, 401);
+    return json({ success: false, error: "E-posta veya şifre hatalı." }, 401);
   }
 
   const user = await getUserByEmail(env, email);
   if (!user || !await verifyPassword(password, user.password_hash)) {
-    return json({ success: false, error: "E-posta veya ÅŸifre hatalÄ±." }, 401);
+    return json({ success: false, error: "E-posta veya şifre hatalı." }, 401);
   }
 
   const now = new Date().toISOString();
@@ -449,19 +475,18 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
   {
     const payload = await readJson<ProfilePayload>(request);
     const user = await getUserById(env, auth.user.id);
-    if (!user) return json({ success: false, error: "Hesap bulunamadÄ±." }, 404);
+    if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
 
     const updates: string[] = [];
     const values: unknown[] = [];
     const now = new Date().toISOString();
-    let shouldSendVerification = false;
     let shouldSendEmailChange = false;
     let pendingEmailForVerification = "";
 
     if (Object.prototype.hasOwnProperty.call(payload, "display_name")) {
       const displayName = normalizeDisplayName(payload.display_name || "");
       if (!displayName || displayName.length < 2 || displayName.length > 40) {
-        return json({ success: false, error: "GÃ¶rÃ¼nen ad 2-40 karakter olmalÄ±." }, 400);
+        return json({ success: false, error: "Görünen ad 2-40 karakter olmalı." }, 400);
       }
       updates.push("display_name = ?");
       values.push(displayName);
@@ -475,24 +500,15 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
     }
 
     const requestedEmail = Object.prototype.hasOwnProperty.call(payload, "email") ? normalizeEmail(payload.email || "") : "";
-    const requestedPassword = Object.prototype.hasOwnProperty.call(payload, "new_password") ? String(payload.new_password || "") : "";
     const changingEmail = Boolean(requestedEmail && requestedEmail !== user.email);
-    const changingPassword = Boolean(requestedPassword);
-
-    if (changingEmail || changingPassword) {
-      const currentPassword = String(payload.current_password || "");
-      if (!currentPassword || !await verifyPassword(currentPassword, user.password_hash)) {
-        return json({ success: false, error: "Mevcut ÅŸifre doÄŸrulanamadÄ±." }, 401);
-      }
-    }
 
     if (changingEmail) {
       if (!EMAIL_RE.test(requestedEmail) || requestedEmail.length > 254) {
-        return json({ success: false, error: "GeÃ§erli bir e-posta girin." }, 400);
+        return json({ success: false, error: "Geçerli bir e-posta girin." }, 400);
       }
       const existing = await getUserByEmail(env, requestedEmail);
       if (existing && existing.id !== user.id) {
-        return json({ success: false, error: "Bu e-posta baÅŸka bir hesapta kullanÄ±lÄ±yor." }, 409);
+        return json({ success: false, error: "Bu e-posta başka bir hesapta kullanılıyor." }, 409);
       }
       updates.push(
         "pending_email = ?",
@@ -503,14 +519,6 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
       values.push(requestedEmail);
       shouldSendEmailChange = true;
       pendingEmailForVerification = requestedEmail;
-    }
-
-    if (changingPassword) {
-      if (requestedPassword.length < 8 || requestedPassword.length > 128) {
-        return json({ success: false, error: "Åifre 8-128 karakter olmalÄ±." }, 400);
-      }
-      updates.push("password_hash = ?", "password_updated_at = ?");
-      values.push(await hashPassword(requestedPassword), now);
     }
 
     if (!updates.length) {
@@ -525,21 +533,20 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message.toLowerCase().includes("unique")) {
-        return json({ success: false, error: "Bu e-posta baÅŸka bir hesapta kullanÄ±lÄ±yor." }, 409);
+        return json({ success: false, error: "Bu e-posta başka bir hesapta kullanılıyor." }, 409);
       }
       throw error;
     }
 
     const freshUser = await getUserById(env, auth.user.id);
-    const delivery = shouldSendVerification && freshUser ? await sendVerificationCode(env, freshUser) : null;
     const emailChangeDelivery = shouldSendEmailChange && freshUser
       ? await sendEmailChangeCode(env, freshUser, pendingEmailForVerification)
       : null;
     return json({
       success: true,
       user: freshUser ? publicUser(freshUser) : auth.user,
-      verification_email_sent: delivery?.sent || emailChangeDelivery?.sent || false,
-      email_delivery_configured: delivery ? delivery.configured : (emailChangeDelivery ? emailChangeDelivery.configured : undefined),
+      verification_email_sent: emailChangeDelivery?.sent || false,
+      email_delivery_configured: emailChangeDelivery ? emailChangeDelivery.configured : undefined,
       email_change_pending: shouldSendEmailChange,
       pending_email: shouldSendEmailChange ? pendingEmailForVerification : ""
     });
@@ -548,7 +555,7 @@ async function handleProfileUpdate(request: Request, env: Env): Promise<Response
   const payload = await readJson<{ display_name?: string }>(request);
   const displayName = normalizeDisplayName(payload.display_name || "");
   if (!displayName || displayName.length < 2 || displayName.length > 40) {
-    return json({ success: false, error: "GÃ¶rÃ¼nen ad 2-40 karakter olmalÄ±." }, 400);
+    return json({ success: false, error: "Görünen ad 2-40 karakter olmalı." }, 400);
   }
   const now = new Date().toISOString();
   await env.DB.prepare("UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?")
@@ -563,7 +570,7 @@ async function handleVerificationSend(request: Request, env: Env): Promise<Respo
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
   const user = await getUserById(env, auth.user.id);
-  if (!user) return json({ success: false, error: "Hesap bulunamadÄ±." }, 404);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
   if (user.email_verified_at) {
     return json({ success: true, already_verified: true, user: publicUser(user) });
   }
@@ -573,7 +580,7 @@ async function handleVerificationSend(request: Request, env: Env): Promise<Respo
   if (waitMs > 0) {
     return json({
       success: false,
-      error: `Yeni kod iÃ§in ${Math.ceil(waitMs / 1000)} saniye bekleyin.`,
+      error: `Yeni kod için ${Math.ceil(waitMs / 1000)} saniye bekleyin.`,
       retry_after: Math.ceil(waitMs / 1000)
     }, 429);
   }
@@ -582,7 +589,7 @@ async function handleVerificationSend(request: Request, env: Env): Promise<Respo
   return json({
     success: delivery.sent,
     email_delivery_configured: delivery.configured,
-    error: delivery.sent ? undefined : delivery.error || "E-posta gÃ¶nderilemedi."
+    error: delivery.sent ? undefined : delivery.error || "E-posta gönderilemedi."
   }, delivery.sent ? 200 : 503);
 }
 
@@ -594,18 +601,18 @@ async function handleVerificationConfirm(request: Request, env: Env): Promise<Re
   if (code.length !== 6) return json({ success: false, error: "6 haneli kodu girin." }, 400);
 
   const user = await getUserById(env, auth.user.id);
-  if (!user) return json({ success: false, error: "Hesap bulunamadÄ±." }, 404);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
   if (user.email_verified_at) return json({ success: true, already_verified: true, user: publicUser(user) });
   if (!user.email_verification_code_hash || !user.email_verification_expires_at) {
-    return json({ success: false, error: "Ã–nce yeni bir doÄŸrulama kodu isteyin." }, 400);
+    return json({ success: false, error: "Önce yeni bir doğrulama kodu isteyin." }, 400);
   }
   if (Date.parse(user.email_verification_expires_at) <= Date.now()) {
-    return json({ success: false, error: "Kodun sÃ¼resi doldu. Yeni kod isteyin." }, 400);
+    return json({ success: false, error: "Kodun süresi doldu. Yeni kod isteyin." }, 400);
   }
 
   const expected = await verificationHash(user.id, user.email, code);
   if (expected !== user.email_verification_code_hash) {
-    return json({ success: false, error: "DoÄŸrulama kodu hatalÄ±." }, 400);
+    return json({ success: false, error: "Doğrulama kodu hatalı." }, 400);
   }
 
   const now = new Date().toISOString();
@@ -620,10 +627,10 @@ async function handleEmailChangeSend(request: Request, env: Env): Promise<Respon
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
   const user = await getUserById(env, auth.user.id);
-  if (!user) return json({ success: false, error: "Hesap bulunamadÄ±." }, 404);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
   const pendingEmail = normalizeEmail(user.pending_email || "");
   if (!pendingEmail) {
-    return json({ success: false, error: "Bekleyen e-posta deÄŸiÅŸikliÄŸi bulunamadÄ±." }, 400);
+    return json({ success: false, error: "Bekleyen e-posta değişikliği bulunamadı." }, 400);
   }
 
   const sentAt = user.pending_email_sent_at ? Date.parse(user.pending_email_sent_at) : 0;
@@ -631,7 +638,7 @@ async function handleEmailChangeSend(request: Request, env: Env): Promise<Respon
   if (waitMs > 0) {
     return json({
       success: false,
-      error: `Yeni kod iÃ§in ${Math.ceil(waitMs / 1000)} saniye bekleyin.`,
+      error: `Yeni kod için ${Math.ceil(waitMs / 1000)} saniye bekleyin.`,
       retry_after: Math.ceil(waitMs / 1000)
     }, 429);
   }
@@ -641,7 +648,7 @@ async function handleEmailChangeSend(request: Request, env: Env): Promise<Respon
     success: delivery.sent,
     email_delivery_configured: delivery.configured,
     pending_email: pendingEmail,
-    error: delivery.sent ? undefined : delivery.error || "E-posta deÄŸiÅŸiklik kodu gÃ¶nderilemedi."
+    error: delivery.sent ? undefined : delivery.error || "E-posta değişiklik kodu gönderilemedi."
   }, delivery.sent ? 200 : 503);
 }
 
@@ -653,23 +660,23 @@ async function handleEmailChangeConfirm(request: Request, env: Env): Promise<Res
   if (code.length !== 6) return json({ success: false, error: "6 haneli kodu girin." }, 400);
 
   const user = await getUserById(env, auth.user.id);
-  if (!user) return json({ success: false, error: "Hesap bulunamadÄ±." }, 404);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
   const pendingEmail = normalizeEmail(user.pending_email || "");
   if (!pendingEmail || !user.pending_email_code_hash || !user.pending_email_expires_at) {
-    return json({ success: false, error: "Bekleyen e-posta deÄŸiÅŸikliÄŸi bulunamadÄ±." }, 400);
+    return json({ success: false, error: "Bekleyen e-posta değişikliği bulunamadı." }, 400);
   }
   if (Date.parse(user.pending_email_expires_at) <= Date.now()) {
-    return json({ success: false, error: "Kodun sÃ¼resi doldu. Yeni kod isteyin." }, 400);
+    return json({ success: false, error: "Kodun süresi doldu. Yeni kod isteyin." }, 400);
   }
 
   const expected = await verificationHash(user.id, pendingEmail, code);
   if (expected !== user.pending_email_code_hash) {
-    return json({ success: false, error: "DoÄŸrulama kodu hatalÄ±." }, 400);
+    return json({ success: false, error: "Doğrulama kodu hatalı." }, 400);
   }
 
   const existing = await getUserByEmail(env, pendingEmail);
   if (existing && existing.id !== user.id) {
-    return json({ success: false, error: "Bu e-posta baÅŸka bir hesapta kullanÄ±lÄ±yor." }, 409);
+    return json({ success: false, error: "Bu e-posta başka bir hesapta kullanılıyor." }, 409);
   }
 
   const now = new Date().toISOString();
@@ -683,18 +690,107 @@ async function handleEmailChangeConfirm(request: Request, env: Env): Promise<Res
   return json({ success: true, user: freshUser ? publicUser(freshUser) : auth.user });
 }
 
+async function handlePasswordChangeSend(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const user = await getUserById(env, auth.user.id);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+  if (!user.email_verified_at) {
+    return json({ success: false, error: "Şifre değiştirmek için önce e-postanı doğrula.", email_verification_required: true }, 403);
+  }
+
+  const sentAt = user.password_change_sent_at ? Date.parse(user.password_change_sent_at) : 0;
+  const waitMs = sentAt ? VERIFY_CODE_COOLDOWN_SECONDS * 1000 - (Date.now() - sentAt) : 0;
+  if (waitMs > 0) {
+    return json({
+      success: false,
+      error: `Yeni kod için ${Math.ceil(waitMs / 1000)} saniye bekleyin.`,
+      retry_after: Math.ceil(waitMs / 1000)
+    }, 429);
+  }
+
+  const delivery = await sendPasswordChangeCode(env, user);
+  return json({
+    success: delivery.sent,
+    email_delivery_configured: delivery.configured,
+    error: delivery.sent ? undefined : delivery.error || "Şifre değişiklik kodu gönderilemedi."
+  }, delivery.sent ? 200 : 503);
+}
+
+async function handlePasswordChangeConfirm(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const payload = await readJson<VerificationPayload>(request);
+  const code = String(payload.code || "").replace(/\D+/g, "").slice(0, 12);
+  if (code.length !== 6) return json({ success: false, error: "6 haneli kodu girin." }, 400);
+
+  const user = await getUserById(env, auth.user.id);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+  if (!user.password_change_code_hash || !user.password_change_expires_at) {
+    return json({ success: false, error: "Önce yeni bir şifre kodu isteyin." }, 400);
+  }
+  if (Date.parse(user.password_change_expires_at) <= Date.now()) {
+    return json({ success: false, error: "Kodun süresi doldu. Yeni kod isteyin." }, 400);
+  }
+
+  const expected = await verificationHash(user.id, user.email, code);
+  if (expected !== user.password_change_code_hash) {
+    return json({ success: false, error: "Doğrulama kodu hatalı." }, 400);
+  }
+
+  const token = randomToken(24);
+  const tokenHash = await sha256Base64Url(token);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + PASSWORD_CHANGE_TOKEN_TTL_MINUTES * 60 * 1000).toISOString();
+  await env.DB.prepare(
+    "UPDATE users SET password_change_code_hash = NULL, password_change_expires_at = NULL, " +
+    "password_change_token_hash = ?, password_change_token_expires_at = ?, updated_at = ? WHERE id = ?"
+  ).bind(tokenHash, expiresAt, now.toISOString(), user.id).run();
+  return json({ success: true, token, expires_at: expiresAt });
+}
+
+async function handlePasswordChangeComplete(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const payload = await readJson<{ token?: string; new_password?: string }>(request);
+  const token = String(payload.token || "");
+  const newPassword = String(payload.new_password || "");
+  if (newPassword.length < 8 || newPassword.length > 128) {
+    return json({ success: false, error: "Şifre 8-128 karakter olmalı." }, 400);
+  }
+
+  const user = await getUserById(env, auth.user.id);
+  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
+  if (!token || !user.password_change_token_hash || !user.password_change_token_expires_at) {
+    return json({ success: false, error: "Şifre değişimi için kod onayı gerekli." }, 400);
+  }
+  if (Date.parse(user.password_change_token_expires_at) <= Date.now()) {
+    return json({ success: false, error: "Şifre değişim oturumunun süresi doldu." }, 400);
+  }
+  const tokenHash = await sha256Base64Url(token);
+  if (tokenHash !== user.password_change_token_hash) {
+    return json({ success: false, error: "Şifre değişim oturumu doğrulanamadı." }, 401);
+  }
+
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE users SET password_hash = ?, password_updated_at = ?, " +
+    "password_change_token_hash = NULL, password_change_token_expires_at = NULL, password_change_sent_at = NULL, updated_at = ? WHERE id = ?"
+  ).bind(await hashPassword(newPassword), now, now, user.id).run();
+  const freshUser = await getUserById(env, user.id);
+  return json({ success: true, user: freshUser ? publicUser(freshUser) : auth.user });
+}
+
 async function handleAdminPasswordVerify(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
   if (!auth.user.is_admin) {
-    return json({ success: false, auth: false, error: "Bu iÅŸlem sadece yÃ¶netici hesabÄ± ile yapÄ±labilir." }, 403);
+    return json({ success: false, auth: false, error: "Bu işlem sadece yönetici hesabı ile yapılabilir." }, 403);
   }
 
-  const payload = await readJson<{ password?: string }>(request);
-  const password = String(payload.password || "");
-  if (!isAdminPanelPassword(password)) {
-    return json({ success: false, error: "YÃ¶netici ÅŸifresi hatalÄ±." }, 401);
-  }
+  const payload = await readJson<{ turnstile_token?: string }>(request);
+  const turnstileError = await verifyTurnstile(request, env, payload.turnstile_token);
+  if (turnstileError) return turnstileError;
   return json({ success: true, token: randomToken(16) });
 }
 
@@ -747,10 +843,9 @@ async function handleAdminAccounts(request: Request, env: Env): Promise<Response
 async function handleAdminAccountsSensitive(request: Request, env: Env): Promise<Response> {
   const admin = await requireAdmin(request, env);
   if (admin instanceof Response) return admin;
-  const payload = await readJson<{ password?: string }>(request);
-  if (!isAdminPanelPassword(String(payload.password || ""))) {
-    return json({ success: false, error: "YÃ¶netici ÅŸifresi hatalÄ±." }, 401);
-  }
+  const payload = await readJson<{ turnstile_token?: string }>(request);
+  const turnstileError = await verifyTurnstile(request, env, payload.turnstile_token);
+  if (turnstileError) return turnstileError;
 
   const usersResult = await env.DB.prepare(
     "SELECT id, email, display_name, role, password_hash, password_updated_at, created_at, updated_at, " +
@@ -829,7 +924,7 @@ async function handleChatHistorySave(request: Request, env: Env, userId: string)
 
 async function handleChatHistoryDelete(env: Env, userId: string, rawChatId: string): Promise<Response> {
   const chatId = decodeURIComponent(rawChatId || "").trim();
-  if (!chatId) return json({ success: false, error: "Sohbet kimliÄŸi eksik." }, 400);
+  if (!chatId) return json({ success: false, error: "Sohbet kimliği eksik." }, 400);
   const row = await env.DB.prepare("SELECT store_json FROM chat_history WHERE user_id = ?")
     .bind(userId)
     .first<{ store_json: string }>();
@@ -856,7 +951,7 @@ async function requireAuth(request: Request, env: Env): Promise<AuthContext | Re
 
   if (!row) {
     await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ? OR expires_at <= ?").bind(tokenHash, now).run();
-    return json({ success: false, auth: false, error: "Oturum sÃ¼resi doldu." }, 401);
+    return json({ success: false, auth: false, error: "Oturum süresi doldu." }, 401);
   }
 
   await env.DB.prepare("UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?").bind(now, tokenHash).run();
@@ -896,13 +991,13 @@ async function verifyTurnstile(request: Request, env: Env, tokenValue: unknown):
   if (!siteKey || !secret) {
     return json({
       success: false,
-      error: "Cloudflare bot doÄŸrulamasÄ± henÃ¼z yapÄ±landÄ±rÄ±lmadÄ±."
+      error: "Cloudflare bot doğrulaması henüz yapılandırılmadı."
     }, 503);
   }
 
   const token = String(tokenValue || "").trim();
   if (!token || token.length > 2048) {
-    return json({ success: false, error: "Cloudflare bot doÄŸrulamasÄ±nÄ± tamamlayÄ±n." }, 400);
+    return json({ success: false, error: "Cloudflare bot doğrulamasını tamamlayın." }, 400);
   }
 
   const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
@@ -917,14 +1012,14 @@ async function verifyTurnstile(request: Request, env: Env, tokenValue: unknown):
   });
 
   if (!response.ok) {
-    return json({ success: false, error: "Cloudflare bot doÄŸrulamasÄ± ÅŸu an cevap vermiyor." }, 502);
+    return json({ success: false, error: "Cloudflare bot doğrulaması şu an cevap vermiyor." }, 502);
   }
 
   const result = await response.json() as TurnstileResponse;
   if (!result.success) {
     return json({
       success: false,
-      error: "Cloudflare bot doÄŸrulamasÄ± baÅŸarÄ±sÄ±z oldu.",
+      error: "Cloudflare bot doğrulaması başarısız oldu.",
       turnstile_errors: result["error-codes"] || []
     }, 400);
   }
@@ -963,7 +1058,7 @@ async function requireAdmin(request: Request, env: Env): Promise<AuthContext | R
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
   if (!auth.user.is_admin) {
-    return json({ success: false, auth: false, error: "Bu iÅŸlem sadece yÃ¶netici hesabÄ± ile yapÄ±labilir." }, 403);
+    return json({ success: false, auth: false, error: "Bu işlem sadece yönetici hesabı ile yapılabilir." }, 403);
   }
   return auth;
 }
@@ -987,10 +1082,6 @@ function roleBadgesForEmail(email: string, roleValue = ""): Array<{ label: strin
   return [{ label: "Member", icon: "user" }];
 }
 
-function isAdminPanelPassword(password: string): boolean {
-  return String(password || "") === ADMIN_PANEL_PASSWORD;
-}
-
 function parsePasswordHash(value: string): { algorithm: string; iterations: number } {
   const parts = String(value || "").split("$");
   return {
@@ -1011,9 +1102,9 @@ function clientIp(request: Request): string {
 function validateAvatarDataUrl(value: string): string {
   const avatar = String(value || "").trim();
   if (!avatar) return "";
-  if (avatar.length > AVATAR_DATA_URL_LIMIT) return "Profil fotoÄŸrafÄ± Ã§ok bÃ¼yÃ¼k. Daha kÃ¼Ã§Ã¼k bir gÃ¶rsel seÃ§in.";
+  if (avatar.length > AVATAR_DATA_URL_LIMIT) return "Profil fotoğrafı çok büyük. Daha küçük bir görsel seçin.";
   if (!/^data:image\/(?:png|jpeg|jpg|webp);base64,[a-z0-9+/=]+$/i.test(avatar)) {
-    return "Profil fotoÄŸrafÄ± PNG, JPG veya WEBP olmalÄ±.";
+    return "Profil fotoğrafı PNG, JPG veya WEBP olmalı.";
   }
   return "";
 }
@@ -1021,7 +1112,7 @@ function validateAvatarDataUrl(value: string): string {
 async function sendVerificationCode(env: Env, user: UserRow): Promise<{ sent: boolean; configured: boolean; error?: string }> {
   const binding = getEmailBinding(env);
   if (!binding) {
-    return { sent: false, configured: false, error: "Cloudflare Email Sending henÃ¼z baÄŸlÄ± deÄŸil." };
+    return { sent: false, configured: false, error: "Cloudflare Email Sending henüz bağlı değil." };
   }
 
   const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
@@ -1037,9 +1128,9 @@ async function sendVerificationCode(env: Env, user: UserRow): Promise<{ sent: bo
     await binding.send({
       to: user.email,
       from: { email: NO_REPLY_FROM, name: "ReylAI" },
-      subject: "ReylAI doÄŸrulama kodun",
+      subject: "ReylAI doğrulama kodun",
       html: verificationEmailHtml(user, code),
-      text: `ReylAI doÄŸrulama kodun: ${code}. Kod ${VERIFY_CODE_TTL_MINUTES} dakika geÃ§erlidir.`
+      text: `ReylAI doğrulama kodun: ${code}. Kod ${VERIFY_CODE_TTL_MINUTES} dakika geçerlidir.`
     });
     return { sent: true, configured: true };
   } catch (error) {
@@ -1048,7 +1139,7 @@ async function sendVerificationCode(env: Env, user: UserRow): Promise<{ sent: bo
       message: "verification email failed",
       detail: error instanceof Error ? error.message : String(error)
     }));
-    return { sent: false, configured: true, error: "DoÄŸrulama e-postasÄ± gÃ¶nderilemedi." };
+    return { sent: false, configured: true, error: "Doğrulama e-postası gönderilemedi." };
   }
 }
 
@@ -1056,7 +1147,7 @@ async function sendEmailChangeCode(env: Env, user: UserRow, nextEmail: string): 
   const email = normalizeEmail(nextEmail);
   const binding = getEmailBinding(env);
   if (!binding) {
-    return { sent: false, configured: false, error: "Cloudflare Email Sending henÃ¼z baÄŸlÄ± deÄŸil." };
+    return { sent: false, configured: false, error: "Cloudflare Email Sending henüz bağlı değil." };
   }
 
   const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
@@ -1072,9 +1163,9 @@ async function sendEmailChangeCode(env: Env, user: UserRow, nextEmail: string): 
     await binding.send({
       to: email,
       from: { email: NO_REPLY_FROM, name: "ReylAI" },
-      subject: "ReylAI e-posta deÄŸiÅŸiklik kodun",
+      subject: "ReylAI e-posta değişiklik kodun",
       html: verificationEmailHtml(user, code),
-      text: `ReylAI e-posta deÄŸiÅŸiklik kodun: ${code}. Kod ${VERIFY_CODE_TTL_MINUTES} dakika geÃ§erlidir.`
+      text: `ReylAI e-posta değişiklik kodun: ${code}. Kod ${VERIFY_CODE_TTL_MINUTES} dakika geçerlidir.`
     });
     return { sent: true, configured: true };
   } catch (error) {
@@ -1083,7 +1174,42 @@ async function sendEmailChangeCode(env: Env, user: UserRow, nextEmail: string): 
       message: "email change verification failed",
       detail: error instanceof Error ? error.message : String(error)
     }));
-    return { sent: false, configured: true, error: "E-posta deÄŸiÅŸiklik kodu gÃ¶nderilemedi." };
+    return { sent: false, configured: true, error: "E-posta değişiklik kodu gönderilemedi." };
+  }
+}
+
+async function sendPasswordChangeCode(env: Env, user: UserRow): Promise<{ sent: boolean; configured: boolean; error?: string }> {
+  const binding = getEmailBinding(env);
+  if (!binding) {
+    return { sent: false, configured: false, error: "Cloudflare Email Sending henüz bağlı değil." };
+  }
+
+  const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + VERIFY_CODE_TTL_MINUTES * 60 * 1000).toISOString();
+  const codeHash = await verificationHash(user.id, user.email, code);
+
+  await env.DB.prepare(
+    "UPDATE users SET password_change_code_hash = ?, password_change_expires_at = ?, password_change_sent_at = ?, " +
+    "password_change_token_hash = NULL, password_change_token_expires_at = NULL, updated_at = ? WHERE id = ?"
+  ).bind(codeHash, expiresAt, now.toISOString(), now.toISOString(), user.id).run();
+
+  try {
+    await binding.send({
+      to: user.email,
+      from: { email: NO_REPLY_FROM, name: "ReylAI" },
+      subject: "ReylAI şifre değişiklik kodun",
+      html: verificationEmailHtml(user, code),
+      text: `ReylAI şifre değişiklik kodun: ${code}. Kod ${VERIFY_CODE_TTL_MINUTES} dakika geçerlidir.`
+    });
+    return { sent: true, configured: true };
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: "error",
+      message: "password change email failed",
+      detail: error instanceof Error ? error.message : String(error)
+    }));
+    return { sent: false, configured: true, error: "Şifre değişiklik e-postası gönderilemedi." };
   }
 }
 
@@ -1097,39 +1223,39 @@ async function verificationHash(userId: string, email: string, code: string): Pr
 }
 
 function verificationEmailHtml(user: UserRow, code: string): string {
-  const name = escapeHtml(user.display_name || "ReylAI kullanÄ±cÄ±sÄ±");
+  const name = escapeHtml(user.display_name || "ReylAI kullanıcısı");
   const spacedCode = code.split("").join(" ");
   return `<!doctype html>
 <html lang="tr">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>ReylAI doÄŸrulama kodu</title>
+    <title>ReylAI doğrulama kodu</title>
   </head>
-  <body style="margin:0;background:#080414;color:#f7f2ff;font-family:Inter,Segoe UI,Arial,sans-serif;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:radial-gradient(circle at 20% 0%,rgba(102,232,226,.24),transparent 32%),linear-gradient(135deg,#120725,#080414);padding:32px 14px;">
+  <body style="margin:0;background:#030712;color:#eef5ff;font-family:Inter,Segoe UI,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:radial-gradient(circle at 20% 0%,rgba(37,99,235,.24),transparent 32%),linear-gradient(135deg,#061a3a,#030712);padding:32px 14px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;border:1px solid rgba(255,255,255,.16);border-radius:28px;background:rgba(24,18,42,.82);box-shadow:0 30px 90px rgba(0,0,0,.38);overflow:hidden;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;border:1px solid rgba(255,255,255,.16);border-radius:28px;background:rgba(18,31,58,.82);box-shadow:0 30px 90px rgba(0,0,0,.38);overflow:hidden;">
             <tr>
               <td style="padding:28px 28px 18px;">
-                <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#61f1e7;font-weight:900;">ReylAI GÃ¼venlik</div>
-                <h1 style="margin:10px 0 8px;font-size:28px;line-height:1.1;color:#fff;">E-postanÄ± doÄŸrula</h1>
-                <p style="margin:0;color:#d9d2ea;font-size:15px;line-height:1.65;">Merhaba ${name}, hesabÄ±nÄ± gÃ¼vene almak iÃ§in bu kodu ReylAI ayarlarÄ±nda kullan.</p>
+                <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#93c5fd;font-weight:900;">ReylAI Güvenlik</div>
+                <h1 style="margin:10px 0 8px;font-size:28px;line-height:1.1;color:#fff;">E-postanı doğrula</h1>
+                <p style="margin:0;color:#c7d8f2;font-size:15px;line-height:1.65;">Merhaba ${name}, hesabını güvene almak için bu kodu ReylAI ayarlarında kullan.</p>
               </td>
             </tr>
             <tr>
               <td style="padding:14px 28px;">
-                <div style="border:1px solid rgba(97,241,231,.26);border-radius:22px;background:linear-gradient(135deg,rgba(97,241,231,.18),rgba(157,109,255,.16));padding:24px;text-align:center;">
-                  <div style="font-size:12px;color:#bdb2d8;font-weight:800;text-transform:uppercase;letter-spacing:.16em;">GÃ¼venlik kodu</div>
+                <div style="border:1px solid rgba(96,165,250,.26);border-radius:22px;background:linear-gradient(135deg,rgba(96,165,250,.18),rgba(37,99,235,.16));padding:24px;text-align:center;">
+                  <div style="font-size:12px;color:#a8b7d1;font-weight:800;text-transform:uppercase;letter-spacing:.16em;">Güvenlik kodu</div>
                   <div style="margin-top:10px;font-size:36px;letter-spacing:.22em;font-weight:950;color:#ffffff;">${spacedCode}</div>
-                  <div style="margin-top:10px;color:#ffd44d;font-size:13px;font-weight:800;">${VERIFY_CODE_TTL_MINUTES} dakika geÃ§erlidir.</div>
+                  <div style="margin-top:10px;color:#ffd44d;font-size:13px;font-weight:800;">${VERIFY_CODE_TTL_MINUTES} dakika geçerlidir.</div>
                 </div>
               </td>
             </tr>
             <tr>
-              <td style="padding:10px 28px 30px;color:#a99ec1;font-size:13px;line-height:1.6;">
-                Bu isteÄŸi sen yapmadÄ±ysan bu e-postayÄ± yok sayabilirsin. Åifreni kimseyle paylaÅŸma.
+              <td style="padding:10px 28px 30px;color:#8ea0bd;font-size:13px;line-height:1.6;">
+                Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin. Şifreni kimseyle paylaşma.
               </td>
             </tr>
           </table>
@@ -1159,9 +1285,9 @@ function normalizeDisplayName(value: string): string {
 }
 
 function validateAccountInput(email: string, password: string, displayName: string): string {
-  if (!EMAIL_RE.test(email) || email.length > 254) return "GeÃ§erli bir e-posta girin.";
-  if (password.length < 8 || password.length > 128) return "Åifre 8-128 karakter olmalÄ±.";
-  if (!displayName || displayName.length < 2 || displayName.length > 40) return "GÃ¶rÃ¼nen ad 2-40 karakter olmalÄ±.";
+  if (!EMAIL_RE.test(email) || email.length > 254) return "Geçerli bir e-posta girin.";
+  if (password.length < 8 || password.length > 128) return "Şifre 8-128 karakter olmalı.";
+  if (!displayName || displayName.length < 2 || displayName.length > 40) return "Görünen ad 2-40 karakter olmalı.";
   return "";
 }
 
@@ -1284,7 +1410,7 @@ async function handleConfig(env: Env): Promise<Response> {
 
 async function handleDebugGas(env: Env): Promise<Response> {
   if (!env.GAS_WEB_APP_URL) {
-    return json({ error: "GAS_WEB_APP_URL ayarlanmamÄ±ÅŸ" }, 500);
+    return json({ error: "GAS_WEB_APP_URL ayarlanmamış" }, 500);
   }
   const results: Record<string, unknown> = {};
   for (const grade of ["9", "10"]) {
@@ -1315,7 +1441,7 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
   const selectedId = safeId(payload.book_id || payload.drive_id || "");
   const bookName = String(payload.book_name || "Kitap").trim() || "Kitap";
 
-  if (!env.MISTRAL_API_KEY) return { error: "MISTRAL_API_KEY yapÄ±landÄ±rÄ±lmamÄ±ÅŸ." };
+  if (!env.MISTRAL_API_KEY) return { error: "MISTRAL_API_KEY yapılandırılmamış." };
   if (!prompt) return { error: "Prompt eksik." };
   if (!selectedId) return { error: "book_id eksik." };
 
@@ -1334,7 +1460,7 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
   const scanData = await fetchScanData(env, scanKeys);
   if (!scanData?.pages?.length) {
     return {
-      error: "SeÃ§ili kitap iÃ§in hazÄ±r tarama metni bulunamadÄ±.",
+      error: "Seçili kitap için hazır tarama metni bulunamadı.",
       missing_scan: true
     };
   }
@@ -1342,7 +1468,7 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
   const contextText = buildContextExcerpt(scanData.pages, prompt);
   if (!contextText) {
     return {
-      error: "SeÃ§ili kitap iÃ§in kullanÄ±labilir tarama metni bulunamadÄ±.",
+      error: "Seçili kitap için kullanılabilir tarama metni bulunamadı.",
       missing_scan: true
     };
   }
@@ -1350,36 +1476,36 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
   const requestedPages = extractPageNumbers(prompt);
   const historyContext = buildHistoryContext(payload.chat_history || []);
   let systemMessage = [
-    "Sen ReylAI adlÄ± bir yapay zeka asistanÄ±sÄ±n.",
-    "MEB ders kitaplarÄ±nÄ± analiz eder, Ã¶ÄŸrencilere ve Ã¶ÄŸretmenlere yardÄ±mcÄ± olursun.",
-    "YalnÄ±zca verilen hazÄ±r tarama metnine dayan; kitapta olmayan bilgiyi uydurma.",
-    "BaÄŸlam yeterli deÄŸilse bunu aÃ§Ä±kÃ§a sÃ¶yle ve kullanÄ±cÄ±dan sayfa, soru numarasÄ± veya konu adÄ± iste.",
-    "YanÄ±tÄ± TÃ¼rkÃ§e, sade ve Ã¶ÄŸrenciye yardÄ±mcÄ± olacak biÃ§imde ver.",
-    "Soru Ã§Ã¶zÃ¼yorsan Ã¶nce yÃ¶ntemi, sonra sonucu ver.",
-    "MÃ¼mkÃ¼nse kaynak sayfayÄ± [Sayfa X] formatÄ±nda belirt.",
+    "Sen ReylAI adlı bir yapay zeka asistanısın.",
+    "MEB ders kitaplarını analiz eder, öğrencilere ve öğretmenlere yardımcı olursun.",
+    "Yalnızca verilen hazır tarama metnine dayan; kitapta olmayan bilgiyi uydurma.",
+    "Bağlam yeterli değilse bunu açıkça söyle ve kullanıcıdan sayfa, soru numarası veya konu adı iste.",
+    "Yanıtı Türkçe, sade ve öğrenciye yardımcı olacak biçimde ver.",
+    "Soru çözüyorsan önce yöntemi, sonra sonucu ver.",
+    "Mümkünse kaynak sayfayı [Sayfa X] formatında belirt.",
     "Matematiksel ifadeleri gerekiyorsa LaTeX ile yaz."
   ].join("\n");
 
   if (requestedPages.length) {
-    systemMessage += `\n\nKullanÄ±cÄ± Ã¶zellikle ÅŸu sayfa(lar)a odaklanÄ±yor: ${requestedPages.join(", ")}.`;
+    systemMessage += `\n\nKullanıcı özellikle şu sayfa(lar)a odaklanıyor: ${requestedPages.join(", ")}.`;
   }
   if (historyContext) {
-    systemMessage += "\n\nÃ–nceki konuÅŸma Ã¶zeti:\n" + historyContext;
+    systemMessage += "\n\nÖnceki konuşma özeti:\n" + historyContext;
   }
-  systemMessage += "\n\nKitabÄ±n ilgili bÃ¶lÃ¼mleri:\n\n" + contextText;
+  systemMessage += "\n\nKitabın ilgili bölümleri:\n\n" + contextText;
 
   const messages: MistralMessage[] = [
     { role: "system", content: systemMessage },
     {
       role: "user",
-      content: `Kitap adÄ±: ${book?.title || book?.name || bookName}\nÄ°stenen sayfalar: ${requestedPages.join(", ") || "belirtilmedi"}\n\nKullanÄ±cÄ± sorusu: ${prompt}`
+      content: `Kitap adı: ${book?.title || book?.name || bookName}\nİstenen sayfalar: ${requestedPages.join(", ") || "belirtilmedi"}\n\nKullanıcı sorusu: ${prompt}`
     }
   ];
 
   try {
     const mistralResponse = await mistralChat(env, messages, { temperature: 0.2 });
     const result = mistralResponseText(mistralResponse);
-    if (!result) return { error: "Mistral boÅŸ yanÄ±t dÃ¶ndÃ¼rdÃ¼." };
+    if (!result) return { error: "Mistral boş yanıt döndürdü." };
 
     let chatTitle = "";
     if (payload.title_requested) {
@@ -1412,7 +1538,7 @@ async function handleServePdf(id: string, env: Env): Promise<Response> {
     return Response.redirect(driveUrl, 302);
   }
 
-  return text("PDF bulunamadÄ±", 404);
+  return text("PDF bulunamadı", 404);
 }
 
 async function enrichBook(book: Book, env: Env): Promise<Book> {
@@ -1556,7 +1682,7 @@ async function mistralChat(
 
   if (!response.ok) {
     const snippet = await readTextSnippet(response, 500);
-    throw new Error(`Mistral API hatasÄ± (${response.status}): ${snippet || response.statusText}`);
+    throw new Error(`Mistral API hatası (${response.status}): ${snippet || response.statusText}`);
   }
 
   return await response.json();
@@ -1582,13 +1708,13 @@ async function generateChatTitle(env: Env, bookName: string, prompt: string, ans
   const fallback = fallbackChatTitle(prompt);
   try {
     const titlePrompt = [
-      "AÅŸaÄŸÄ±daki ders kitabÄ± sohbeti iÃ§in TÃ¼rkÃ§e, kÄ±sa ve doÄŸal bir baÅŸlÄ±k yaz.",
-      "Sadece baÅŸlÄ±ÄŸÄ± dÃ¶ndÃ¼r; tÄ±rnak, aÃ§Ä±klama veya madde iÅŸareti kullanma.",
+      "Aşağıdaki ders kitabı sohbeti için Türkçe, kısa ve doğal bir başlık yaz.",
+      "Sadece başlığı döndür; tırnak, açıklama veya madde işareti kullanma.",
       "En fazla 6 kelime olsun.",
       "",
       `Kitap: ${bookName}`,
-      `KullanÄ±cÄ± sorusu: ${prompt}`,
-      `Cevap Ã¶zeti: ${answer.slice(0, 700)}`
+      `Kullanıcı sorusu: ${prompt}`,
+      `Cevap özeti: ${answer.slice(0, 700)}`
     ].join("\n");
     const response = await mistralChat(env, [{ role: "user", content: titlePrompt }], {
       maxTokens: 32,
@@ -1637,7 +1763,7 @@ function pickContextPages(pages: ScanPage[], prompt: string): ScanPage[] {
   if (requested.length) {
     const selected: ScanPage[] = [];
     const seen = new Set<number>();
-    const radius = requested.length === 1 && /(civar|yakÄ±n|yaklasik|yaklaÅŸÄ±k)/i.test(prompt) ? 2 : (requested.length === 1 ? 1 : 0);
+    const radius = requested.length === 1 && /(civar|yakın|yaklasik|yaklaşık)/i.test(prompt) ? 2 : (requested.length === 1 ? 1 : 0);
     for (const pageNo of requested) appendPageWindow(selected, seen, byPage, pageNo, radius);
     return selected.slice(0, MAX_CONTEXT_PAGES);
   }
@@ -1675,7 +1801,7 @@ function appendPageWindow(target: ScanPage[], seen: Set<number>, byPage: Map<num
 function extractPageNumbers(prompt: string): number[] {
   const textValue = prompt.toLowerCase();
   const found: number[] = [];
-  for (const match of textValue.matchAll(/sayfa\s*(\d{1,4})\s*[-â€“]\s*(\d{1,4})/g)) {
+  for (const match of textValue.matchAll(/sayfa\s*(\d{1,4})\s*[-–]\s*(\d{1,4})/g)) {
     const start = Number(match[1]);
     const end = Number(match[2]);
     for (let page = Math.min(start, end); page <= Math.max(start, end); page += 1) found.push(page);
@@ -1686,9 +1812,9 @@ function extractPageNumbers(prompt: string): number[] {
 }
 
 function queryTerms(prompt: string): string[] {
-  const stop = new Set(["iÃ§in", "icin", "olan", "bana", "ÅŸunu", "sunu", "bunu", "nedir", "nasÄ±l", "nasil", "sayfa", "soru", "cevap", "lÃ¼tfen", "lutfen"]);
+  const stop = new Set(["için", "icin", "olan", "bana", "şunu", "sunu", "bunu", "nedir", "nasıl", "nasil", "sayfa", "soru", "cevap", "lütfen", "lutfen"]);
   return normalizeText(prompt)
-    .split(/[^a-z0-9Ä±ÄŸÃ¼ÅŸÃ¶Ã§Ä°ÄÃœÅÃ–Ã‡]+/i)
+    .split(/[^a-z0-9ığüşöçİĞÜŞÖÇ]+/i)
     .map((term) => term.trim())
     .filter((term) => term.length >= 3 && !stop.has(term));
 }
@@ -1696,20 +1822,20 @@ function queryTerms(prompt: string): string[] {
 function smallTalkResponse(prompt: string): string {
   const clean = normalizeText(prompt);
   if (/^(selam|merhaba|mrb|slm|sa|hey|hi|hello)\b/.test(clean)) {
-    return "Merhaba, buradayÄ±m. Kitaptaki bir soru, sayfa veya konuyu yaz; hemen yardÄ±mcÄ± olayÄ±m.";
+    return "Merhaba, buradayım. Kitaptaki bir soru, sayfa veya konuyu yaz; hemen yardımcı olayım.";
   }
-  if (clean.includes("teÅŸekkÃ¼r") || clean.includes("tesekkur") || clean.includes("saÄŸ ol") || clean.includes("sag ol")) {
-    return "Rica ederim. BuradayÄ±m; kitapla ilgili bir soru, sayfa veya konu yazarsan hemen yardÄ±mcÄ± olurum.";
+  if (clean.includes("teşekkür") || clean.includes("tesekkur") || clean.includes("sağ ol") || clean.includes("sag ol")) {
+    return "Rica ederim. Buradayım; kitapla ilgili bir soru, sayfa veya konu yazarsan hemen yardımcı olurum.";
   }
-  if (clean.includes("kimsin") || clean.includes("sen nesin") || clean.includes("adÄ±n ne") || clean.includes("adin ne")) {
-    return "Ben ReylAI. Ders kitaplarÄ±ndaki sayfa, soru ve konularÄ± hÄ±zlÄ±ca aÃ§Ä±klamak iÃ§in buradayÄ±m.";
+  if (clean.includes("kimsin") || clean.includes("sen nesin") || clean.includes("adın ne") || clean.includes("adin ne")) {
+    return "Ben ReylAI. Ders kitaplarındaki sayfa, soru ve konuları hızlıca açıklamak için buradayım.";
   }
   return "";
 }
 
 function buildHistoryContext(history: Array<{ role?: string; text?: string }>): string {
   return history.slice(-10).map((item) => {
-    const role = item.role === "user" ? "KullanÄ±cÄ±" : "ReylAI";
+    const role = item.role === "user" ? "Kullanıcı" : "ReylAI";
     const textValue = String(item.text || "").replace(/\s+/g, " ").trim().slice(0, 1800);
     return textValue ? `${role}: ${textValue}` : "";
   }).filter(Boolean).join("\n");
@@ -1720,7 +1846,7 @@ function fallbackChatTitle(prompt: string): string {
 }
 
 function cleanChatTitle(title: string): string {
-  let clean = title.replace(/[`*_>#[\]()"â€œâ€â€˜â€™]+/g, " ").replace(/\s+/g, " ").trim().replace(/[.:-]+$/g, "");
+  let clean = title.replace(/[`*_>#[\]()"“”‘’]+/g, " ").replace(/\s+/g, " ").trim().replace(/[.:-]+$/g, "");
   if (clean.length > 64) clean = clean.slice(0, 61).trimEnd() + "...";
   return clean;
 }
