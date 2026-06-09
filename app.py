@@ -2770,6 +2770,13 @@ body.account-menu-open .account-menu {
   transform: translateY(-1px);
 }
 
+.dm-tool-btn:disabled,
+.dm-send-btn:disabled {
+  opacity: 0.58;
+  cursor: wait;
+  transform: none;
+}
+
 .dm-back { display: none; }
 
 .dm-search {
@@ -2991,6 +2998,25 @@ body.account-menu-open .account-menu {
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.dm-forward-text.message-body {
+  color: var(--text-secondary);
+}
+
+.dm-forward-text .chat-md-heading {
+  margin: 8px 0 6px;
+  font-size: 14px;
+}
+
+.dm-forward-text .chat-md-pre,
+.dm-forward-text .chat-md-table-wrap,
+.dm-forward-text .chat-md-quote {
+  margin: 7px 0;
+}
+
+.dm-forward-text .chat-md-table {
+  min-width: 260px;
 }
 
 .dm-attachment-card img {
@@ -3998,7 +4024,9 @@ body.account-menu-open .account-menu {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px 40px;
+  flex-wrap: wrap;
+  gap: 9px 16px;
+  padding: 13px 40px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
   position: relative;
@@ -4012,14 +4040,37 @@ body.account-menu-open .account-menu {
   font-size: 11.5px;
   color: var(--text-muted);
   transition: color 0.3s ease;
+  white-space: pre-wrap;
 }
 
-.footer-copy:hover, .footer-copy:hover .footer-brand {
+.footer-copy:hover,
+.footer-copy:hover .footer-brand,
+.footer-link:hover {
   color: var(--accent);
   text-shadow: 0 0 8px rgba(37,99,235,0.6);
 }
 
 .footer-brand { color: #93c5fd; font-weight: 700; }
+
+.footer-links {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.footer-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 800;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.footer-sep {
+  color: rgba(136,136,170,0.55);
+}
 
 /* Library chat history drawer */
 .chat-history-backdrop {
@@ -5501,6 +5552,13 @@ body.account-menu-open .account-menu {
   border-radius: 20px;
   border: 1px solid rgba(147,197,253,0.14);
   background: rgba(255,255,255,0.06);
+  position: relative;
+}
+
+.profile-photo-preview-wrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
 }
 
 .profile-photo-preview {
@@ -5516,6 +5574,52 @@ body.account-menu-open .account-menu {
   background-size: cover;
   background-position: center;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.24);
+}
+
+.profile-status-toggle {
+  position: absolute;
+  left: -7px;
+  bottom: -7px;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(147,197,253,0.28);
+  background: rgba(6,14,31,0.92);
+  color: var(--text-primary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 12px 26px rgba(0,0,0,0.30), inset 0 1px rgba(255,255,255,0.14);
+  transition: var(--transition);
+}
+
+.profile-status-toggle:hover,
+.profile-status-toggle.active {
+  background: rgba(29,78,216,0.78);
+  border-color: rgba(191,219,254,0.46);
+  transform: translateY(-1px);
+}
+
+.profile-status-toggle .presence-mini-dot {
+  width: 11px;
+  height: 11px;
+}
+
+.profile-status-toggle[data-presence="idle"] .presence-mini-dot { background: #facc15; }
+.profile-status-toggle[data-presence="dnd"] .presence-mini-dot { background: #f87171; }
+.profile-status-toggle[data-presence="invisible"] .presence-mini-dot { background: #94a3b8; }
+
+.profile-presence-popover {
+  display: none;
+  width: 100%;
+}
+
+.profile-presence-popover.active {
+  display: block;
+}
+
+.profile-presence-popover .presence-picker {
+  margin-top: 0;
 }
 
 .profile-photo-input {
@@ -9178,17 +9282,25 @@ body::after {
   }
 
   .profile-photo-card {
-    grid-template-columns: 76px 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     align-items: center;
     justify-items: stretch;
   }
 
-  .profile-photo-preview {
+  .profile-photo-preview-wrap {
+    grid-column: 1 / -1;
+    justify-self: center;
     width: 76px;
     height: 76px;
+  }
+
+  .profile-photo-preview {
     border-radius: 22px;
     font-size: 26px;
-    grid-row: span 2;
+  }
+
+  .profile-presence-popover {
+    grid-column: 1 / -1;
   }
 
   .settings-email-control {
@@ -9562,11 +9674,11 @@ body::after,
   }
 
   .profile-photo-card {
-    grid-template-columns: 72px 1fr;
+    grid-template-columns: 1fr;
   }
 
   .profile-photo-card .account-menu-btn {
-    grid-column: 2;
+    grid-column: auto;
   }
 
   .avatar-crop-canvas {
@@ -9758,12 +9870,6 @@ body::after,
         </div>
         <div class="account-role-badges" id="accountRoleBadges"></div>
         <div class="account-verify-state" id="accountVerifyState">E-posta doğrulaması bekliyor</div>
-        <div class="presence-picker" id="presencePicker" aria-label="Durum seçimi">
-          <button class="presence-btn" data-presence="online" type="button" onclick="setPresenceStatus('online')"><span class="presence-mini-dot"></span>Çevrimiçi</button>
-          <button class="presence-btn" data-presence="idle" type="button" onclick="setPresenceStatus('idle')"><span class="presence-mini-dot"></span>Boşta</button>
-          <button class="presence-btn" data-presence="dnd" type="button" onclick="setPresenceStatus('dnd')"><span class="presence-mini-dot"></span>Rahatsız etmeyin</button>
-          <button class="presence-btn" data-presence="invisible" type="button" onclick="setPresenceStatus('invisible')"><span class="presence-mini-dot"></span>Görünmez</button>
-        </div>
         <div class="account-menu-actions">
           <button class="account-menu-btn" type="button" onclick="openProfileSettings()">⚙ Ayarlar</button>
           <button class="account-menu-btn" id="adminToolsMenuBtn" type="button" onclick="openAdminTools()" style="display:none">✦ Admin Araçları</button>
@@ -9798,7 +9904,14 @@ body::after,
     </button>
   </div>
   <footer class="lib-footer">
-    <span class="footer-copy">©️2026 reyli</span>
+    <span class="footer-copy">©2026 All Copyrights Reserved.  •  made with ❤️ by reyli</span>
+    <nav class="footer-links" aria-label="Yasal bağlantılar">
+      <a class="footer-link" href="terms.html">Terms of Service</a>
+      <span class="footer-sep">•</span>
+      <a class="footer-link" href="privacy.html">Privacy Policy</a>
+      <span class="footer-sep">•</span>
+      <a class="footer-link" href="mailto:contact@reylai.xyz">contact@reylai.xyz</a>
+    </nav>
   </footer>
 </div>
 
@@ -10044,8 +10157,21 @@ body::after,
       <button class="cfg-close-btn" type="button" onclick="closeProfileSettings()">&#x2715;</button>
     </div>
     <div class="profile-settings-grid">
-      <div class="profile-photo-card">
-        <div class="profile-photo-preview" id="profilePhotoPreview">R</div>
+      <div class="profile-photo-card" id="profilePhotoCard">
+        <div class="profile-photo-preview-wrap">
+          <div class="profile-photo-preview" id="profilePhotoPreview">R</div>
+          <button class="profile-status-toggle" id="profileStatusToggle" type="button" onclick="toggleProfilePresencePicker(event)" aria-label="Durum değiştir" title="Durum değiştir">
+            <span class="presence-mini-dot"></span>
+          </button>
+        </div>
+        <div class="profile-presence-popover" id="profilePresencePopover">
+          <div class="presence-picker" id="presencePicker" aria-label="Durum seçimi">
+            <button class="presence-btn" data-presence="online" type="button" onclick="setPresenceStatus('online')"><span class="presence-mini-dot"></span>Çevrimiçi</button>
+            <button class="presence-btn" data-presence="idle" type="button" onclick="setPresenceStatus('idle')"><span class="presence-mini-dot"></span>Boşta</button>
+            <button class="presence-btn" data-presence="dnd" type="button" onclick="setPresenceStatus('dnd')"><span class="presence-mini-dot"></span>Rahatsız etmeyin</button>
+            <button class="presence-btn" data-presence="invisible" type="button" onclick="setPresenceStatus('invisible')"><span class="presence-mini-dot"></span>Görünmez</button>
+          </div>
+        </div>
         <input class="profile-photo-input" id="profilePhotoInput" type="file" accept="image/png,image/jpeg,image/webp" onchange="handleProfilePhotoChange(event)">
         <button class="account-menu-btn" type="button" onclick="document.getElementById('profilePhotoInput').click()">Fotoğraf seç</button>
         <button class="account-menu-btn" type="button" onclick="clearProfilePhoto()">Kaldır</button>
@@ -10246,7 +10372,7 @@ body::after,
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05 12.2 20.29a6 6 0 0 1-8.49-8.49l9.24-9.24a4 4 0 0 1 5.66 5.66l-9.25 9.24a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           </button>
           <textarea class="dm-input" id="dmTextInput" rows="1" maxlength="4000" placeholder="Mesaj yaz..." oninput="autoResizeDmInput()"></textarea>
-          <button class="dm-send-btn" type="button" onclick="sendDmMessage()" aria-label="Mesaj gönder">
+          <button class="dm-send-btn" id="dmSendBtn" type="button" onclick="sendDmMessage()" aria-label="Mesaj gönder">
             <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
@@ -10359,6 +10485,7 @@ let _dmActiveUserId = '';
 let _dmMessages = [];
 let _dmPendingAttachment = null;
 let _dmPendingForward = null;
+let _dmSending = false;
 let _dmPollTimer = null;
 let _dmKnownLatestIds = {};
 let _dmInitialPollDone = false;
@@ -10423,6 +10550,7 @@ function resetAccountScopedState() {
   _dmMessages = [];
   _dmPendingAttachment = null;
   _dmPendingForward = null;
+  setDmSendingState(false);
   _dmKnownLatestIds = {};
   _dmInitialPollDone = false;
   selectedBook = null;
@@ -10906,6 +11034,33 @@ function renderPresencePicker(status) {
   });
 }
 
+function updateProfileStatusToggle(status) {
+  const btn = document.getElementById('profileStatusToggle');
+  if (!btn) return;
+  const active = normalizePresenceStatus(status);
+  btn.dataset.presence = active;
+  btn.classList.toggle('active', !!(document.getElementById('profilePresencePopover') || {}).classList?.contains('active'));
+  btn.title = 'Durum: ' + presenceLabel(active);
+  btn.setAttribute('aria-label', 'Durum değiştir: ' + presenceLabel(active));
+}
+
+function toggleProfilePresencePicker(event) {
+  if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+  const popover = document.getElementById('profilePresencePopover');
+  if (!popover) return;
+  const open = !popover.classList.contains('active');
+  popover.classList.toggle('active', open);
+  const btn = document.getElementById('profileStatusToggle');
+  if (btn) btn.classList.toggle('active', open);
+}
+
+function closeProfilePresencePicker() {
+  const popover = document.getElementById('profilePresencePopover');
+  if (popover) popover.classList.remove('active');
+  const btn = document.getElementById('profileStatusToggle');
+  if (btn) btn.classList.remove('active');
+}
+
 function bindPresenceActivityTracking() {
   if (_presenceActivityBound) return;
   _presenceActivityBound = true;
@@ -10971,6 +11126,7 @@ async function setPresenceStatus(status, options) {
     _accountUser = data.user || Object.assign({}, _accountUser, { presence_status: status });
     _presenceAutoIdle = !!options.auto && status === 'idle';
     updateAccountUI();
+    if (!options.auto) closeProfilePresencePicker();
     schedulePresenceIdleTimer();
     fetchDmThreads().then(renderDmThreads).catch(function() {});
   } catch(e) {
@@ -11020,6 +11176,7 @@ updateAccountUI = function() {
     verify.textContent = ok ? '✓ E-posta doğrulandı' : 'E-posta doğrulaması bekliyor';
   }
   renderPresencePicker(user.presence_status || 'online');
+  updateProfileStatusToggle(user.presence_status || 'online');
   updateVerificationPanel();
 };
 
@@ -11035,6 +11192,7 @@ function openProfileSettings() {
   const email = document.getElementById('settingsEmail');
   if (name) name.value = _accountUser.display_name || '';
   if (email) email.value = _accountUser.email || '';
+  closeProfilePresencePicker();
   updateProfilePhotoPreview();
   updateVerificationPanel();
   document.getElementById('profileSettingsOverlay').classList.add('active');
@@ -11043,6 +11201,7 @@ function openProfileSettings() {
 function closeProfileSettings() {
   const overlay = document.getElementById('profileSettingsOverlay');
   if (overlay) overlay.classList.remove('active');
+  closeProfilePresencePicker();
 }
 
 function updateProfilePhotoPreview() {
@@ -12602,6 +12761,7 @@ function renderDmThreads() {
     list.innerHTML = '<div class="dm-empty-state">Eşleşen hesap bulunamadı.</div>';
     return;
   }
+  const fragment = document.createDocumentFragment();
   filtered.forEach(function(row) {
     const thread = row.thread || {};
     const latest = thread.latest_message || null;
@@ -12617,8 +12777,9 @@ function renderDmThreads() {
         '<div class="dm-chat-subtitle">' + escHtml(dmPresenceLabel(row.user)) + '</div>' +
       '</div>' +
       (thread.unread_count ? '<span class="dm-unread">' + escHtml(Math.min(Number(thread.unread_count || 0), 99)) + '</span>' : '<span class="dm-time">' + escHtml(latest ? formatChatTime(latest.created_at) : '') + '</span>');
-    list.appendChild(btn);
+    fragment.appendChild(btn);
   });
+  list.appendChild(fragment);
 }
 
 async function openDmConversation(userId) {
@@ -12676,9 +12837,11 @@ function renderDmMessages() {
     list.innerHTML = '<div class="dm-empty-state">İlk mesajı gönder.</div>';
     return;
   }
+  const fragment = document.createDocumentFragment();
   _dmMessages.forEach(function(message) {
-    list.appendChild(renderDmMessage(message));
+    fragment.appendChild(renderDmMessage(message));
   });
+  list.appendChild(fragment);
   list.scrollTop = list.scrollHeight;
 }
 
@@ -12707,9 +12870,14 @@ function renderDmMessage(message) {
 function renderDmForward(forward) {
   const card = document.createElement('div');
   card.className = 'dm-forward-card';
-  card.innerHTML =
-    '<div class="dm-forward-label">AI mesajı iletildi' + (forward.book_title ? ' · ' + escHtml(forward.book_title) : '') + '</div>' +
-    '<div class="dm-forward-text">' + escHtml(String(forward.text || '').slice(0, 9000)) + '</div>';
+  const label = document.createElement('div');
+  label.className = 'dm-forward-label';
+  label.textContent = 'AI mesajı iletildi' + (forward.book_title ? ' · ' + String(forward.book_title) : '');
+  const text = document.createElement('div');
+  text.className = 'dm-forward-text message-body';
+  renderMarkdown(text, String(forward.text || '').slice(0, 9000));
+  card.appendChild(label);
+  card.appendChild(text);
   return card;
 }
 
@@ -12787,7 +12955,22 @@ async function handleDmFileSelect(file) {
   }
 }
 
+function setDmSendingState(sending) {
+  _dmSending = !!sending;
+  const sendBtn = document.getElementById('dmSendBtn');
+  const fileBtn = document.querySelector('.dm-tool-btn');
+  const input = document.getElementById('dmTextInput');
+  if (sendBtn) {
+    sendBtn.disabled = _dmSending;
+    sendBtn.classList.toggle('sending', _dmSending);
+    sendBtn.setAttribute('aria-busy', _dmSending ? 'true' : 'false');
+  }
+  if (fileBtn) fileBtn.disabled = _dmSending;
+  if (input) input.setAttribute('aria-busy', _dmSending ? 'true' : 'false');
+}
+
 async function sendDmMessage() {
+  if (_dmSending) return;
   if (!_dmActiveUserId) {
     showToast('warning', 'Kişi seç', 'Mesaj göndermek için önce bir hesap seç.', 3200);
     return;
@@ -12802,8 +12985,10 @@ async function sendDmMessage() {
     recipient_id: _dmActiveUserId,
     body: body,
     attachment: _dmPendingAttachment,
-    forward: _dmPendingForward
+    forward: _dmPendingForward,
+    client_id: makeClientId('dm')
   };
+  setDmSendingState(true);
   try {
     const res = await apiFetch('/api/dm/messages', {
       method: 'POST',
@@ -12821,10 +13006,11 @@ async function sendDmMessage() {
       _dmMessages.push(data.message);
       renderDmMessages();
     }
-    await fetchDmThreads();
-    renderDmThreads();
+    fetchDmThreads().then(renderDmThreads).catch(function() {});
   } catch(e) {
     showToast('error', 'Mesaj gönderilemedi', e.message || 'Bağlantı hatası.', 5200);
+  } finally {
+    setDmSendingState(false);
   }
 }
 
@@ -13276,8 +13462,17 @@ function prefetchAllGrades() {
   return;
 }
 
+var _filterBooksFrame = 0;
+var _filterBooksQuery = '';
 function filterBooks(query) {
-  var q = query.toLowerCase().trim();
+  _filterBooksQuery = String(query || '');
+  if (_filterBooksFrame) cancelAnimationFrame(_filterBooksFrame);
+  _filterBooksFrame = requestAnimationFrame(applyBookFilter);
+}
+
+function applyBookFilter() {
+  _filterBooksFrame = 0;
+  var q = _filterBooksQuery.toLowerCase().trim();
   var cards = document.querySelectorAll('.book-card');
   var visible = 0;
   cards.forEach(function(card) {
@@ -16256,6 +16451,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!menu || !chip) return;
     if (!menu.contains(e.target) && !chip.contains(e.target)) closeAccountMenu();
   });
+  document.addEventListener('click', function(e) {
+    const overlay = document.getElementById('profileSettingsOverlay');
+    const card = document.getElementById('profilePhotoCard');
+    const popover = document.getElementById('profilePresencePopover');
+    if (!overlay || !card || !popover || !overlay.classList.contains('active') || !popover.classList.contains('active')) return;
+    if (!card.contains(e.target)) closeProfilePresencePicker();
+  });
 });
 
 document.addEventListener('keydown', function(e) {
@@ -16404,8 +16606,7 @@ async function startApp() {
   }
   loadChatStore();
   renderChatHistory();
-  await loadChatStoreFromServer();
-  renderChatHistory();
+  loadChatStoreFromServer().then(renderChatHistory).catch(function() {});
   updateNetworkStatus();
   await loadLibrary();
   syncSilent();
@@ -16418,6 +16619,196 @@ bootApp();
 </body>
 </html>
 """
+
+CONTACT_EMAIL = "contact@reylai.xyz"
+
+LEGAL_PAGE_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ title }} · ReylAI</title>
+<meta name="theme-color" content="#030712">
+<link rel="icon" type="image/png" href="{{ reylai_icon_src }}">
+<link rel="apple-touch-icon" href="{{ reylai_icon_src }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #030712;
+  --panel: rgba(15,23,42,0.72);
+  --panel-strong: rgba(15,23,42,0.94);
+  --line: rgba(147,197,253,0.18);
+  --text: #eef5ff;
+  --muted: #a7b2c7;
+  --accent: #60a5fa;
+  --warm: #fbbf24;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; }
+body {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(96,165,250,0.18), transparent 30%),
+    radial-gradient(circle at 90% 12%, rgba(251,191,36,0.10), transparent 28%),
+    linear-gradient(180deg, #030712 0%, #07101f 54%, #030712 100%);
+}
+.legal-shell { width: min(940px, calc(100% - 30px)); margin: 0 auto; padding: 28px 0 38px; }
+.legal-nav { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 34px; }
+.legal-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 950; }
+.legal-brand img { width: 36px; height: 36px; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.28); }
+.legal-back { color: var(--muted); text-decoration: none; font-weight: 800; border: 1px solid var(--line); border-radius: 999px; padding: 9px 13px; background: rgba(255,255,255,0.06); }
+.legal-back:hover, .legal-link:hover { color: #fff; border-color: rgba(191,219,254,0.42); }
+.legal-hero { padding: 8px 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+.legal-kicker { color: var(--accent); font-size: 12px; font-weight: 950; letter-spacing: .16em; text-transform: uppercase; }
+h1 { font-family: Manrope, Inter, sans-serif; font-size: clamp(34px, 7vw, 70px); line-height: 0.96; letter-spacing: 0; margin: 10px 0 14px; }
+.legal-lead { max-width: 720px; color: var(--muted); font-size: 17px; line-height: 1.7; margin: 0; }
+.legal-meta { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+.legal-pill { border: 1px solid var(--line); border-radius: 999px; color: var(--muted); padding: 7px 11px; background: rgba(255,255,255,0.05); font-size: 12px; font-weight: 800; }
+.legal-card { border: 1px solid var(--line); border-radius: 20px; background: var(--panel); box-shadow: 0 28px 90px rgba(0,0,0,0.28), inset 0 1px rgba(255,255,255,0.08); overflow: hidden; backdrop-filter: blur(22px) saturate(1.24); }
+.legal-prose { padding: clamp(20px, 4vw, 38px); }
+.legal-prose h2 { margin: 28px 0 10px; font-size: 21px; line-height: 1.24; }
+.legal-prose h2:first-child { margin-top: 0; }
+.legal-prose p, .legal-prose li { color: var(--muted); line-height: 1.74; }
+.legal-prose ul { padding-left: 22px; }
+.legal-prose strong { color: var(--text); }
+.legal-note { margin: 22px 0; padding: 14px 16px; border-left: 3px solid var(--warm); background: rgba(251,191,36,0.08); border-radius: 12px; color: #f8e7b0; }
+.legal-link { color: #bfdbfe; font-weight: 800; text-decoration: none; border-bottom: 1px solid rgba(191,219,254,0.34); }
+.legal-footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 18px; color: rgba(167,178,199,0.82); font-size: 12px; }
+@media (max-width: 640px) {
+  .legal-nav { align-items: flex-start; flex-direction: column; }
+  .legal-back { width: 100%; text-align: center; }
+  .legal-prose { padding: 20px; }
+}
+</style>
+</head>
+<body>
+  <main class="legal-shell">
+    <nav class="legal-nav">
+      <a class="legal-brand" href="index.html"><img src="{{ reylai_icon_src }}" alt="ReylAI"><span>ReylAI</span></a>
+      <a class="legal-back" href="index.html">Ana sayfaya dön</a>
+    </nav>
+    <section class="legal-hero">
+      <div class="legal-kicker">{{ kicker }}</div>
+      <h1>{{ title }}</h1>
+      <p class="legal-lead">{{ lead }}</p>
+      <div class="legal-meta">
+        <span class="legal-pill">Son güncelleme: 9 Haziran 2026</span>
+        <span class="legal-pill">İletişim: {{ contact_email }}</span>
+      </div>
+    </section>
+    <article class="legal-card">
+      <div class="legal-prose">
+{{ body|safe }}
+      </div>
+    </article>
+    <footer class="legal-footer">
+      <span>©2026 All Copyrights Reserved.  •  made with ❤️ by reyli</span>
+      <span><a class="legal-link" href="terms.html">Terms</a> · <a class="legal-link" href="privacy.html">Privacy</a> · <a class="legal-link" href="mailto:{{ contact_email }}">{{ contact_email }}</a></span>
+    </footer>
+  </main>
+</body>
+</html>
+"""
+
+TERMS_BODY = """
+<h2>1. Kabul</h2>
+<p>ReylAI'yi kullanarak bu Terms of Service'i kabul etmiş olursun. Bu şartları kabul etmiyorsan hizmeti kullanmamalısın.</p>
+<div class="legal-note"><strong>Kısa özet:</strong> ReylAI eğitim ve üretkenlik odaklı bir araçtır; çıktıları kontrol etmek ve kendi kararını vermek kullanıcı sorumluluğundadır.</div>
+
+<h2>2. Hizmetin kapsamı</h2>
+<p>ReylAI; ders kitabı içeriklerini arama, özetleme, analiz etme, sohbet geçmişi tutma ve hesaplar arasında DM gönderme gibi özellikler sağlayabilir. Özellikler zaman içinde değişebilir, geçici olarak durabilir veya geliştirilebilir.</p>
+
+<h2>3. Kullanıcı sorumlulukları</h2>
+<ul>
+  <li>Hesap bilgilerini doğru ve güvenli tutmalısın.</li>
+  <li>Başkasının hesabına, verisine veya cihazına izinsiz erişmeye çalışmamalısın.</li>
+  <li>DM, dosya eki, profil bilgisi veya prompt alanlarında hukuka aykırı, zararlı, taciz edici ya da izinsiz kişisel veri içeren içerik paylaşmamalısın.</li>
+  <li>AI yanıtlarını tek doğruluk kaynağı gibi kullanmadan önce kontrol etmelisin.</li>
+</ul>
+
+<h2>4. AI çıktıları</h2>
+<p>AI yanıtları otomatik üretilir ve hata içerebilir. ReylAI, eğitim desteği sunmayı amaçlar; profesyonel, akademik, hukuki, finansal veya tıbbi danışmanlık yerine geçmez.</p>
+
+<h2>5. İçerik ve lisans</h2>
+<p>Uygulamaya gönderdiğin içeriklerin gerekli haklarına sahip olduğundan emin olmalısın. İçeriğini yalnızca hizmeti sağlamak, güvenliğini korumak, hataları gidermek ve özellikleri çalıştırmak için gerekli ölçüde işleyebiliriz.</p>
+
+<h2>6. Hesap, güvenlik ve erişim</h2>
+<p>Güvenlik, kötüye kullanım, sistem bütünlüğü veya yasal gereklilikler nedeniyle hesap erişimini sınırlayabilir, askıya alabilir veya belirli içerikleri kaldırabiliriz.</p>
+
+<h2>7. Sorumluluk sınırı</h2>
+<p>Hizmet mümkün olan en iyi şekilde sunulmaya çalışılır; ancak kesintisiz, hatasız veya her ihtiyaca uygun olacağı garanti edilmez. Yürürlükteki kanunların izin verdiği ölçüde dolaylı zararlar, veri kaybı veya kullanım kaybından sorumlu olmayız.</p>
+
+<h2>8. Değişiklikler</h2>
+<p>Bu şartlar güncellenebilir. Önemli değişikliklerde makul şekilde bildirim yapılır. Güncellenmiş şartlardan sonra hizmeti kullanmaya devam etmen yeni şartları kabul ettiğin anlamına gelir.</p>
+
+<h2>9. İletişim</h2>
+<p>Sorular, kaldırma talepleri veya güvenlik bildirimleri için bize <a class="legal-link" href="mailto:contact@reylai.xyz">contact@reylai.xyz</a> adresinden ulaşabilirsin.</p>
+"""
+
+PRIVACY_BODY = """
+<h2>1. Topladığımız bilgiler</h2>
+<p>ReylAI'yi çalıştırmak için hesap e-postası, görünen ad, profil fotoğrafı, oturum bilgileri, doğrulama durumu, sohbet geçmişi, DM içerikleri, dosya ekleri, durum bilgisi ve teknik günlükler gibi bilgiler işlenebilir.</p>
+
+<h2>2. Bilgileri nasıl kullanırız?</h2>
+<ul>
+  <li>Hesap oluşturma, giriş, e-posta doğrulama ve şifre güvenliği işlemlerini yürütmek.</li>
+  <li>Sohbet, kitap analizi, DM ve bildirim özelliklerini çalıştırmak.</li>
+  <li>Kötüye kullanım, güvenlik açıkları ve sistem hatalarını tespit etmek.</li>
+  <li>Performansı, güvenilirliği ve kullanıcı deneyimini iyileştirmek.</li>
+</ul>
+
+<h2>3. AI ve içerik işleme</h2>
+<p>Promptların, seçili kitap bağlamı ve sohbet geçmişinle birlikte AI yanıtı üretmek için işlenebilir. Hassas kişisel verileri promptlara veya DM'lere eklememeni öneririz.</p>
+
+<h2>4. DM ve iletişim verileri</h2>
+<p>DM mesajları, iletilen AI yanıtları, dosya ekleri ve okunma durumları mesajlaşma özelliğini sağlamak için saklanabilir. E-posta bildirimleri, okunmamış mesajlar hakkında kısa bir özet içerebilir.</p>
+
+<h2>5. Çerezler ve yerel depolama</h2>
+<p>Oturum tokenları, cihaz hatırlama tercihleri ve arayüz durumları tarayıcıdaki localStorage/sessionStorage benzeri mekanizmalarda tutulabilir. Bu verileri tarayıcı ayarlarından silebilirsin.</p>
+
+<h2>6. Paylaşım</h2>
+<p>Veriler; barındırma, veritabanı, e-posta gönderimi, güvenlik doğrulaması ve AI yanıt üretimi gibi hizmet sağlayıcılarla yalnızca gerekli olduğu ölçüde paylaşılabilir. Verilerini satmayız.</p>
+
+<h2>7. Saklama</h2>
+<p>Hesap ve içerik verileri hizmeti sağlamak için gerekli olduğu sürece saklanır. Güvenlik veya yasal nedenlerle bazı kayıtlar daha uzun tutulabilir.</p>
+
+<h2>8. Hakların</h2>
+<p>Hesap bilgilerini güncelleme, belirli verilerin silinmesini isteme veya gizlilikle ilgili soru sorma hakkın vardır. Taleplerini <a class="legal-link" href="mailto:contact@reylai.xyz">contact@reylai.xyz</a> adresine gönderebilirsin.</p>
+
+<h2>9. Güvenlik</h2>
+<p>Parolalar düz metin olarak saklanmaz; oturumlar, doğrulama kodları ve yönetici işlemleri için güvenlik kontrolleri kullanılır. Yine de hiçbir sistem tamamen risksiz değildir.</p>
+
+<h2>10. Güncellemeler</h2>
+<p>Bu Privacy Policy zaman zaman güncellenebilir. Önemli değişikliklerde uygun bir bildirim yöntemi kullanılabilir.</p>
+"""
+
+
+def render_legal_page(kind):
+    pdfjs_version = _pdfjs_asset_version()
+    page = {
+        "terms": {
+            "title": "Terms of Service",
+            "kicker": "ReylAI yasal",
+            "lead": "ReylAI'yi kullanırken geçerli olan temel kurallar, sorumluluklar ve kullanım şartları.",
+            "body": TERMS_BODY,
+        },
+        "privacy": {
+            "title": "Privacy Policy",
+            "kicker": "ReylAI gizlilik",
+            "lead": "Hangi verileri işlediğimiz, bunları nasıl kullandığımız ve bizimle nasıl iletişime geçebileceğin.",
+            "body": PRIVACY_BODY,
+        },
+    }[kind]
+    return render_template_string(
+        LEGAL_PAGE_TEMPLATE,
+        reylai_icon_src=_asset_data_url("static/reylai_icon.png", "/static/reylai_icon.png"),
+        contact_email=CONTACT_EMAIL,
+        pdfjs_version=pdfjs_version,
+        **page,
+    )
 
 
 @app.route('/')
@@ -16432,6 +16823,18 @@ def index():
         pdfjs_lib_url=f"/pdfjs/pdf.min.js?v={pdfjs_version}",
         pdfjs_worker_url=f"/pdfjs/pdf.worker.min.js?v={pdfjs_version}",
     )
+
+
+@app.route('/terms')
+@app.route('/terms.html')
+def terms_page():
+    return render_legal_page("terms")
+
+
+@app.route('/privacy')
+@app.route('/privacy.html')
+def privacy_page():
+    return render_legal_page("privacy")
 
 
 @app.route('/pdfjs/<path:filename>')

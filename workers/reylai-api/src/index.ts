@@ -186,6 +186,7 @@ type DmMessageRow = {
   id: string;
   sender_id: string;
   recipient_id: string;
+  client_id?: string | null;
   body?: string | null;
   kind?: string | null;
   attachment_data_url?: string | null;
@@ -229,9 +230,9 @@ const USER_SELECT_COLUMNS = [
 ].join(", ");
 
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     try {
-      return await handleRequest(request, env);
+      return await handleRequest(request, env, ctx);
     } catch (error) {
       console.error(JSON.stringify({
         level: "error",
@@ -242,7 +243,7 @@ export default {
   }
 } satisfies ExportedHandler<Env>;
 
-async function handleRequest(request: Request, env: Env): Promise<Response> {
+async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(request) });
   }
@@ -349,7 +350,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   }
 
   if (path === "/api/dm/messages" && request.method === "POST") {
-    return handleDmMessageSend(request, env);
+    return handleDmMessageSend(request, env, ctx);
   }
 
   if (path === "/api/dm/read" && request.method === "POST") {
@@ -1257,7 +1258,7 @@ async function handleDmMessagesGet(request: Request, env: Env, url: URL): Promis
   return json({ success: true, user: publicDmUser(other), messages });
 }
 
-async function handleDmMessageSend(request: Request, env: Env): Promise<Response> {
+async function handleDmMessageSend(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
   const payload = await readJson<Record<string, unknown>>(request);
@@ -1278,16 +1279,27 @@ async function handleDmMessageSend(request: Request, env: Env): Promise<Response
     return json({ success: false, error: "Boş mesaj gönderilemez." }, 400);
   }
 
+  const clientId = cleanDmClientId(payload.client_id);
+  if (clientId) {
+    const existing = await env.DB.prepare(
+      "SELECT * FROM dm_messages WHERE sender_id = ? AND client_id = ? AND deleted_at IS NULL LIMIT 1"
+    ).bind(senderId, clientId).first<DmMessageRow>();
+    if (existing) {
+      return json({ success: true, message: publicDmMessage(existing, senderId), duplicate: true });
+    }
+  }
+
   const now = new Date().toISOString();
   const kind = hasForward ? "forward" : (hasAttachment ? "file" : "text");
   const id = crypto.randomUUID();
   await env.DB.prepare(
-    "INSERT INTO dm_messages (id, sender_id, recipient_id, body, kind, attachment_data_url, attachment_name, attachment_mime_type, attachment_size, voice_duration_ms, forward_json, created_at) " +
-    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT OR IGNORE INTO dm_messages (id, sender_id, recipient_id, client_id, body, kind, attachment_data_url, attachment_name, attachment_mime_type, attachment_size, voice_duration_ms, forward_json, created_at) " +
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).bind(
     id,
     senderId,
     recipientId,
+    clientId || null,
     body,
     kind,
     attachment.data_url,
@@ -1299,11 +1311,20 @@ async function handleDmMessageSend(request: Request, env: Env): Promise<Response
     now
   ).run();
 
-  const row = await env.DB.prepare("SELECT * FROM dm_messages WHERE id = ?").bind(id).first<DmMessageRow>();
+  let row = await env.DB.prepare("SELECT * FROM dm_messages WHERE id = ?").bind(id).first<DmMessageRow>();
+  if (!row && clientId) {
+    const existing = await env.DB.prepare(
+      "SELECT * FROM dm_messages WHERE sender_id = ? AND client_id = ? AND deleted_at IS NULL LIMIT 1"
+    ).bind(senderId, clientId).first<DmMessageRow>();
+    if (existing) {
+      return json({ success: true, message: publicDmMessage(existing, senderId), duplicate: true });
+    }
+  }
+  if (!row) return json({ success: false, error: "Mesaj gönderilemedi." }, 500);
   const unread = await env.DB.prepare(
     "SELECT COUNT(*) AS count FROM dm_messages WHERE recipient_id = ? AND read_at IS NULL AND deleted_at IS NULL"
   ).bind(recipientId).first<{ count: number }>();
-  await sendDmNotificationEmail(env, auth.user, recipient, Number(unread?.count || 1), row ? publicDmMessage(row, senderId) : null);
+  ctx.waitUntil(sendDmNotificationEmail(env, auth.user, recipient, Number(unread?.count || 1), row ? publicDmMessage(row, senderId) : null));
   return json({ success: true, message: row ? publicDmMessage(row, senderId) : null }, 201);
 }
 
@@ -1904,6 +1925,11 @@ function normalizeServerChatStore(rawStore: unknown): ChatStore {
 
 function cleanDmText(value: unknown, limit: number): string {
   return String(value || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim().slice(0, limit);
+}
+
+function cleanDmClientId(value: unknown): string {
+  const id = String(value || "").trim();
+  return /^[A-Za-z0-9_-]{6,120}$/.test(id) ? id : "";
 }
 
 function normalizeDmAttachment(value: unknown): { data_url: string; name: string; mime_type: string; size: number } | { error: string } {
@@ -2808,4 +2834,3 @@ function corsHeaders(request: Request): Headers {
   headers.set("access-control-max-age", "86400");
   return headers;
 }
-

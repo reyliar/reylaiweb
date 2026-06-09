@@ -22,7 +22,11 @@ def main():
             pdfjs_lib_url=f"/pdfjs/pdf.min.js?v={pdfjs_version}",
             pdfjs_worker_url=f"/pdfjs/pdf.worker.min.js?v={pdfjs_version}",
         )
+        terms_html = app.render_legal_page("terms")
+        privacy_html = app.render_legal_page("privacy")
     Path("index.html").write_text(html, encoding="utf-8")
+    Path("terms.html").write_text(terms_html, encoding="utf-8")
+    Path("privacy.html").write_text(privacy_html, encoding="utf-8")
     pdfjs_dest = ROOT / "pdfjs"
     pdfjs_dest.mkdir(exist_ok=True)
     for filename in ("pdf.min.js", "pdf.worker.min.js"):
