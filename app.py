@@ -9534,6 +9534,7 @@ body::after {
 }
 
 body:not(.app-ready) .library-bottom-menu,
+body:not(.route-library) .library-bottom-menu,
 body.account-auth-visible .library-bottom-menu,
 body.analysis-mode .library-bottom-menu {
   opacity: 0;
@@ -9840,6 +9841,7 @@ body.analysis-mode .library-bottom-menu {
   }
 
   body:not(.app-ready) .library-bottom-menu,
+  body:not(.route-library) .library-bottom-menu,
   body.account-auth-visible .library-bottom-menu,
   body.analysis-mode .library-bottom-menu {
     transform: translateY(18px) scale(0.98) !important;
@@ -11579,6 +11581,9 @@ function setRouteChrome(route) {
   const home = route === 'home';
   document.body.classList.toggle('route-home', home);
   document.body.classList.toggle('route-app', !home);
+  document.body.classList.toggle('route-library', route === 'library');
+  document.body.classList.toggle('route-chat', route === 'chat');
+  document.body.classList.toggle('route-message', route === 'message');
   document.body.classList.toggle('app-authenticated', !!_accountUser);
   updateHomeAuthUI();
 }
