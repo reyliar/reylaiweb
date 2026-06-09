@@ -1696,7 +1696,10 @@ HTML = """
   if (!window.history || !window.history.replaceState) return;
   var path = window.location.pathname;
   var nextPath = "";
-  if (/\/index\.html$/i.test(path)) nextPath = path.replace(/index\.html$/i, "");
+  if (/\/library\/chat\/index\.html$/i.test(path)) nextPath = path.replace(/\/library\/chat\/index\.html$/i, "/library/chat");
+  else if (/\/library\/index\.html$/i.test(path)) nextPath = path.replace(/\/library\/index\.html$/i, "/library");
+  else if (/\/message\/index\.html$/i.test(path)) nextPath = path.replace(/\/message\/index\.html$/i, "/message");
+  else if (/\/index\.html$/i.test(path)) nextPath = path.replace(/index\.html$/i, "");
   else if (/\/terms\.html$/i.test(path)) nextPath = path.replace(/terms\.html$/i, "terms");
   else if (/\/privacy\.html$/i.test(path)) nextPath = path.replace(/privacy\.html$/i, "privacy");
   if (nextPath && nextPath !== path) window.history.replaceState(null, "", nextPath + window.location.search + window.location.hash);
@@ -1795,6 +1798,477 @@ body::after {
 .screen.hidden {
   opacity: 0;
   pointer-events: none;
+}
+
+.home-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  min-height: 100svh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 clamp(18px, 4vw, 48px);
+  background:
+    linear-gradient(180deg, rgba(3,7,18,0.98), rgba(7,12,26,0.98) 48%, rgba(3,7,18,0.98)),
+    linear-gradient(90deg, rgba(37,99,235,0.10), transparent 42%, rgba(20,184,166,0.08));
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transform: translateY(12px);
+  transition: opacity 0.42s ease, transform 0.42s ease, visibility 0.42s step-end;
+}
+
+body.route-home .home-screen {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.42s ease, transform 0.42s ease, visibility 0s step-start;
+}
+
+body.route-home #libraryScreen,
+body.route-home #analysisScreen {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.home-shell {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.home-nav {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(147,197,253,0.10);
+  background: rgba(3,7,18,0.82);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.home-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 950;
+}
+
+.home-brand img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 16px rgba(96,165,250,0.34));
+}
+
+.home-nav-links {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(147,197,253,0.14);
+  background: rgba(255,255,255,0.045);
+}
+
+.home-nav-link,
+.home-auth-btn {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 9px 12px;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.home-nav-link:hover,
+.home-auth-btn:hover {
+  color: var(--text-primary);
+  background: rgba(147,197,253,0.10);
+  transform: translateY(-1px);
+}
+
+.home-auth-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-auth-btn.primary {
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 14px 32px rgba(37,99,235,0.26);
+}
+
+.home-auth-user {
+  display: none;
+  max-width: 170px;
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.app-authenticated .home-auth-user {
+  display: inline-block;
+}
+
+.home-main {
+  display: grid;
+  gap: clamp(34px, 6vw, 68px);
+  padding: clamp(50px, 9vw, 118px) 0 68px;
+}
+
+.home-hero {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 20px;
+  min-height: min(620px, calc(100svh - 96px));
+  align-content: center;
+}
+
+.home-hero-logo {
+  width: clamp(82px, 12vw, 132px);
+  height: clamp(82px, 12vw, 132px);
+  object-fit: contain;
+  filter: drop-shadow(0 0 24px rgba(96,165,250,0.46));
+}
+
+.home-kicker {
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.home-title {
+  max-width: 850px;
+  color: var(--text-primary);
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(44px, 8vw, 92px);
+  line-height: 0.96;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.home-title span {
+  color: #7aa7ff;
+}
+
+.home-lead {
+  max-width: 680px;
+  color: var(--text-secondary);
+  font-size: clamp(15px, 2vw, 18px);
+  line-height: 1.75;
+}
+
+.home-cta-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.home-cta {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(147,197,253,0.18);
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.06);
+  font-size: 13px;
+  font-weight: 950;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.home-cta:hover {
+  transform: translateY(-2px);
+  background: rgba(147,197,253,0.12);
+  border-color: rgba(147,197,253,0.30);
+}
+
+.home-cta.primary {
+  border-color: rgba(96,165,250,0.40);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 18px 42px rgba(37,99,235,0.28);
+}
+
+.home-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.home-feature-card,
+.home-info-card,
+.home-contact-card {
+  border: 1px solid rgba(147,197,253,0.14);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(18,31,58,0.62), rgba(6,14,31,0.68));
+  box-shadow: inset 0 1px rgba(255,255,255,0.06);
+}
+
+.home-feature-card {
+  min-height: 174px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px;
+}
+
+.home-feature-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(37,99,235,0.18);
+  color: #93c5fd;
+}
+
+.home-feature-icon svg {
+  width: 21px;
+  height: 21px;
+  stroke-width: 2.2;
+}
+
+.home-feature-title {
+  color: var(--text-primary);
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.home-feature-text {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.62;
+}
+
+.home-info-card {
+  display: grid;
+  gap: 18px;
+  padding: clamp(22px, 4vw, 34px);
+}
+
+.home-section-kicker {
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.home-section-title {
+  color: var(--text-primary);
+  font-size: clamp(24px, 3.8vw, 38px);
+  line-height: 1.1;
+  font-weight: 950;
+}
+
+.home-section-text {
+  max-width: 780px;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.home-info-list {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.home-info-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(147,197,253,0.12);
+}
+
+.home-info-label {
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.home-info-value {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.62;
+}
+
+.home-contact-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: center;
+  padding: clamp(22px, 4vw, 32px);
+}
+
+.home-footer {
+  margin: 0;
+}
+
+.contact-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 340;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3,7,18,0.74);
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+
+.contact-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.contact-panel {
+  width: min(560px, 100%);
+  max-height: calc(100svh - 34px);
+  overflow-y: auto;
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 24px;
+  border: 1px solid rgba(147,197,253,0.18);
+  background: linear-gradient(145deg, rgba(18,31,58,0.96), rgba(6,14,31,0.94));
+  box-shadow: 0 30px 90px rgba(0,0,0,0.46), inset 0 1px rgba(255,255,255,0.08);
+  transform: translateY(12px) scale(0.98);
+  transition: transform 0.24s cubic-bezier(0.16,1,0.3,1);
+}
+
+.contact-overlay.active .contact-panel {
+  transform: none;
+}
+
+.contact-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.contact-title {
+  margin-top: 5px;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 950;
+}
+
+.contact-lead {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.contact-form {
+  display: grid;
+  gap: 12px;
+}
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.contact-field {
+  display: grid;
+  gap: 7px;
+}
+
+.contact-field.full {
+  grid-column: 1 / -1;
+}
+
+.contact-label {
+  color: #bfdbfe;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.contact-input,
+.contact-textarea {
+  width: 100%;
+  border: 1px solid rgba(147,197,253,0.16);
+  border-radius: 14px;
+  background: rgba(6,14,31,0.62);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  padding: 12px 13px;
+  outline: none;
+}
+
+.contact-textarea {
+  min-height: 138px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.contact-input:focus,
+.contact-textarea:focus {
+  border-color: rgba(96,165,250,0.52);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.18);
+}
+
+.contact-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.contact-status {
+  min-height: 18px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.contact-status.success { color: #86efac; }
+.contact-status.error { color: #fca5a5; }
+
+.contact-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 #libraryScreen.hidden  { transform: scale(0.94); opacity: 0; }
@@ -2111,6 +2585,30 @@ body.app-ready #libraryScreen {
   display: grid;
   gap: 5px;
   margin-bottom: 15px;
+  padding-right: 42px;
+}
+
+.auth-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(147,197,253,0.18);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,0.07);
+  color: var(--text-primary);
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.auth-close-btn:hover {
+  background: rgba(147,197,253,0.14);
+  transform: translateY(-1px);
 }
 
 .auth-panel-label {
@@ -4165,6 +4663,24 @@ body.account-menu-open .account-menu {
 }
 
 @media (max-width: 900px) {
+  .home-nav {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .home-auth-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .home-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-contact-card {
+    grid-template-columns: 1fr;
+  }
+
   .footer-main {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4175,6 +4691,34 @@ body.account-menu-open .account-menu {
 }
 
 @media (max-width: 640px) {
+  .home-screen {
+    padding: 0 18px;
+  }
+
+  .home-nav-links {
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .home-main {
+    padding-top: 42px;
+  }
+
+  .home-feature-grid,
+  .contact-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-info-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .home-footer {
+    margin-inline: 0;
+  }
+
   .lib-footer {
     padding: 44px 22px calc(108px + env(safe-area-inset-bottom, 0px));
   }
@@ -9910,6 +10454,133 @@ body::after,
   </div>
 </div>
 
+<main class="home-screen" id="homeScreen">
+  <div class="home-shell">
+    <header class="home-nav" aria-label="Ana navigasyon">
+      <a class="home-brand" href="/" onclick="navigateApp('/'); return false;">
+        <img src="{{ reylai_icon_src }}" alt="ReylAI">
+        <span>ReylAI</span>
+      </a>
+      <nav class="home-nav-links" aria-label="Site bağlantıları">
+        <a class="home-nav-link" href="/library" onclick="navigateApp('/library'); return false;">Kütüphane</a>
+        <a class="home-nav-link" href="/library/chat" onclick="navigateApp('/library/chat'); return false;">Sohbetler</a>
+        <a class="home-nav-link" href="/message" onclick="navigateApp('/message'); return false;">Mesajlar</a>
+        <a class="home-nav-link" href="/privacy">Gizlilik</a>
+        <button class="home-nav-link" type="button" onclick="openContactForm()">İletişim</button>
+      </nav>
+      <div class="home-auth-actions" id="homeAuthActions">
+        <span class="home-auth-user" id="homeAuthUser"></span>
+        <button class="home-auth-btn" id="homeLoginBtn" type="button" onclick="openAuthForRoute('login', '/library')">Giriş yap</button>
+        <button class="home-auth-btn primary" id="homeSignupBtn" type="button" onclick="openAuthForRoute('signup', '/library')">Kayıt ol</button>
+        <button class="home-auth-btn primary" id="homeLibraryBtn" type="button" onclick="navigateApp('/library')" style="display:none">Kütüphaneye geç</button>
+      </div>
+    </header>
+
+    <section class="home-main">
+      <section class="home-hero" aria-labelledby="homeTitle">
+        <img src="{{ reylai_icon_src }}" class="home-hero-logo" alt="ReylAI">
+        <div class="home-kicker">MEB ders kitapları için AI çalışma alanı</div>
+        <h1 class="home-title" id="homeTitle">ReylAI ile <span>kitaplarınla</span> konuş.</h1>
+        <p class="home-lead">Ders kitaplarını seç, sayfa bağlamıyla soru sor, sohbet geçmişini hesabında tut ve gerektiğinde diğer kullanıcılarla DM üzerinden paylaş.</p>
+        <div class="home-cta-row">
+          <a class="home-cta primary" href="/library" onclick="navigateApp('/library'); return false;">Kütüphaneyi aç</a>
+          <a class="home-cta" href="/library/chat" onclick="navigateApp('/library/chat'); return false;">Sohbet geçmişi</a>
+          <button class="home-cta" type="button" onclick="openContactForm()">Bize ulaş</button>
+        </div>
+      </section>
+
+      <section class="home-feature-grid" aria-label="ReylAI özellikleri">
+        <article class="home-feature-card">
+          <div class="home-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg></div>
+          <div class="home-feature-title">Kitap kütüphanesi</div>
+          <p class="home-feature-text">9. ve 10. sınıf kitaplarını sınıfa göre görüntüle, kitap kapağı ve arama ile hızlı geçiş yap.</p>
+        </article>
+        <article class="home-feature-card">
+          <div class="home-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg></div>
+          <div class="home-feature-title">Kitap bağlamlı sohbet</div>
+          <p class="home-feature-text">Seçtiğin kitabın içeriğiyle soru sor, özet çıkar ve yanıtları markdown düzeniyle oku.</p>
+        </article>
+        <article class="home-feature-card">
+          <div class="home-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 5h18"/><path d="M3 12h12"/><path d="M3 19h18"/></svg></div>
+          <div class="home-feature-title">Sohbet geçmişi</div>
+          <p class="home-feature-text">Kitap konuşmaların hesabına bağlı tutulur; daha sonra aynı konuya geri dönebilirsin.</p>
+        </article>
+        <article class="home-feature-card">
+          <div class="home-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg></div>
+          <div class="home-feature-title">DM ve paylaşım</div>
+          <p class="home-feature-text">Kullanıcılarla mesajlaş, dosya ekle ve AI yanıtlarını markdown korunarak DM içinde ilet.</p>
+        </article>
+      </section>
+
+      <section class="home-info-card">
+        <div>
+          <div class="home-section-kicker">Kısaca</div>
+          <h2 class="home-section-title">Ders çalışırken bağlam kaybolmasın.</h2>
+        </div>
+        <p class="home-section-text">ReylAI; kitap seçimi, sayfa içerikleri, AI sohbeti, kayıtlı konuşmalar ve hesap tabanlı mesajlaşmayı tek bir çalışma alanında toplar. AI özellikleri için hesap ve e-posta doğrulaması gerekir.</p>
+        <div class="home-info-list">
+          <div class="home-info-row"><div class="home-info-label">Hesap</div><div class="home-info-value">Oturum, profil fotoğrafı, durum bilgisi ve e-posta doğrulaması hesap üzerinden yönetilir.</div></div>
+          <div class="home-info-row"><div class="home-info-label">Güvenlik</div><div class="home-info-value">Giriş ve hassas işlemlerde Cloudflare Turnstile doğrulaması kullanılır; şifreler düz metin olarak saklanmaz.</div></div>
+          <div class="home-info-row"><div class="home-info-label">Yasal</div><div class="home-info-value">Kullanım şartları ve gizlilik politikası sayfalarında veri işleme ve iletişim bilgileri yer alır.</div></div>
+        </div>
+      </section>
+
+      <section class="home-contact-card" id="contact">
+        <div>
+          <div class="home-section-kicker">İletişim</div>
+          <h2 class="home-section-title">Bir şey mi bildirmek istiyorsun?</h2>
+          <p class="home-section-text">Form ekranından bize ulaşabilir veya doğrudan contact@reyliar.xyz adresine e-posta gönderebilirsin.</p>
+        </div>
+        <div class="home-cta-row">
+          <button class="home-cta primary" type="button" onclick="openContactForm()">Bize ulaş</button>
+          <a class="home-cta" href="mailto:contact@reyliar.xyz">E-posta</a>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <footer class="lib-footer home-footer">
+    <div class="footer-inner">
+      <div class="footer-main">
+        <div class="footer-brand-block">
+          <div class="footer-logo-row">
+            <img src="{{ reylai_icon_src }}" class="footer-logo" alt="ReylAI">
+            <div class="footer-brand-name">ReylAI</div>
+          </div>
+          <p class="footer-tagline">Ders kitapları, sohbetler ve ReylAI araçları için tek, sakin ve hızlı çalışma alanın.</p>
+        </div>
+        <nav class="footer-col" aria-label="Site bağlantıları">
+          <div class="footer-col-title">Bağlantılar</div>
+          <div class="footer-col-list">
+            <a class="footer-link" href="/library" onclick="navigateApp('/library'); return false;">Kütüphane</a>
+            <a class="footer-link" href="/library/chat" onclick="navigateApp('/library/chat'); return false;">Sohbetler</a>
+            <a class="footer-link" href="/message" onclick="navigateApp('/message'); return false;">Mesajlar</a>
+          </div>
+        </nav>
+        <nav class="footer-col" aria-label="Yasal bağlantılar">
+          <div class="footer-col-title">Yasal</div>
+          <div class="footer-col-list">
+            <a class="footer-link" href="/privacy">Gizlilik Politikası</a>
+            <a class="footer-link" href="/terms">Kullanım Şartları</a>
+          </div>
+        </nav>
+        <nav class="footer-col" aria-label="İletişim bağlantıları">
+          <div class="footer-col-title">İletişim</div>
+          <div class="footer-col-list">
+            <a class="footer-link" href="#" onclick="openContactForm(); return false;">Bize Ulaş</a>
+            <a class="footer-link" href="mailto:contact@reyliar.xyz">E-posta</a>
+          </div>
+        </nav>
+      </div>
+      <div class="footer-divider"></div>
+      <div class="footer-bottom">
+        <span class="footer-copy">©2026 ReylAI. All Rights Reserved.</span>
+        <span class="footer-made">made with ❤️ by reyli</span>
+      </div>
+    </div>
+  </footer>
+</main>
+
 <section class="account-auth-screen" id="accountAuthScreen" aria-label="ReylAI hesap girişi">
   <div class="auth-hero">
     <div class="auth-brand-row">
@@ -9931,6 +10602,7 @@ body::after,
     </div>
   </div>
   <div class="auth-panel-card">
+    <button class="auth-close-btn" type="button" onclick="cancelAccountAuth()" aria-label="Ana sayfaya dön">&#x2715;</button>
     <div class="auth-panel-top">
       <div class="auth-panel-label">Hesap</div>
       <h2 class="auth-panel-title" id="authPanelTitle">Giriş yap</h2>
@@ -10129,10 +10801,10 @@ body::after,
         <nav class="footer-col" aria-label="Site bağlantıları">
           <div class="footer-col-title">Bağlantılar</div>
           <div class="footer-col-list">
-            <a class="footer-link" href="#libraryScreen">Kütüphane</a>
-            <a class="footer-link" href="#" onclick="openChatSidebar(); return false;">Sohbetler</a>
+            <a class="footer-link" href="/library" onclick="navigateApp('/library'); return false;">Kütüphane</a>
+            <a class="footer-link" href="/library/chat" onclick="navigateApp('/library/chat'); return false;">Sohbetler</a>
             <a class="footer-link" href="#" onclick="openPdfPicker(); return false;">Kitap Yükle</a>
-            <a class="footer-link" href="#" onclick="openDmOverlay(); return false;">Mesajlar</a>
+            <a class="footer-link" href="/message" onclick="navigateApp('/message'); return false;">Mesajlar</a>
           </div>
         </nav>
         <nav class="footer-col" aria-label="Yasal bağlantılar">
@@ -10145,7 +10817,7 @@ body::after,
         <nav class="footer-col" aria-label="İletişim bağlantıları">
           <div class="footer-col-title">İletişim</div>
           <div class="footer-col-list">
-            <a class="footer-link" href="mailto:contact@reyliar.xyz">Bize Ulaş</a>
+            <a class="footer-link" href="#" onclick="openContactForm(); return false;">Bize Ulaş</a>
             <a class="footer-link" href="mailto:contact@reyliar.xyz">E-posta</a>
           </div>
         </nav>
@@ -10567,6 +11239,49 @@ body::after,
   </div>
 </div>
 
+<div class="contact-overlay" id="contactOverlay" onclick="if(event.target===this)closeContactForm()">
+  <div class="contact-panel" role="dialog" aria-modal="true" aria-label="ReylAI iletişim formu">
+    <div class="contact-head">
+      <div>
+        <div class="home-section-kicker">İletişim</div>
+        <div class="contact-title">Bize ulaş</div>
+        <p class="contact-lead">Mesajın contact@reyliar.xyz adresine iletilir. Yanıt verebilmemiz için e-posta adresini doğru yaz.</p>
+      </div>
+      <button class="cfg-close-btn" type="button" onclick="closeContactForm()">&#x2715;</button>
+    </div>
+    <form class="contact-form" id="contactForm" onsubmit="submitContactForm(event)">
+      <div class="contact-grid">
+        <div class="contact-field">
+          <label class="contact-label" for="contactName">Ad</label>
+          <input class="contact-input" id="contactName" name="name" type="text" maxlength="80" autocomplete="name" required>
+        </div>
+        <div class="contact-field">
+          <label class="contact-label" for="contactEmail">E-posta</label>
+          <input class="contact-input" id="contactEmail" name="email" type="email" maxlength="254" autocomplete="email" required>
+        </div>
+        <div class="contact-field full">
+          <label class="contact-label" for="contactSubject">Konu</label>
+          <input class="contact-input" id="contactSubject" name="subject" type="text" maxlength="120" placeholder="Kısa bir konu yaz">
+        </div>
+        <div class="contact-field full">
+          <label class="contact-label" for="contactMessage">Mesaj</label>
+          <textarea class="contact-textarea" id="contactMessage" name="message" maxlength="4000" placeholder="Nasıl yardımcı olabiliriz?" required></textarea>
+        </div>
+      </div>
+      <input class="contact-honeypot" id="contactWebsite" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <div class="turnstile-wrap">
+        <div id="contactTurnstile"></div>
+        <div class="turnstile-note" id="contactTurnstileNote">Cloudflare doğrulaması hazırlanıyor...</div>
+      </div>
+      <div class="contact-status" id="contactStatus"></div>
+      <div class="contact-actions">
+        <button class="btn btn-ghost" type="button" onclick="closeContactForm()">Kapat</button>
+        <button class="btn btn-primary" id="contactSubmitBtn" type="submit">Gönder</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="dm-overlay" id="dmOverlay" onclick="if(event.target===this)closeDmOverlay()">
   <div class="dm-panel" role="dialog" aria-modal="true" aria-label="ReylAI mesajlar">
     <aside class="dm-people">
@@ -10684,7 +11399,13 @@ let _turnstileReady = false;
 let _adminTurnstileWidgetId = null;
 let _adminTurnstileToken = '';
 let _adminTurnstileReady = false;
+let _contactTurnstileWidgetId = null;
+let _contactTurnstileToken = '';
+let _contactTurnstileReady = false;
 let _appStarted = false;
+let _currentRoute = 'home';
+let _routeAfterAuth = '/library';
+let _pendingDmRouteOptions = null;
 let _pendingProfileAvatarDataUrl = '';
 let _profileCropImage = null;
 let _profileCropSrc = '';
@@ -10761,6 +11482,116 @@ function hideLoadingOverlay(revealApp) {
   document.body.classList.toggle('app-ready', !!revealApp);
 }
 
+function normalizeAppPath(path) {
+  let clean = String(path || '/').split('?')[0].split('#')[0] || '/';
+  clean = clean.replace(/\/index\.html$/i, '/');
+  clean = clean.replace(/\/library\/index\.html$/i, '/library');
+  clean = clean.replace(/\/library\/chat\/index\.html$/i, '/library/chat');
+  clean = clean.replace(/\/message\/index\.html$/i, '/message');
+  if (clean.length > 1) clean = clean.replace(/\/+$/, '');
+  return clean || '/';
+}
+
+function routeFromPath(path) {
+  const clean = normalizeAppPath(path);
+  if (clean === '/message') return 'message';
+  if (clean === '/library/chat') return 'chat';
+  if (clean === '/library') return 'library';
+  return 'home';
+}
+
+function routePath(route) {
+  if (route === 'message') return '/message';
+  if (route === 'chat') return '/library/chat';
+  if (route === 'library') return '/library';
+  return '/';
+}
+
+function isProtectedRoute(route) {
+  return route === 'library' || route === 'chat' || route === 'message';
+}
+
+function setRouteChrome(route) {
+  _currentRoute = route;
+  const home = route === 'home';
+  document.body.classList.toggle('route-home', home);
+  document.body.classList.toggle('route-app', !home);
+  document.body.classList.toggle('app-authenticated', !!_accountUser);
+  updateHomeAuthUI();
+}
+
+function setBrowserRoute(path, replace) {
+  const clean = normalizeAppPath(path);
+  if (!window.history) return;
+  if (normalizeAppPath(window.location.pathname) === clean && window.location.pathname === clean) return;
+  const method = replace ? 'replaceState' : 'pushState';
+  window.history[method]({ reylaiRoute: clean }, '', clean);
+}
+
+async function navigateApp(path, options) {
+  options = options || {};
+  const route = routeFromPath(path);
+  if (!options.skipHistory) setBrowserRoute(routePath(route), !!options.replace);
+  await activateAppRoute(route, options);
+}
+
+async function activateAppRoute(route, options) {
+  options = options || {};
+  setRouteChrome(route);
+  closeAccountMenu();
+  if (route === 'home') {
+    _routeAfterAuth = '/library';
+    hideAccountAuth();
+    closeChatSidebar({ preserveRoute: true });
+    closeDmOverlay({ preserveRoute: true });
+    hideLoadingOverlay(false);
+    return;
+  }
+
+  _routeAfterAuth = routePath(route);
+  if (!_accountUser) {
+    closeChatSidebar({ preserveRoute: true });
+    closeDmOverlay({ preserveRoute: true });
+    hideLoadingOverlay(false);
+    showAccountAuth();
+    return;
+  }
+
+  hideAccountAuth();
+  if (!_appStarted && !options.boot) showLoadingOverlay('Kişisel alan açılıyor...');
+  await startApp();
+  hideLoadingOverlay(true);
+
+  if (route === 'chat') openChatSidebar({ routeOpen: true });
+  else closeChatSidebar({ preserveRoute: true });
+
+  if (route === 'message') openDmOverlay({ routeOpen: true });
+  else closeDmOverlay({ preserveRoute: true });
+}
+
+function openAuthForRoute(mode, targetPath) {
+  _routeAfterAuth = targetPath || '/library';
+  setAccountAuthMode(mode || 'login');
+  showAccountAuth();
+}
+
+function cancelAccountAuth() {
+  hideAccountAuth();
+  navigateApp('/', { replace: true });
+}
+
+function updateHomeAuthUI() {
+  const user = _accountUser || null;
+  const userEl = document.getElementById('homeAuthUser');
+  const loginBtn = document.getElementById('homeLoginBtn');
+  const signupBtn = document.getElementById('homeSignupBtn');
+  const libraryBtn = document.getElementById('homeLibraryBtn');
+  if (userEl) userEl.textContent = user ? (user.display_name || user.email || 'Hesap') : '';
+  if (loginBtn) loginBtn.style.display = user ? 'none' : '';
+  if (signupBtn) signupBtn.style.display = user ? 'none' : '';
+  if (libraryBtn) libraryBtn.style.display = user ? '' : 'none';
+}
+
 function getAppAuthToken() {
   return localStorage.getItem(APP_AUTH_TOKEN_KEY) || sessionStorage.getItem(APP_AUTH_SESSION_KEY) || '';
 }
@@ -10820,6 +11651,8 @@ function apiFetch(url, options) {
       resetAccountScopedState();
       _accountUser = null;
       updateAccountUI();
+      _routeAfterAuth = isProtectedRoute(_currentRoute) ? routePath(_currentRoute) : '/library';
+      setRouteChrome(isProtectedRoute(_currentRoute) ? _currentRoute : 'home');
       showAccountAuth();
       throw new Error('Oturum süresi doldu.');
     }
@@ -11014,6 +11847,68 @@ function resetAdminTurnstile() {
   updateAdminVerifyState();
 }
 
+function updateContactSubmitState() {
+  const btn = document.getElementById('contactSubmitBtn');
+  if (btn) btn.disabled = !_contactTurnstileReady;
+}
+
+function renderContactTurnstile() {
+  const target = document.getElementById('contactTurnstile');
+  const note = document.getElementById('contactTurnstileNote');
+  if (!target) return;
+  if (!_turnstileSiteKey) {
+    _contactTurnstileReady = false;
+    if (note) note.textContent = 'Cloudflare doğrulaması için production site key bekleniyor.';
+    updateContactSubmitState();
+    return;
+  }
+  if (!window.turnstile || typeof window.turnstile.render !== 'function') {
+    if (note) note.textContent = 'Cloudflare doğrulaması yükleniyor...';
+    setTimeout(renderContactTurnstile, 220);
+    return;
+  }
+  target.innerHTML = '';
+  _contactTurnstileToken = '';
+  _contactTurnstileReady = false;
+  _contactTurnstileWidgetId = window.turnstile.render(target, {
+    sitekey: _turnstileSiteKey,
+    action: 'contact-form-v1',
+    theme: 'dark',
+    callback: function(token) {
+      _contactTurnstileToken = token || '';
+      _contactTurnstileReady = !!_contactTurnstileToken;
+      if (note) note.textContent = _contactTurnstileReady ? 'Cloudflare doğrulaması tamam.' : 'Cloudflare doğrulaması bekleniyor...';
+      updateContactSubmitState();
+    },
+    'expired-callback': function() {
+      _contactTurnstileToken = '';
+      _contactTurnstileReady = false;
+      if (note) note.textContent = 'Doğrulama süresi doldu. Yenileniyor...';
+      updateContactSubmitState();
+      resetContactTurnstile();
+    },
+    'error-callback': function() {
+      _contactTurnstileToken = '';
+      _contactTurnstileReady = false;
+      if (note) note.textContent = 'Cloudflare doğrulaması tekrar deneniyor...';
+      updateContactSubmitState();
+    }
+  });
+  if (note) note.textContent = 'Cloudflare doğrulaması bekleniyor...';
+  updateContactSubmitState();
+}
+
+function resetContactTurnstile() {
+  _contactTurnstileToken = '';
+  _contactTurnstileReady = false;
+  if (window.turnstile && _contactTurnstileWidgetId !== null) {
+    try { window.turnstile.reset(_contactTurnstileWidgetId); } catch(e) { renderContactTurnstile(); }
+  } else {
+    renderContactTurnstile();
+  }
+  updateContactSubmitState();
+}
+
 async function loadAccountAuthConfig() {
   try {
     const res = await fetch('/api/auth/config', { cache: 'no-store' });
@@ -11023,6 +11918,96 @@ async function loadAccountAuthConfig() {
     _turnstileSiteKey = '';
   }
   renderAccountTurnstile();
+  renderContactTurnstile();
+}
+
+function openContactForm() {
+  const overlay = document.getElementById('contactOverlay');
+  if (!overlay) return;
+  const email = document.getElementById('contactEmail');
+  const name = document.getElementById('contactName');
+  const status = document.getElementById('contactStatus');
+  if (_accountUser) {
+    if (email && !email.value) email.value = _accountUser.email || '';
+    if (name && !name.value) name.value = _accountUser.display_name || '';
+  }
+  if (status) {
+    status.textContent = '';
+    status.className = 'contact-status';
+  }
+  overlay.classList.add('active');
+  renderContactTurnstile();
+  setTimeout(function() {
+    const first = document.getElementById('contactName');
+    if (first) first.focus();
+  }, 120);
+}
+
+function closeContactForm() {
+  const overlay = document.getElementById('contactOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function setContactStatus(message, type) {
+  const status = document.getElementById('contactStatus');
+  if (!status) return;
+  status.textContent = message || '';
+  status.className = 'contact-status' + (type ? ' ' + type : '');
+}
+
+async function submitContactForm(event) {
+  if (event) event.preventDefault();
+  const btn = document.getElementById('contactSubmitBtn');
+  if (!_contactTurnstileToken) {
+    setContactStatus('Cloudflare doğrulamasını tamamla.', 'error');
+    return;
+  }
+  const payload = {
+    name: String((document.getElementById('contactName') || {}).value || '').trim(),
+    email: String((document.getElementById('contactEmail') || {}).value || '').trim(),
+    subject: String((document.getElementById('contactSubject') || {}).value || '').trim(),
+    message: String((document.getElementById('contactMessage') || {}).value || '').trim(),
+    website: String((document.getElementById('contactWebsite') || {}).value || '').trim(),
+    turnstile_token: _contactTurnstileToken
+  };
+  if (!payload.name || payload.name.length < 2) {
+    setContactStatus('Adını en az 2 karakter yaz.', 'error');
+    return;
+  }
+  if (!payload.email || payload.email.indexOf('@') === -1) {
+    setContactStatus('Geçerli bir e-posta gir.', 'error');
+    return;
+  }
+  if (!payload.message || payload.message.length < 10) {
+    setContactStatus('Mesajını biraz daha detaylandır.', 'error');
+    return;
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Gönderiliyor...';
+  }
+  setContactStatus('Mesaj gönderiliyor...', '');
+  try {
+    const res = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Mesaj gönderilemedi.');
+    setContactStatus('Mesajın gönderildi. En kısa sürede dönüş yapacağız.', 'success');
+    const form = document.getElementById('contactForm');
+    if (form) form.reset();
+    resetContactTurnstile();
+  } catch(e) {
+    setContactStatus(e.message || 'Bağlantı hatası.', 'error');
+    resetContactTurnstile();
+  } finally {
+    if (btn) {
+      btn.textContent = 'Gönder';
+      updateContactSubmitState();
+    }
+  }
 }
 
 function showExistingAccountModal(email) {
@@ -11125,8 +12110,7 @@ async function submitAccountAuth(event) {
     startPresenceAutomation();
     showLoadingOverlay('Kişisel alan açılıyor...');
     hideAccountAuth();
-    await startApp();
-    hideLoadingOverlay(true);
+    await navigateApp(_routeAfterAuth || '/library', { replace: true, authenticated: true });
     if (_accountAuthMode === 'signup' && _accountUser && !_accountUser.email_verified) {
       if (data.email_delivery_configured === false) {
         showToast('warning', 'Kod gönderimi bekliyor', 'Hesabın açıldı; e-postana kod göndermek için servis hazırlanıyor.', 6500);
@@ -11169,6 +12153,8 @@ function updateAccountUI() {
   if (menuName) menuName.textContent = name;
   if (menuEmail) menuEmail.textContent = email;
   if (profileInput) profileInput.value = _accountUser ? name : '';
+  document.body.classList.toggle('app-authenticated', !!_accountUser);
+  updateHomeAuthUI();
 }
 
 function mountAccountMenu() {
@@ -12399,36 +13385,40 @@ async function logoutAccount() {
   _accountUser = null;
   _appStarted = false;
   updateAccountUI();
-  showAccountAuth();
+  await navigateApp('/', { replace: true });
   showToast('info', 'Çıkış yapıldı', 'Bu cihazdaki oturum kapatıldı.', 2800);
 }
 
 async function bootApp() {
   showLoadingOverlay('Güvenli oturum kontrol ediliyor...');
   await loadAccountAuthConfig();
+  const initialRoute = routeFromPath(window.location.pathname);
+  setBrowserRoute(routePath(initialRoute), true);
+  setRouteChrome(initialRoute);
   const token = getAppAuthToken();
   if (!token) {
-    showAccountAuth();
-    hideLoadingOverlay(false);
+    _accountUser = null;
+    updateAccountUI();
+    await activateAppRoute(initialRoute, { boot: true, replace: true });
     return;
   }
   try {
-    const res = await apiFetch('/api/auth/me', { cache: 'no-store' });
+    const res = await fetch('/api/auth/me', {
+      cache: 'no-store',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
     const data = await res.json();
     if (!res.ok || !data.success || !data.user) throw new Error(data.error || 'Oturum doğrulanamadı.');
     _accountUser = data.user;
     updateAccountUI();
-    setLoadingStatus('Kütüphane ve sohbet geçmişi yükleniyor...');
     startPresenceAutomation();
-    await startApp();
-    hideLoadingOverlay(true);
+    await activateAppRoute(initialRoute, { boot: true, replace: true });
   } catch(e) {
     clearAppAuthToken();
     _accountUser = null;
     resetPresenceAutomation();
     updateAccountUI();
-    showAccountAuth();
-    hideLoadingOverlay(false);
+    await activateAppRoute(initialRoute, { boot: true, replace: true });
   }
 }
 
@@ -13058,7 +14048,17 @@ async function loadDmPanelData(options) {
 
 function openDmOverlay(options) {
   options = options || {};
+  if (!options.routeOpen) {
+    _pendingDmRouteOptions = options;
+    navigateApp('/message');
+    return;
+  }
+  if (_pendingDmRouteOptions) {
+    options = Object.assign({}, _pendingDmRouteOptions, options);
+    _pendingDmRouteOptions = null;
+  }
   if (!_accountUser) {
+    _routeAfterAuth = '/message';
     showAccountAuth();
     return;
   }
@@ -13085,12 +14085,16 @@ function openDmOverlay(options) {
   }, 120);
 }
 
-function closeDmOverlay() {
+function closeDmOverlay(options) {
+  options = options || {};
   const overlay = document.getElementById('dmOverlay');
   if (overlay) overlay.classList.remove('active', 'chat-open');
   _dmConversationSeq++;
   _dmPanelLoadSeq++;
   cancelDmMessageLoad();
+  if (_currentRoute === 'message' && !options.preserveRoute) {
+    navigateApp('/library', { replace: true });
+  }
 }
 
 function showDmPeople() {
@@ -13711,7 +14715,7 @@ async function loadLibrary(fromFade) {
   if (!grid) return;
   clearLibraryTransientMessages();
   try {
-    const res = await fetch('/api/library?grade=' + encodeURIComponent(grade), { cache: 'no-store' });
+    const res = await apiFetch('/api/library?grade=' + encodeURIComponent(grade), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const books = await res.json();
     if (loadSeq !== _libraryLoadSeq || grade !== selectedGrade) return;
@@ -14364,7 +15368,7 @@ async function findLibraryBookForChat(chat) {
 
   for (const grade of grades) {
     try {
-      const res = await fetch('/api/library?grade=' + encodeURIComponent(grade), { cache: 'no-store' });
+      const res = await apiFetch('/api/library?grade=' + encodeURIComponent(grade), { cache: 'no-store' });
       if (!res.ok) continue;
       const books = await res.json();
       registerLibraryBooks(books);
@@ -14423,7 +15427,17 @@ function deleteChat(chatId) {
   renderChatHistory();
 }
 
-function openChatSidebar() {
+function openChatSidebar(options) {
+  options = options || {};
+  if (!options.routeOpen && _currentRoute !== 'chat') {
+    navigateApp('/library/chat');
+    return;
+  }
+  if (!_accountUser) {
+    _routeAfterAuth = '/library/chat';
+    showAccountAuth();
+    return;
+  }
   const sidebar = document.getElementById('chatSidebar');
   if (!sidebar) return;
   renderChatHistory();
@@ -14433,11 +15447,15 @@ function openChatSidebar() {
   if (backdrop) backdrop.classList.add('active');
 }
 
-function closeChatSidebar() {
+function closeChatSidebar(options) {
+  options = options || {};
   const sidebar = document.getElementById('chatSidebar');
   if (sidebar) sidebar.classList.add('collapsed');
   const backdrop = document.getElementById('chatHistoryBackdrop');
   if (backdrop) backdrop.classList.remove('active');
+  if (_currentRoute === 'chat' && !options.preserveRoute) {
+    navigateApp('/library', { replace: true });
+  }
 }
 
 function toggleChatSidebar() {
@@ -16825,6 +17843,7 @@ function escHtml(str) {
 document.addEventListener('DOMContentLoaded', function() {
   mountAccountMenu();
   mountLibraryBottomMenu();
+  updateHomeAuthUI();
   setupEmailCodeInputs();
   setupPasswordCodeInputs();
   const ta = document.getElementById('promptInput');
@@ -16863,10 +17882,15 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+window.addEventListener('popstate', function() {
+  navigateApp(window.location.pathname, { skipHistory: true });
+});
+
 document.addEventListener('keydown', function(e) {
   var pdfActive = document.getElementById('pdfViewerOverlay').classList.contains('active');
   if (e.key === 'Escape') {
     if (document.getElementById('passwordChangeOverlay') && document.getElementById('passwordChangeOverlay').classList.contains('active')) { closePasswordChangeModal(); }
+    else if (document.getElementById('contactOverlay') && document.getElementById('contactOverlay').classList.contains('active')) { closeContactForm(); }
     else if (document.getElementById('dmOverlay') && document.getElementById('dmOverlay').classList.contains('active')) { closeDmOverlay(); }
     else if (document.getElementById('avatarCropOverlay') && document.getElementById('avatarCropOverlay').classList.contains('active')) { closeAvatarCropModal(); }
     else if (document.getElementById('verifyRequiredOverlay') && document.getElementById('verifyRequiredOverlay').classList.contains('active')) { closeVerifyRequiredModal(); }
@@ -17225,8 +18249,7 @@ def render_legal_page(kind):
     )
 
 
-@app.route('/')
-def index():
+def render_app_shell():
     pdfjs_version = _pdfjs_asset_version()
     return render_template_string(
         HTML,
@@ -17237,6 +18260,29 @@ def index():
         pdfjs_lib_url=f"/pdfjs/pdf.min.js?v={pdfjs_version}",
         pdfjs_worker_url=f"/pdfjs/pdf.worker.min.js?v={pdfjs_version}",
     )
+
+
+@app.route('/')
+def index():
+    return render_app_shell()
+
+
+@app.route('/library')
+@app.route('/library/')
+def library_page():
+    return render_app_shell()
+
+
+@app.route('/library/chat')
+@app.route('/library/chat/')
+def library_chat_page():
+    return render_app_shell()
+
+
+@app.route('/message')
+@app.route('/message/')
+def message_page():
+    return render_app_shell()
 
 
 @app.route('/index.html')
@@ -17278,6 +18324,14 @@ def api_verify_password():
     token = secrets.token_hex(32)
     _auth_tokens.add(token)
     return jsonify({'success': True, 'token': token})
+
+
+@app.route('/api/contact', methods=['POST'])
+def api_contact_local():
+    return jsonify({
+        'success': False,
+        'error': 'İletişim formu canlı yayında Cloudflare e-posta servisiyle çalışır.'
+    }), 503
 
 
 @app.route('/api/rename_book', methods=['POST'])

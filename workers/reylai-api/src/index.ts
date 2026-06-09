@@ -34,6 +34,7 @@ const DM_FORWARD_TEXT_LIMIT = 9000;
 const DM_ATTACHMENT_DATA_URL_LIMIT = 900_000;
 const DM_ATTACHMENT_FILE_LIMIT = 650_000;
 const NO_REPLY_FROM = "no-reply@reyliar.xyz";
+const CONTACT_EMAIL = "contact@reyliar.xyz";
 
 type Book = {
   book_id?: string;
@@ -153,6 +154,15 @@ type ProfilePayload = {
 
 type VerificationPayload = {
   code?: string;
+};
+
+type ContactPayload = {
+  name?: string;
+  email?: string;
+  subject?: string;
+  message?: string;
+  turnstile_token?: string;
+  website?: string;
 };
 
 type AuthContext = {
@@ -341,6 +351,10 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return json({ ok: true, service: "reylai-api" });
   }
 
+  if (path === "/api/contact" && request.method === "POST") {
+    return handleContactSubmit(request, env);
+  }
+
   if (path === "/api/auth/config" && request.method === "GET") {
     return handleAuthConfig(env);
   }
@@ -440,6 +454,8 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   }
 
   if (request.method === "GET" && path === "/api/library") {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
     return handleLibrary(url, env);
   }
 
@@ -570,6 +586,43 @@ function handleAuthConfig(env: Env): Response {
     turnstile_required: turnstileRequired,
     turnstile_configured: Boolean(siteKey && secretConfigured)
   });
+}
+
+async function handleContactSubmit(request: Request, env: Env): Promise<Response> {
+  const payload = await readJson<ContactPayload>(request);
+  const turnstileError = await verifyTurnstile(request, env, payload.turnstile_token);
+  if (turnstileError) return turnstileError;
+  if (String(payload.website || "").trim()) return json({ success: true });
+
+  const name = normalizeDisplayName(String(payload.name || "")).slice(0, 80);
+  const email = normalizeEmail(payload.email || "");
+  const subject = String(payload.subject || "ReylAI iletişim").replace(/\s+/g, " ").trim().slice(0, 120);
+  const message = String(payload.message || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim().slice(0, 4000);
+
+  if (name.length < 2) return json({ success: false, error: "Adını en az 2 karakter yaz." }, 400);
+  if (!EMAIL_RE.test(email) || email.length > 254) return json({ success: false, error: "Geçerli bir e-posta gir." }, 400);
+  if (message.length < 10) return json({ success: false, error: "Mesajını biraz daha detaylandır." }, 400);
+
+  const binding = getEmailBinding(env);
+  if (!binding) {
+    return json({ success: false, error: "E-posta servisi şu anda hazır değil." }, 503);
+  }
+
+  const cleanSubject = subject || "ReylAI iletişim";
+  try {
+    await binding.send({
+      to: CONTACT_EMAIL,
+      from: { email: NO_REPLY_FROM, name: "ReylAI İletişim" },
+      replyTo: { email, name },
+      subject: `[ReylAI] ${cleanSubject}`,
+      html: contactEmailHtml(name, email, cleanSubject, message),
+      text: `ReylAI iletişim formu\n\nAd: ${name}\nE-posta: ${email}\nKonu: ${cleanSubject}\n\n${message}`
+    });
+  } catch (error) {
+    return json(emailSendFailure(error, "Mesaj gönderilemedi. Lütfen contact@reyliar.xyz adresine e-posta gönder.", "contact email failed"), 502);
+  }
+
+  return json({ success: true });
 }
 
 async function handleSignup(request: Request, env: Env): Promise<Response> {
@@ -2110,6 +2163,43 @@ function dmNotificationEmailHtml(senderName: string, countText: string, snippet:
             <tr>
               <td style="padding:0 28px 30px;color:#8ea0bd;font-size:13px;line-height:1.6;">
                 Mesajlarını ReylAI içindeki DM ekranından görebilirsin.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+function contactEmailHtml(name: string, email: string, subject: string, message: string): string {
+  const safeName = escapeHtml(name);
+  const safeEmail = escapeHtml(email);
+  const safeSubject = escapeHtml(subject);
+  const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
+  return `<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>ReylAI iletişim formu</title>
+  </head>
+  <body style="margin:0;background:#030712;color:#eef5ff;font-family:Inter,Segoe UI,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:linear-gradient(135deg,#061a3a,#030712);padding:32px 14px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;border:1px solid rgba(255,255,255,.16);border-radius:26px;background:rgba(18,31,58,.88);overflow:hidden;">
+            <tr>
+              <td style="padding:28px 28px 18px;">
+                <div style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#93c5fd;font-weight:900;">ReylAI İletişim</div>
+                <h1 style="margin:10px 0 8px;font-size:26px;line-height:1.12;color:#fff;">${safeSubject}</h1>
+                <p style="margin:0;color:#c7d8f2;font-size:15px;line-height:1.65;">${safeName} (${safeEmail}) iletişim formundan mesaj gönderdi.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px 28px 30px;">
+                <div style="border:1px solid rgba(96,165,250,.24);border-radius:22px;background:rgba(15,23,42,.58);padding:18px;color:#eef5ff;font-size:15px;line-height:1.65;">${safeMessage}</div>
               </td>
             </tr>
           </table>

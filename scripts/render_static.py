@@ -29,12 +29,24 @@ def main():
     Path("privacy.html").write_text(privacy_html, encoding="utf-8")
     terms_dir = ROOT / "terms"
     privacy_dir = ROOT / "privacy"
+    library_dir = ROOT / "library"
+    library_chat_dir = library_dir / "chat"
+    message_dir = ROOT / "message"
     terms_dir.mkdir(exist_ok=True)
     privacy_dir.mkdir(exist_ok=True)
+    library_dir.mkdir(exist_ok=True)
+    library_chat_dir.mkdir(parents=True, exist_ok=True)
+    message_dir.mkdir(exist_ok=True)
     (terms_dir / "index.html").write_text(terms_html, encoding="utf-8")
     (privacy_dir / "index.html").write_text(privacy_html, encoding="utf-8")
+    (library_dir / "index.html").write_text(html, encoding="utf-8")
+    (library_chat_dir / "index.html").write_text(html, encoding="utf-8")
+    (message_dir / "index.html").write_text(html, encoding="utf-8")
     Path("_redirects").write_text(
         "/index.html / 301\n"
+        "/library.html /library 301\n"
+        "/library/chat.html /library/chat 301\n"
+        "/message.html /message 301\n"
         "/terms.html /terms 301\n"
         "/privacy.html /privacy 301\n",
         encoding="utf-8",
