@@ -909,8 +909,12 @@ body.app-ready #libraryScreen {
   position: absolute;
   top: 14px;
   right: 14px;
-  width: 34px;
-  height: 34px;
+  z-index: 5;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
   border: 1px solid rgba(147,197,253,0.18);
   border-radius: 999px;
   display: grid;
@@ -918,8 +922,11 @@ body.app-ready #libraryScreen {
   background: rgba(255,255,255,0.07);
   color: var(--text-primary);
   font-size: 17px;
+  line-height: 1;
   font-weight: 900;
   cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
   transition: background 0.2s ease, transform 0.2s ease;
 }
 
