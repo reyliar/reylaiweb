@@ -14,9 +14,8 @@
   "vars": {
     "STATIC_ORIGIN": "https://ai.reyliar.xyz/",
     "BOOKS_REMOTE_BASE_URL": "https://thejinx1.github.io/blupblupreylai-books/",
-    "MISTRAL_CHAT_URL": "https://api.mistral.ai/v1/chat/completions",
-    "MISTRAL_MODEL": "mistral-small-latest",
-    "MISTRAL_VISION_MODEL": "mistral-small-latest",
+    "GEMINI_API_URL": "https://generativelanguage.googleapis.com/v1beta/models",
+    "GEMINI_MODEL": "gemini-3.5-flash",
     "TURNSTILE_SITE_KEY": "0x4AAAAAADf7TXMs0rMZvUad",
     "AUTH_REQUIRE_TURNSTILE": "true"
   },
@@ -35,7 +34,7 @@
     }
   ],
   "secrets": {
-    "required": ["MISTRAL_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY"]
+    "required": ["GEMINI_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY"]
   },
   "observability": {
     "enabled": true,

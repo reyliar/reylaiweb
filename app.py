@@ -158,13 +158,12 @@ def _is_configured(value, *placeholders):
 
 
 GAS_WEB_APP_URL     = _env("GAS_WEB_APP_URL")
-MISTRAL_API_KEY     = _env("MISTRAL_API_KEY")
-MISTRAL_MODEL       = _env("MISTRAL_MODEL", "mistral-small-latest") or "mistral-small-latest"
-MISTRAL_VISION_MODEL = _env("MISTRAL_VISION_MODEL", MISTRAL_MODEL) or MISTRAL_MODEL
-MISTRAL_CHAT_URL    = (
-    _env("MISTRAL_CHAT_URL", "https://api.mistral.ai/v1/chat/completions")
-    or "https://api.mistral.ai/v1/chat/completions"
-)
+GEMINI_API_KEY      = _env("GEMINI_API_KEY")
+GEMINI_MODEL        = _env("GEMINI_MODEL", "gemini-3.5-flash") or "gemini-3.5-flash"
+GEMINI_API_URL      = (
+    _env("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta/models")
+    or "https://generativelanguage.googleapis.com/v1beta/models"
+).rstrip("/")
 OPENAI_API_KEY      = _env("OPENAI_API_KEY")
 BOOKS_REMOTE_BASE_URL = (
     _env("BOOKS_REMOTE_BASE_URL", "https://thejinx1.github.io/blupblupreylai-books/")
@@ -954,15 +953,15 @@ def _analysis_timeout_seconds():
     return max(1, ANALYSIS_TIMEOUT_MS / 1000)
 
 
-def _mistral_generation_params(max_tokens=None, temperature=0.2):
-    params = {'temperature': temperature}
+def _gemini_generation_config(max_tokens=None, temperature=0.2):
+    config = {'temperature': temperature}
     token_limit = ANALYSIS_MAX_OUTPUT_TOKENS if max_tokens is None else max_tokens
     if token_limit:
-        params['max_tokens'] = token_limit
-    return params
+        config['maxOutputTokens'] = token_limit
+    return config
 
 
-def _mistral_content_to_text(content):
+def _gemini_text_from_content(content):
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -982,24 +981,89 @@ def _mistral_content_to_text(content):
     return str(content)
 
 
-def _mistral_response_text(payload):
-    choices = payload.get('choices') if isinstance(payload, dict) else None
-    if not choices:
-        return ''
-    message = choices[0].get('message') if isinstance(choices[0], dict) else None
-    if not isinstance(message, dict):
-        return ''
-    return _mistral_content_to_text(message.get('content')).strip()
+def _gemini_part_from_content_item(item):
+    if isinstance(item, str):
+        return {'text': item}
+    if not isinstance(item, dict):
+        return {'text': str(item)} if item is not None else None
+    if item.get('text') is not None:
+        return {'text': str(item.get('text'))}
+    if item.get('content') is not None:
+        return {'text': str(item.get('content'))}
+    if item.get('inline_data'):
+        return {'inline_data': item.get('inline_data')}
+    if item.get('inlineData'):
+        return {'inline_data': item.get('inlineData')}
+    if item.get('type') == 'image_url':
+        image_url = item.get('image_url')
+        if isinstance(image_url, dict):
+            image_url = image_url.get('url')
+        image_url = str(image_url or '')
+        match = re.match(r'^data:([^;,]+);base64,(.+)$', image_url, re.IGNORECASE | re.DOTALL)
+        if match:
+            return {
+                'inline_data': {
+                    'mime_type': match.group(1),
+                    'data': match.group(2).strip(),
+                }
+            }
+    return None
 
 
-def _mistral_error_message(response):
+def _gemini_parts_from_content(content):
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            part = _gemini_part_from_content_item(item)
+            if part:
+                parts.append(part)
+        return parts
+    text = _gemini_text_from_content(content)
+    return [{'text': text}] if text else []
+
+
+def _gemini_contents_from_messages(messages):
+    contents = []
+    system_parts = []
+    for message in messages or []:
+        if not isinstance(message, dict):
+            continue
+        role = message.get('role')
+        parts = _gemini_parts_from_content(message.get('content'))
+        if not parts:
+            continue
+        if role == 'system':
+            system_parts.extend(parts)
+            continue
+        gemini_role = 'model' if role == 'assistant' else 'user'
+        contents.append({'role': gemini_role, 'parts': parts})
+    payload = {'contents': contents or [{'role': 'user', 'parts': [{'text': ''}]}]}
+    if system_parts:
+        payload['system_instruction'] = {'parts': system_parts}
+    return payload
+
+
+def _gemini_response_text(payload):
+    candidates = payload.get('candidates') if isinstance(payload, dict) else None
+    if not candidates or not isinstance(candidates[0], dict):
+        return ''
+    content = candidates[0].get('content')
+    if not isinstance(content, dict):
+        return ''
+    parts = content.get('parts')
+    if not isinstance(parts, list):
+        return ''
+    return ''.join(str(part.get('text') or '') for part in parts if isinstance(part, dict)).strip()
+
+
+def _gemini_error_message(response):
     try:
         payload = response.json()
     except ValueError:
         return response.text[:500]
     error = payload.get('error') if isinstance(payload, dict) else None
     if isinstance(error, dict):
-        return str(error.get('message') or error.get('type') or error)[:500]
+        return str(error.get('message') or error.get('status') or error)[:500]
     if error:
         return str(error)[:500]
     if isinstance(payload, dict) and payload.get('message'):
@@ -1007,32 +1071,32 @@ def _mistral_error_message(response):
     return response.text[:500]
 
 
-def _mistral_chat_complete(messages, *, model=None, max_tokens=None, temperature=0.2):
-    payload = {
-        'model': model or MISTRAL_MODEL,
-        'messages': messages,
-        'stream': False,
-    }
-    payload.update(_mistral_generation_params(max_tokens=max_tokens, temperature=temperature))
+def _gemini_generate_content(messages, *, model=None, max_tokens=None, temperature=0.2):
+    payload = _gemini_contents_from_messages(messages)
+    payload['generationConfig'] = _gemini_generation_config(
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    endpoint = f"{GEMINI_API_URL}/{quote(model or GEMINI_MODEL, safe='')}:generateContent"
     try:
         response = requests.post(
-            MISTRAL_CHAT_URL,
+            endpoint,
             headers={
-                'Authorization': f'Bearer {MISTRAL_API_KEY}',
+                'X-goog-api-key': GEMINI_API_KEY,
                 'Content-Type': 'application/json',
             },
             json=payload,
             timeout=_analysis_timeout_seconds(),
         )
     except requests.RequestException as exc:
-        raise RuntimeError(f'Mistral API bağlantı hatası: {exc}') from exc
+        raise RuntimeError(f'Gemini API baglanti hatasi: {exc}') from exc
     if response.status_code >= 400:
-        message = _mistral_error_message(response) or response.reason
-        raise RuntimeError(f'Mistral API hatası ({response.status_code}): {message}')
+        message = _gemini_error_message(response) or response.reason
+        raise RuntimeError(f'Gemini API hatasi ({response.status_code}): {message}')
     try:
         return response.json()
     except ValueError as exc:
-        raise RuntimeError('Mistral API geçersiz JSON yanıtı döndürdü.') from exc
+        raise RuntimeError('Gemini API gecersiz JSON yaniti dondurdu.') from exc
 
 
 def _sanitize_chat_history(raw_history):
@@ -1088,12 +1152,12 @@ def _generate_chat_title(book_name, prompt_text, response_text):
         f'Cevap özeti: {str(response_text or "")[:700]}'
     )
     try:
-        title_response = _mistral_chat_complete(
+        title_response = _gemini_generate_content(
             [{'role': 'user', 'content': title_prompt}],
             max_tokens=32,
             temperature=0.1,
         )
-        return _clean_chat_title(_mistral_response_text(title_response)) or fallback
+        return _clean_chat_title(_gemini_response_text(title_response)) or fallback
     except Exception:
         return fallback
 
@@ -1537,8 +1601,8 @@ def _render_pdf_page_image(book, book_id, page_no):
 
 
 def _extract_title_from_cover(cover_path):
-    """Use Mistral Vision to read the book title from the cover image."""
-    if not _is_configured(MISTRAL_API_KEY, "YOUR_MISTRAL_API_KEY"):
+    """Use Gemini to read the book title from the cover image."""
+    if not _is_configured(GEMINI_API_KEY, "YOUR_GEMINI_API_KEY"):
         return None
     if not cover_path or not os.path.exists(cover_path):
         return None
@@ -1546,7 +1610,7 @@ def _extract_title_from_cover(cover_path):
         with open(cover_path, 'rb') as f:
             img_bytes = f.read()
         image_url = 'data:image/jpeg;base64,' + base64.b64encode(img_bytes).decode('ascii')
-        response = _mistral_chat_complete(
+        response = _gemini_generate_content(
             [
                 {
                     'role': 'user',
@@ -1564,11 +1628,10 @@ def _extract_title_from_cover(cover_path):
                     ],
                 }
             ],
-            model=MISTRAL_VISION_MODEL,
             max_tokens=80,
             temperature=0.1,
         )
-        title = _mistral_response_text(response).strip()
+        title = _gemini_response_text(response).strip()
         # Remove surrounding quotes if any
         title = title.strip('"').strip("'").strip()
         return title if title and title != 'Bilinmeyen Kitap' else None
@@ -17732,7 +17795,7 @@ async function analyze() {
     } else if (data.rate_limit) {
       setAnalysisStatus('API kotası doldu.', 'red');
       showToast('warning', 'API kota sınırı aşıldı',
-        'Mistral API istek limiti doldu. Birkaç dakika bekleyip tekrar deneyin.', 9000);
+        'Gemini API istek limiti doldu. Birkaç dakika bekleyip tekrar deneyin.', 9000);
     } else if (data.temporary_unavailable) {
       setAnalysisStatus('Yapay zekâ servisi yoğun.', 'red');
       showToast('warning', 'Yapay zekâ servisi yoğun',
@@ -18159,7 +18222,10 @@ TERMS_BODY = """
 <h2>2. Hizmetin kapsamı</h2>
 <p>ReylAI; ders kitabı içeriklerini arama, özetleme, analiz etme, sohbet geçmişi tutma ve hesaplar arasında DM gönderme gibi özellikler sağlayabilir. Özellikler zaman içinde değişebilir, geçici olarak durabilir veya geliştirilebilir.</p>
 
-<h2>3. Kullanıcı sorumlulukları</h2>
+<h2>3. Resmi kurum bağımsızlığı</h2>
+<p>ReylAI bağımsız bir uygulamadır; Milli Eğitim Bakanlığı, MEB veya MEB logosu ile resmi bir ortaklık, sponsorluk, onay ya da temsil ilişkisi yoktur. MEB logosu ve ders kitabı adları yalnızca ilgili kamu eğitim içeriğini tanımlamak amacıyla kullanılır.</p>
+
+<h2>4. Kullanıcı sorumlulukları</h2>
 <ul>
   <li>Hesap bilgilerini doğru ve güvenli tutmalısın.</li>
   <li>Başkasının hesabına, verisine veya cihazına izinsiz erişmeye çalışmamalısın.</li>
@@ -18167,22 +18233,22 @@ TERMS_BODY = """
   <li>AI yanıtlarını tek doğruluk kaynağı gibi kullanmadan önce kontrol etmelisin.</li>
 </ul>
 
-<h2>4. AI çıktıları</h2>
+<h2>5. AI çıktıları</h2>
 <p>AI yanıtları otomatik üretilir ve hata içerebilir. ReylAI, eğitim desteği sunmayı amaçlar; profesyonel, akademik, hukuki, finansal veya tıbbi danışmanlık yerine geçmez.</p>
 
-<h2>5. İçerik ve lisans</h2>
+<h2>6. İçerik ve lisans</h2>
 <p>Uygulamaya gönderdiğin içeriklerin gerekli haklarına sahip olduğundan emin olmalısın. İçeriğini yalnızca hizmeti sağlamak, güvenliğini korumak, hataları gidermek ve özellikleri çalıştırmak için gerekli ölçüde işleyebiliriz.</p>
 
-<h2>6. Hesap, güvenlik ve erişim</h2>
+<h2>7. Hesap, güvenlik ve erişim</h2>
 <p>Güvenlik, kötüye kullanım, sistem bütünlüğü veya yasal gereklilikler nedeniyle hesap erişimini sınırlayabilir, askıya alabilir veya belirli içerikleri kaldırabiliriz.</p>
 
-<h2>7. Sorumluluk sınırı</h2>
+<h2>8. Sorumluluk sınırı</h2>
 <p>Hizmet mümkün olan en iyi şekilde sunulmaya çalışılır; ancak kesintisiz, hatasız veya her ihtiyaca uygun olacağı garanti edilmez. Yürürlükteki kanunların izin verdiği ölçüde dolaylı zararlar, veri kaybı veya kullanım kaybından sorumlu olmayız.</p>
 
-<h2>8. Değişiklikler</h2>
+<h2>9. Değişiklikler</h2>
 <p>Bu şartlar güncellenebilir. Önemli değişikliklerde makul şekilde bildirim yapılır. Güncellenmiş şartlardan sonra hizmeti kullanmaya devam etmen yeni şartları kabul ettiğin anlamına gelir.</p>
 
-<h2>9. İletişim</h2>
+<h2>10. İletişim</h2>
 <p>Sorular, kaldırma talepleri veya güvenlik bildirimleri için bize <a class="legal-link" href="mailto:contact@reyliar.xyz">contact@reyliar.xyz</a> adresinden ulaşabilirsin.</p>
 """
 
@@ -18876,8 +18942,8 @@ def api_analyze_start():
 
 @app.route('/api/analyze', methods=['POST'])
 def api_analyze():
-    if not _is_configured(MISTRAL_API_KEY, "YOUR_MISTRAL_API_KEY"):
-        return jsonify({'error': 'MISTRAL_API_KEY yapılandırılmamış. Proje kökündeki .env dosyasına ekleyin.'})
+    if not _is_configured(GEMINI_API_KEY, "YOUR_GEMINI_API_KEY"):
+        return jsonify({'error': 'GEMINI_API_KEY yapılandırılmamış. Proje kökündeki .env dosyasına ekleyin.'})
 
     data        = request.get_json(silent=True) or {}
     book_id     = data.get('book_id') or data.get('drive_id', '')
@@ -19013,8 +19079,8 @@ def api_analyze():
         for attempt in range(ANALYSIS_RETRY_COUNT):
             try:
                 _analysis_status_update(analysis_id, 'AI yanıt hazırlıyor...', 'ai')
-                response = _mistral_chat_complete(messages, temperature=0.2)
-                response_text = _mistral_response_text(response)
+                response = _gemini_generate_content(messages, temperature=0.2)
+                response_text = _gemini_response_text(response)
                 chat_title = ''
                 if title_requested:
                     _analysis_status_update(analysis_id, 'Sohbet başlığı hazırlanıyor...', 'title')

@@ -16049,7 +16049,7 @@ async function analyze() {
     } else if (data.rate_limit) {
       setAnalysisStatus('API kotası doldu.', 'red');
       showToast('warning', 'API kota sınırı aşıldı',
-        'Mistral API istek limiti doldu. Birkaç dakika bekleyip tekrar deneyin.', 9000);
+        'Gemini API istek limiti doldu. Birkaç dakika bekleyip tekrar deneyin.', 9000);
     } else if (data.temporary_unavailable) {
       setAnalysisStatus('Yapay zekâ servisi yoğun.', 'red');
       showToast('warning', 'Yapay zekâ servisi yoğun',

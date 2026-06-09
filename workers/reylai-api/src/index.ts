@@ -89,7 +89,7 @@ type AnalyzePayload = {
   chat_history?: Array<{ role?: string; text?: string }>;
 };
 
-type MistralMessage = {
+type GeminiMessage = {
   role: "system" | "user" | "assistant";
   content: string;
 };
@@ -2642,7 +2642,7 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
   const selectedId = safeId(payload.book_id || payload.drive_id || "");
   const bookName = String(payload.book_name || "Kitap").trim() || "Kitap";
 
-  if (!env.MISTRAL_API_KEY) return { error: "MISTRAL_API_KEY yapılandırılmamış." };
+  if (!env.GEMINI_API_KEY) return { error: "GEMINI_API_KEY yapılandırılmamış." };
   if (!prompt) return { error: "Prompt eksik." };
   if (!selectedId) return { error: "book_id eksik." };
 
@@ -2695,7 +2695,7 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
   }
   systemMessage += "\n\nKitabın ilgili bölümleri:\n\n" + contextText;
 
-  const messages: MistralMessage[] = [
+  const messages: GeminiMessage[] = [
     { role: "system", content: systemMessage },
     {
       role: "user",
@@ -2704,9 +2704,9 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
   ];
 
   try {
-    const mistralResponse = await mistralChat(env, messages, { temperature: 0.2 });
-    const result = mistralResponseText(mistralResponse);
-    if (!result) return { error: "Mistral boş yanıt döndürdü." };
+    const geminiResponse = await geminiGenerateContent(env, messages, { temperature: 0.2 });
+    const result = geminiResponseText(geminiResponse);
+    if (!result) return { error: "Gemini boş yanıt döndürdü." };
 
     let chatTitle = "";
     if (payload.title_requested) {
@@ -2904,24 +2904,49 @@ async function staticExists(env: Env, path: string): Promise<boolean> {
   return response.ok;
 }
 
-async function mistralChat(
+function geminiPayloadFromMessages(messages: GeminiMessage[]): Record<string, unknown> {
+  const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+  const systemParts: Array<{ text: string }> = [];
+  for (const message of messages) {
+    const text = String(message.content || "").trim();
+    if (!text) continue;
+    if (message.role === "system") {
+      systemParts.push({ text });
+    } else {
+      contents.push({
+        role: message.role === "assistant" ? "model" : "user",
+        parts: [{ text }]
+      });
+    }
+  }
+  const payload: Record<string, unknown> = {
+    contents: contents.length ? contents : [{ role: "user", parts: [{ text: "" }] }]
+  };
+  if (systemParts.length) {
+    payload.system_instruction = { parts: systemParts };
+  }
+  return payload;
+}
+
+async function geminiGenerateContent(
   env: Env,
-  messages: MistralMessage[],
+  messages: GeminiMessage[],
   options: { temperature?: number; maxTokens?: number } = {}
 ): Promise<unknown> {
-  const payload: Record<string, unknown> = {
-    model: env.MISTRAL_MODEL || "mistral-small-latest",
-    messages,
-    stream: false,
-    temperature: options.temperature ?? 0.2,
-    top_p: 0.9
+  const generationConfig: Record<string, unknown> = {
+    temperature: options.temperature ?? 0.2
   };
-  if (options.maxTokens) payload.max_tokens = options.maxTokens;
+  if (options.maxTokens) generationConfig.maxOutputTokens = options.maxTokens;
 
-  const response = await fetch(env.MISTRAL_CHAT_URL || "https://api.mistral.ai/v1/chat/completions", {
+  const payload = geminiPayloadFromMessages(messages);
+  payload.generationConfig = generationConfig;
+
+  const baseUrl = (env.GEMINI_API_URL || "https://generativelanguage.googleapis.com/v1beta/models").replace(/\/+$/, "");
+  const model = env.GEMINI_MODEL || "gemini-3.5-flash";
+  const response = await fetch(`${baseUrl}/${encodeURIComponent(model)}:generateContent`, {
     method: "POST",
     headers: {
-      "authorization": `Bearer ${env.MISTRAL_API_KEY}`,
+      "x-goog-api-key": env.GEMINI_API_KEY,
       "content-type": "application/json"
     },
     body: JSON.stringify(payload)
@@ -2929,26 +2954,17 @@ async function mistralChat(
 
   if (!response.ok) {
     const snippet = await readTextSnippet(response, 500);
-    throw new Error(`Mistral API hatası (${response.status}): ${snippet || response.statusText}`);
+    throw new Error(`Gemini API hatası (${response.status}): ${snippet || response.statusText}`);
   }
 
   return await response.json();
 }
 
-function mistralResponseText(payload: unknown): string {
-  if (!isRecord(payload) || !Array.isArray(payload.choices) || !isRecord(payload.choices[0])) return "";
-  const message = payload.choices[0].message;
-  if (!isRecord(message)) return "";
-  const content = message.content;
-  if (typeof content === "string") return content.trim();
-  if (Array.isArray(content)) {
-    return content.map((part) => {
-      if (typeof part === "string") return part;
-      if (isRecord(part) && typeof part.text === "string") return part.text;
-      return "";
-    }).join("").trim();
-  }
-  return "";
+function geminiResponseText(payload: unknown): string {
+  if (!isRecord(payload) || !Array.isArray(payload.candidates) || !isRecord(payload.candidates[0])) return "";
+  const content = payload.candidates[0].content;
+  if (!isRecord(content) || !Array.isArray(content.parts)) return "";
+  return content.parts.map((part) => isRecord(part) && typeof part.text === "string" ? part.text : "").join("").trim();
 }
 
 async function generateChatTitle(env: Env, bookName: string, prompt: string, answer: string): Promise<string> {
@@ -2963,11 +2979,11 @@ async function generateChatTitle(env: Env, bookName: string, prompt: string, ans
       `Kullanıcı sorusu: ${prompt}`,
       `Cevap özeti: ${answer.slice(0, 700)}`
     ].join("\n");
-    const response = await mistralChat(env, [{ role: "user", content: titlePrompt }], {
+    const response = await geminiGenerateContent(env, [{ role: "user", content: titlePrompt }], {
       maxTokens: 32,
       temperature: 0.1
     });
-    return cleanChatTitle(mistralResponseText(response)) || fallback;
+    return cleanChatTitle(geminiResponseText(response)) || fallback;
   } catch {
     return fallback;
   }

@@ -38,8 +38,8 @@ SAMPLE_PNG = base64.b64decode(
 )
 
 
-def _mistral_text_response(text):
-    return {"choices": [{"message": {"content": text}}]}
+def _gemini_text_response(text):
+    return {"candidates": [{"content": {"parts": [{"text": text}]}}]}
 
 
 class AppApiTests(unittest.TestCase):
@@ -469,7 +469,7 @@ class AppApiTests(unittest.TestCase):
         self.assertIn("pdf2image", response.get_data(as_text=True))
 
     def test_analyze_validation_errors_are_stable(self):
-        with patch.object(reylai_app, "MISTRAL_API_KEY", "test-key"):
+        with patch.object(reylai_app, "GEMINI_API_KEY", "test-key"):
             missing_prompt = self.client.post("/api/analyze", json={}).get_json()
             self.assertEqual(missing_prompt["error"], "Prompt eksik")
 
@@ -478,7 +478,7 @@ class AppApiTests(unittest.TestCase):
 
     def test_small_talk_skips_pdf_scan_and_model_call(self):
         with ExitStack() as stack:
-            stack.enter_context(patch.object(reylai_app, "MISTRAL_API_KEY", "test-key"))
+            stack.enter_context(patch.object(reylai_app, "GEMINI_API_KEY", "test-key"))
             stack.enter_context(
                 patch.object(
                     reylai_app,
@@ -496,8 +496,8 @@ class AppApiTests(unittest.TestCase):
             stack.enter_context(
                 patch.object(
                     reylai_app,
-                    "_mistral_chat_complete",
-                    side_effect=AssertionError("small talk should not call Mistral"),
+                    "_gemini_generate_content",
+                    side_effect=AssertionError("small talk should not call Gemini"),
                 )
             )
 
@@ -538,8 +538,8 @@ class AppApiTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        with patch.object(reylai_app, "MISTRAL_API_KEY", "test-key"), patch.object(
-            reylai_app, "_mistral_chat_complete", return_value=_mistral_text_response("Kitap cevabı")
+        with patch.object(reylai_app, "GEMINI_API_KEY", "test-key"), patch.object(
+            reylai_app, "_gemini_generate_content", return_value=_gemini_text_response("Kitap cevabı")
         ):
             response = self.client.post(
                 "/api/analyze",
@@ -574,12 +574,12 @@ class AppApiTests(unittest.TestCase):
 
         captured = {}
 
-        def fake_mistral(messages, **_kwargs):
+        def fake_gemini(messages, **_kwargs):
             captured["messages"] = messages
-            return _mistral_text_response("Sayfa 30 cevabi")
+            return _gemini_text_response("Sayfa 30 cevabi")
 
-        with patch.object(reylai_app, "MISTRAL_API_KEY", "test-key"), patch.object(
-            reylai_app, "_mistral_chat_complete", side_effect=fake_mistral
+        with patch.object(reylai_app, "GEMINI_API_KEY", "test-key"), patch.object(
+            reylai_app, "_gemini_generate_content", side_effect=fake_gemini
         ):
             response = self.client.post(
                 "/api/analyze",
@@ -608,14 +608,14 @@ class AppApiTests(unittest.TestCase):
 
         captured = {"messages": []}
 
-        def fake_mistral(messages, **_kwargs):
+        def fake_gemini(messages, **_kwargs):
             captured["messages"].append(messages)
             if len(captured["messages"]) == 2:
-                return _mistral_text_response("Ana Konu CevabÄ±")
-            return _mistral_text_response("Kitap cevabÄ±")
+                return _gemini_text_response("Ana Konu CevabÄ±")
+            return _gemini_text_response("Kitap cevabÄ±")
 
-        with patch.object(reylai_app, "MISTRAL_API_KEY", "test-key"), patch.object(
-            reylai_app, "_mistral_chat_complete", side_effect=fake_mistral
+        with patch.object(reylai_app, "GEMINI_API_KEY", "test-key"), patch.object(
+            reylai_app, "_gemini_generate_content", side_effect=fake_gemini
         ):
             response = self.client.post(
                 "/api/analyze",
@@ -645,7 +645,7 @@ class AppApiTests(unittest.TestCase):
         entry, _local_path = self._write_book()
 
         with ExitStack() as stack:
-            stack.enter_context(patch.object(reylai_app, "MISTRAL_API_KEY", "test-key"))
+            stack.enter_context(patch.object(reylai_app, "GEMINI_API_KEY", "test-key"))
             stack.enter_context(
                 patch.object(
                     reylai_app,
@@ -709,12 +709,12 @@ class AppApiTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-        with patch.object(reylai_app, "MISTRAL_API_KEY", "test-key"), patch.object(
+        with patch.object(reylai_app, "GEMINI_API_KEY", "test-key"), patch.object(
             reylai_app,
             "_ensure_local_pdf",
             side_effect=AssertionError("analyze should scan remote PDFs without local cache"),
         ), patch.object(reylai_app, "_do_scan", side_effect=fake_scan), patch.object(
-            reylai_app, "_mistral_chat_complete", return_value=_mistral_text_response("Remote cevap")
+            reylai_app, "_gemini_generate_content", return_value=_gemini_text_response("Remote cevap")
         ):
             response = self.client.post(
                 "/api/analyze",
@@ -793,7 +793,7 @@ class AppApiTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-        with patch.object(reylai_app, "MISTRAL_API_KEY", "test-key"):
+        with patch.object(reylai_app, "GEMINI_API_KEY", "test-key"):
             response = self.client.post(
                 "/api/analyze",
                 json={
