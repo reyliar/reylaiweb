@@ -27,6 +27,18 @@ def main():
     Path("index.html").write_text(html, encoding="utf-8")
     Path("terms.html").write_text(terms_html, encoding="utf-8")
     Path("privacy.html").write_text(privacy_html, encoding="utf-8")
+    terms_dir = ROOT / "terms"
+    privacy_dir = ROOT / "privacy"
+    terms_dir.mkdir(exist_ok=True)
+    privacy_dir.mkdir(exist_ok=True)
+    (terms_dir / "index.html").write_text(terms_html, encoding="utf-8")
+    (privacy_dir / "index.html").write_text(privacy_html, encoding="utf-8")
+    Path("_redirects").write_text(
+        "/index.html / 301\n"
+        "/terms.html /terms 301\n"
+        "/privacy.html /privacy 301\n",
+        encoding="utf-8",
+    )
     pdfjs_dest = ROOT / "pdfjs"
     pdfjs_dest.mkdir(exist_ok=True)
     for filename in ("pdf.min.js", "pdf.worker.min.js"):

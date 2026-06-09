@@ -14,7 +14,7 @@ import requests
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import quote, urljoin, urlparse
-from flask import Flask, request, jsonify, render_template_string, send_file, make_response, Response, stream_with_context
+from flask import Flask, request, jsonify, render_template_string, send_file, make_response, Response, stream_with_context, redirect
 
 try:
     from dotenv import load_dotenv as _dotenv_load
@@ -1691,6 +1691,17 @@ HTML = """
 <meta name="theme-color" content="#030712">
 <link rel="icon" type="image/png" href="{{ reylai_icon_src }}">
 <link rel="apple-touch-icon" href="{{ reylai_icon_src }}">
+<script>
+(function() {
+  if (!window.history || !window.history.replaceState) return;
+  var path = window.location.pathname;
+  var nextPath = "";
+  if (/\/index\.html$/i.test(path)) nextPath = path.replace(/index\.html$/i, "");
+  else if (/\/terms\.html$/i.test(path)) nextPath = path.replace(/terms\.html$/i, "terms");
+  else if (/\/privacy\.html$/i.test(path)) nextPath = path.replace(/privacy\.html$/i, "privacy");
+  if (nextPath && nextPath !== path) window.history.replaceState(null, "", nextPath + window.location.search + window.location.hash);
+})();
+</script>
 <style id="reylai-boot-paint">
   html { background: #030712; }
   body {
@@ -2436,37 +2447,6 @@ body.app-ready #libraryScreen {
   font-weight: 800;
 }
 
-.account-chip-presence {
-  display: none;
-  align-items: center;
-  gap: 5px;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(147,197,253,0.20);
-  background: rgba(255,255,255,0.08);
-  color: #bfdbfe;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.account-chip-presence.visible {
-  display: inline-flex;
-}
-
-.account-chip-presence-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: currentColor;
-  box-shadow: 0 0 12px currentColor;
-}
-
-.account-chip-presence.online { color: #22c55e; }
-.account-chip-presence.idle { color: #facc15; }
-.account-chip-presence.dnd { color: #f87171; }
-.account-chip-presence.invisible { color: #94a3b8; }
-
 .account-chip-role {
   display: none;
   align-items: center;
@@ -2513,9 +2493,15 @@ body.account-menu-open .account-menu {
 
 .account-menu-head {
   display: grid;
-  grid-template-columns: 52px 1fr;
+  grid-template-columns: 58px 1fr;
   gap: 12px;
   align-items: center;
+}
+
+.account-menu-avatar-wrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
 }
 
 .account-menu-avatar {
@@ -5744,6 +5730,7 @@ body.account-menu-open .account-menu {
   cursor: pointer;
   box-shadow: 0 12px 26px rgba(0,0,0,0.30), inset 0 1px rgba(255,255,255,0.14);
   transition: var(--transition);
+  z-index: 2;
 }
 
 .profile-status-toggle:hover,
@@ -5773,6 +5760,10 @@ body.account-menu-open .account-menu {
 
 .profile-presence-popover .presence-picker {
   margin-top: 0;
+}
+
+.account-menu-presence-popover {
+  margin-top: 14px;
 }
 
 .profile-photo-input {
@@ -9564,16 +9555,6 @@ body::after {
     max-width: 92px;
   }
 
-  .account-chip-presence {
-    width: 24px;
-    padding: 0;
-    justify-content: center;
-  }
-
-  #accountChipPresenceText {
-    display: none;
-  }
-
   .book-grid {
     gap: 8px;
   }
@@ -10008,7 +9989,6 @@ body::after,
       <button class="account-chip" id="accountChip" type="button" onclick="toggleAccountMenu(event)" aria-label="Hesap menüsünü aç" aria-expanded="false">
         <span class="account-avatar" id="accountAvatar">R</span>
         <span class="account-chip-name" id="accountChipName">Hesap</span>
-        <span class="account-chip-presence" id="accountChipPresence"><span class="account-chip-presence-dot"></span><span id="accountChipPresenceText">Çevrimiçi</span></span>
         <span class="account-chip-role" id="accountChipRole">Admin</span>
       </button>
       <div class="status-pill" id="libStatus">
@@ -10017,10 +9997,23 @@ body::after,
       </div>
       <div class="account-menu" id="accountMenu">
         <div class="account-menu-head">
-          <div class="account-menu-avatar" id="accountMenuAvatar">R</div>
+          <div class="account-menu-avatar-wrap">
+            <div class="account-menu-avatar" id="accountMenuAvatar">R</div>
+            <button class="profile-status-toggle" id="profileStatusToggle" type="button" onclick="toggleProfilePresencePicker(event)" aria-label="Durum değiştir" title="Durum değiştir">
+              <span class="presence-mini-dot"></span>
+            </button>
+          </div>
           <div>
             <div class="account-menu-name" id="accountMenuName">Hesap</div>
             <div class="account-menu-email" id="accountMenuEmail"></div>
+          </div>
+        </div>
+        <div class="profile-presence-popover account-menu-presence-popover" id="profilePresencePopover">
+          <div class="presence-picker" id="presencePicker" aria-label="Durum seçimi">
+            <button class="presence-btn" data-presence="online" type="button" onclick="setPresenceStatus('online')"><span class="presence-mini-dot"></span>Çevrimiçi</button>
+            <button class="presence-btn" data-presence="idle" type="button" onclick="setPresenceStatus('idle')"><span class="presence-mini-dot"></span>Boşta</button>
+            <button class="presence-btn" data-presence="dnd" type="button" onclick="setPresenceStatus('dnd')"><span class="presence-mini-dot"></span>Rahatsız etmeyin</button>
+            <button class="presence-btn" data-presence="invisible" type="button" onclick="setPresenceStatus('invisible')"><span class="presence-mini-dot"></span>Görünmez</button>
           </div>
         </div>
         <div class="account-role-badges" id="accountRoleBadges"></div>
@@ -10087,8 +10080,8 @@ body::after,
         <nav class="footer-col" aria-label="Yasal bağlantılar">
           <div class="footer-col-title">Legal</div>
           <div class="footer-col-list">
-            <a class="footer-link" href="privacy.html">Privacy Policy</a>
-            <a class="footer-link" href="terms.html">Terms of Service</a>
+            <a class="footer-link" href="/privacy">Privacy Policy</a>
+            <a class="footer-link" href="/terms">Terms of Service</a>
           </div>
         </nav>
         <nav class="footer-col" aria-label="İletişim bağlantıları">
@@ -10353,17 +10346,6 @@ body::after,
       <div class="profile-photo-card" id="profilePhotoCard">
         <div class="profile-photo-preview-wrap">
           <div class="profile-photo-preview" id="profilePhotoPreview">R</div>
-          <button class="profile-status-toggle" id="profileStatusToggle" type="button" onclick="toggleProfilePresencePicker(event)" aria-label="Durum değiştir" title="Durum değiştir">
-            <span class="presence-mini-dot"></span>
-          </button>
-        </div>
-        <div class="profile-presence-popover" id="profilePresencePopover">
-          <div class="presence-picker" id="presencePicker" aria-label="Durum seçimi">
-            <button class="presence-btn" data-presence="online" type="button" onclick="setPresenceStatus('online')"><span class="presence-mini-dot"></span>Çevrimiçi</button>
-            <button class="presence-btn" data-presence="idle" type="button" onclick="setPresenceStatus('idle')"><span class="presence-mini-dot"></span>Boşta</button>
-            <button class="presence-btn" data-presence="dnd" type="button" onclick="setPresenceStatus('dnd')"><span class="presence-mini-dot"></span>Rahatsız etmeyin</button>
-            <button class="presence-btn" data-presence="invisible" type="button" onclick="setPresenceStatus('invisible')"><span class="presence-mini-dot"></span>Görünmez</button>
-          </div>
         </div>
         <input class="profile-photo-input" id="profilePhotoInput" type="file" accept="image/png,image/jpeg,image/webp" onchange="handleProfilePhotoChange(event)">
         <button class="account-menu-btn" type="button" onclick="document.getElementById('profilePhotoInput').click()">Fotoğraf seç</button>
@@ -11140,6 +11122,7 @@ function toggleAccountMenu(event) {
     menu.classList.toggle('active', nextOpen);
     document.body.classList.toggle('account-menu-open', nextOpen);
     if (chip) chip.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+    if (!nextOpen) closeProfilePresencePicker();
   }
 }
 
@@ -11149,6 +11132,7 @@ function closeAccountMenu() {
   document.body.classList.remove('account-menu-open');
   const chip = document.getElementById('accountChip');
   if (chip) chip.setAttribute('aria-expanded', 'false');
+  closeProfilePresencePicker();
 }
 
 async function saveAccountProfile() {
@@ -11336,8 +11320,6 @@ updateAccountUI = function() {
   const avatar = document.getElementById('accountAvatar');
   const menuAvatar = document.getElementById('accountMenuAvatar');
   const chipName = document.getElementById('accountChipName');
-  const chipPresence = document.getElementById('accountChipPresence');
-  const chipPresenceText = document.getElementById('accountChipPresenceText');
   const chipRole = document.getElementById('accountChipRole');
   const menuName = document.getElementById('accountMenuName');
   const menuEmail = document.getElementById('accountMenuEmail');
@@ -11349,11 +11331,6 @@ updateAccountUI = function() {
   setAccountAvatarElement(menuAvatar, user);
   if (chipName) chipName.textContent = name;
   const presence = normalizePresenceStatus(user.presence_status || 'online');
-  if (chipPresence) {
-    chipPresence.className = 'account-chip-presence' + (_accountUser ? ' visible ' + presence : '');
-    chipPresence.title = presenceLabel(presence);
-  }
-  if (chipPresenceText) chipPresenceText.textContent = presenceLabel(presence);
   if (menuName) menuName.textContent = name;
   if (menuEmail) menuEmail.textContent = email;
   if (badges) badges.innerHTML = renderAccountBadges(user.roles);
@@ -16645,11 +16622,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!menu.contains(e.target) && !chip.contains(e.target)) closeAccountMenu();
   });
   document.addEventListener('click', function(e) {
-    const overlay = document.getElementById('profileSettingsOverlay');
-    const card = document.getElementById('profilePhotoCard');
+    const menu = document.getElementById('accountMenu');
+    const toggle = document.getElementById('profileStatusToggle');
     const popover = document.getElementById('profilePresencePopover');
-    if (!overlay || !card || !popover || !overlay.classList.contains('active') || !popover.classList.contains('active')) return;
-    if (!card.contains(e.target)) closeProfilePresencePicker();
+    if (!popover || !popover.classList.contains('active')) return;
+    if ((popover && popover.contains(e.target)) || (toggle && toggle.contains(e.target))) return;
+    if (!menu || !menu.contains(e.target)) {
+      closeProfilePresencePicker();
+      return;
+    }
+    closeProfilePresencePicker();
   });
 });
 
@@ -16825,6 +16807,17 @@ LEGAL_PAGE_TEMPLATE = """
 <meta name="theme-color" content="#030712">
 <link rel="icon" type="image/png" href="{{ reylai_icon_src }}">
 <link rel="apple-touch-icon" href="{{ reylai_icon_src }}">
+<script>
+(function() {
+  if (!window.history || !window.history.replaceState) return;
+  var path = window.location.pathname;
+  var nextPath = "";
+  if (/\/index\.html$/i.test(path)) nextPath = path.replace(/index\.html$/i, "");
+  else if (/\/terms\.html$/i.test(path)) nextPath = path.replace(/terms\.html$/i, "terms");
+  else if (/\/privacy\.html$/i.test(path)) nextPath = path.replace(/privacy\.html$/i, "privacy");
+  if (nextPath && nextPath !== path) window.history.replaceState(null, "", nextPath + window.location.search + window.location.hash);
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
@@ -16880,8 +16873,8 @@ h1 { font-family: Manrope, Inter, sans-serif; font-size: clamp(34px, 7vw, 70px);
 <body>
   <main class="legal-shell">
     <nav class="legal-nav">
-      <a class="legal-brand" href="index.html"><img src="{{ reylai_icon_src }}" alt="ReylAI"><span>ReylAI</span></a>
-      <a class="legal-back" href="index.html">Ana sayfaya dön</a>
+      <a class="legal-brand" href="/"><img src="{{ reylai_icon_src }}" alt="ReylAI"><span>ReylAI</span></a>
+      <a class="legal-back" href="/">Ana sayfaya dön</a>
     </nav>
     <section class="legal-hero">
       <div class="legal-kicker">{{ kicker }}</div>
@@ -16899,7 +16892,7 @@ h1 { font-family: Manrope, Inter, sans-serif; font-size: clamp(34px, 7vw, 70px);
     </article>
     <footer class="legal-footer">
       <span>©2026 All Copyrights Reserved.  •  made with ❤️ by reyli</span>
-      <span><a class="legal-link" href="terms.html">Terms</a> · <a class="legal-link" href="privacy.html">Privacy</a> · <a class="legal-link" href="mailto:{{ contact_email }}">{{ contact_email }}</a></span>
+      <span><a class="legal-link" href="/terms">Terms</a> · <a class="legal-link" href="/privacy">Privacy</a> · <a class="legal-link" href="mailto:{{ contact_email }}">{{ contact_email }}</a></span>
     </footer>
   </main>
 </body>
@@ -17018,16 +17011,29 @@ def index():
     )
 
 
+@app.route('/index.html')
+def index_html_redirect():
+    return redirect('/', code=301)
+
+
 @app.route('/terms')
-@app.route('/terms.html')
 def terms_page():
     return render_legal_page("terms")
 
 
+@app.route('/terms.html')
+def terms_html_redirect():
+    return redirect('/terms', code=301)
+
+
 @app.route('/privacy')
-@app.route('/privacy.html')
 def privacy_page():
     return render_legal_page("privacy")
+
+
+@app.route('/privacy.html')
+def privacy_html_redirect():
+    return redirect('/privacy', code=301)
 
 
 @app.route('/pdfjs/<path:filename>')
