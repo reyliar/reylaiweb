@@ -1971,6 +1971,57 @@ body.route-home #analysisScreen {
   gap: 8px;
 }
 
+.home-account-chip {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  max-width: 220px;
+  border: 1px solid rgba(147,197,253,0.18);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px 12px 4px 5px;
+  box-shadow: 0 14px 34px rgba(0,0,0,0.16);
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.home-account-chip.visible {
+  display: inline-flex;
+}
+
+.home-account-chip:hover {
+  border-color: rgba(147,197,253,0.34);
+  background: rgba(147,197,253,0.12);
+  transform: translateY(-1px);
+}
+
+.home-account-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #071a3d, #1d4ed8);
+  background-size: cover;
+  background-position: center;
+  color: #eef5ff;
+  font-size: 12px;
+  font-weight: 950;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.24);
+}
+
+.home-account-name {
+  min-width: 0;
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .home-auth-btn.primary {
   color: #fff;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
@@ -1990,6 +2041,11 @@ body.route-home #analysisScreen {
 
 body.app-authenticated .home-auth-user {
   display: inline-block;
+}
+
+body.route-home .profile-status-toggle,
+body.route-home .account-menu-presence-popover {
+  display: none !important;
 }
 
 .home-main {
@@ -3886,11 +3942,11 @@ body.account-menu-open .account-menu {
   .nav-logo { width: 42px; height: 42px; }
   .status-pill { display: none; }
   .grade-label { display: none; }
-  .upload-nav-btn, .history-nav-btn, .dm-nav-btn, .sync-btn, .scan-nav-btn {
+  .upload-nav-btn, .history-nav-btn, .dm-nav-btn, .home-return-nav-btn, .sync-btn, .scan-nav-btn {
     font-size: 11px;
     padding: 5px 10px;
   }
-  .upload-nav-btn svg, .history-nav-btn svg, .dm-nav-btn svg, .sync-btn .sync-icon, .scan-nav-btn svg {
+  .upload-nav-btn svg, .history-nav-btn svg, .dm-nav-btn svg, .home-return-nav-btn svg, .sync-btn .sync-icon, .scan-nav-btn svg {
     width: 10px;
     height: 10px;
   }
@@ -7386,7 +7442,8 @@ body.chat-route-lock #libraryScreen {
 /* Library nav action buttons */
 .upload-nav-btn,
 .history-nav-btn,
-.dm-nav-btn {
+.dm-nav-btn,
+.home-return-nav-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -7406,7 +7463,8 @@ body.chat-route-lock #libraryScreen {
 
 .upload-nav-btn:hover,
 .history-nav-btn:hover,
-.dm-nav-btn:hover {
+.dm-nav-btn:hover,
+.home-return-nav-btn:hover {
   background: rgba(37,99,235,0.22);
   border-color: var(--accent);
   color: #fff;
@@ -7416,6 +7474,12 @@ body.chat-route-lock #libraryScreen {
   background: rgba(255,255,255,0.045);
   border-color: rgba(96,165,250,0.22);
   color: #bfdbfe;
+}
+
+.home-return-nav-btn {
+  background: rgba(255,255,255,0.052);
+  border-color: rgba(147,197,253,0.20);
+  color: #dbeafe;
 }
 
 .header-dm-btn {
@@ -7870,6 +7934,7 @@ select {
 .upload-nav-btn,
 .history-nav-btn,
 .dm-nav-btn,
+.home-return-nav-btn,
 .library-bottom-menu,
 .bottom-grade-cluster,
 .sync-btn,
@@ -8070,6 +8135,7 @@ select {
 .upload-nav-btn,
 .history-nav-btn,
 .dm-nav-btn,
+.home-return-nav-btn,
 .bottom-menu-item,
 .sync-btn,
 .scan-nav-btn,
@@ -8087,6 +8153,7 @@ select {
 .upload-nav-btn,
 .history-nav-btn,
 .dm-nav-btn,
+.home-return-nav-btn,
 .bottom-menu-item,
 .sync-btn,
 .scan-nav-btn,
@@ -8839,6 +8906,7 @@ body::after {
 .upload-nav-btn,
 .history-nav-btn,
 .dm-nav-btn,
+.home-return-nav-btn,
 .sync-btn,
 .scan-nav-btn,
 .sync-btn-empty,
@@ -8919,6 +8987,7 @@ body::after {
 .upload-nav-btn,
 .history-nav-btn,
 .dm-nav-btn,
+.home-return-nav-btn,
 .bottom-menu-item,
 .sync-btn,
 .scan-nav-btn,
@@ -9584,6 +9653,12 @@ body.analysis-mode .library-bottom-menu {
   pointer-events: none;
   filter: blur(2px) saturate(0.8);
   transform: translateX(-50%) translateY(18px) scale(0.98) !important;
+}
+
+.library-bottom-menu[hidden],
+body:not(.route-library) .library-bottom-menu {
+  display: none !important;
+  visibility: hidden !important;
 }
 
 .library-bottom-menu:hover {
@@ -10581,6 +10656,10 @@ body::after,
         <button class="home-auth-btn" id="homeLoginBtn" type="button" onclick="openAuthForRoute('login', '/library')">Giriş yap</button>
         <button class="home-auth-btn primary" id="homeSignupBtn" type="button" onclick="openAuthForRoute('signup', '/library')">Kayıt ol</button>
         <button class="home-auth-btn primary" id="homeLibraryBtn" type="button" onclick="navigateApp('/library')" style="display:none">Kütüphaneye geç</button>
+        <button class="home-account-chip" id="homeAccountChip" type="button" onclick="toggleAccountMenu(event)" aria-label="Hesap menüsünü aç" aria-expanded="false">
+          <span class="home-account-avatar" id="homeAccountAvatar">R</span>
+          <span class="home-account-name" id="homeAccountName">Hesap</span>
+        </button>
       </div>
     </header>
 
@@ -10829,6 +10908,10 @@ body::after,
       </div>
     </div>
     <div class="nav-right">
+      <button class="home-return-nav-btn header-dm-btn" type="button" onclick="navigateApp('/')" aria-label="Ana sayfaya dön">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="m10 5-7 7 7 7"/></svg>
+        <span class="header-dm-label">Ana sayfa</span>
+      </button>
       <button class="dm-nav-btn header-dm-btn" type="button" onclick="openDmOverlay()" aria-label="Mesajları aç">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 8.7 8.7 0 0 1-3.6-.78L3 21l1.78-5.2A8.28 8.28 0 0 1 4 12a8.5 8.5 0 1 1 17-.5Z"/><path d="M8 10h8"/><path d="M8 14h5"/></svg>
         <span class="header-dm-label">Mesajlar</span>
@@ -11622,6 +11705,14 @@ function isProtectedRoute(route) {
   return route === 'library' || route === 'chat' || route === 'message';
 }
 
+function updateLibraryDockRoute(route) {
+  const menu = document.getElementById('libraryBottomMenu');
+  if (!menu) return;
+  const visible = route === 'library';
+  menu.hidden = !visible;
+  menu.setAttribute('aria-hidden', visible ? 'false' : 'true');
+}
+
 function setRouteChrome(route) {
   _currentRoute = route;
   const home = route === 'home';
@@ -11631,6 +11722,8 @@ function setRouteChrome(route) {
   document.body.classList.toggle('route-chat', route === 'chat');
   document.body.classList.toggle('route-message', route === 'message');
   document.body.classList.toggle('app-authenticated', !!_accountUser);
+  updateLibraryDockRoute(route);
+  if (home) closeProfilePresencePicker();
   updateHomeAuthUI();
 }
 
@@ -11700,10 +11793,20 @@ function updateHomeAuthUI() {
   const loginBtn = document.getElementById('homeLoginBtn');
   const signupBtn = document.getElementById('homeSignupBtn');
   const libraryBtn = document.getElementById('homeLibraryBtn');
-  if (userEl) userEl.textContent = user ? (user.display_name || user.email || 'Hesap') : '';
+  const homeChip = document.getElementById('homeAccountChip');
+  const homeAvatar = document.getElementById('homeAccountAvatar');
+  const homeName = document.getElementById('homeAccountName');
+  if (userEl) {
+    userEl.textContent = '';
+    userEl.style.display = 'none';
+    userEl.setAttribute('aria-hidden', 'true');
+  }
   if (loginBtn) loginBtn.style.display = user ? 'none' : '';
   if (signupBtn) signupBtn.style.display = user ? 'none' : '';
   if (libraryBtn) libraryBtn.style.display = user ? '' : 'none';
+  if (homeChip) homeChip.classList.toggle('visible', !!user);
+  if (homeName) homeName.textContent = user ? (user.display_name || user.email || 'Hesap') : 'Hesap';
+  setAccountAvatarElement(homeAvatar, user || {});
 }
 
 function getAppAuthToken() {
@@ -12283,19 +12386,26 @@ function mountLibraryBottomMenu() {
   if (menu && menu.parentElement !== document.body) {
     document.body.appendChild(menu);
   }
+  updateLibraryDockRoute(_currentRoute);
+}
+
+function setAccountChipExpanded(expanded) {
+  ['accountChip', 'homeAccountChip'].forEach(function(id) {
+    const chip = document.getElementById(id);
+    if (chip) chip.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  });
 }
 
 function toggleAccountMenu(event) {
   if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
   mountAccountMenu();
   const menu = document.getElementById('accountMenu');
-  const chip = document.getElementById('accountChip');
   if (menu) {
     const nextOpen = !menu.classList.contains('active');
     menu.classList.toggle('active', nextOpen);
     document.body.classList.toggle('account-menu-open', nextOpen);
-    if (chip) chip.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
-    if (!nextOpen) closeProfilePresencePicker();
+    setAccountChipExpanded(nextOpen);
+    if (!nextOpen || _currentRoute === 'home') closeProfilePresencePicker();
   }
 }
 
@@ -12303,8 +12413,7 @@ function closeAccountMenu() {
   const menu = document.getElementById('accountMenu');
   if (menu) menu.classList.remove('active');
   document.body.classList.remove('account-menu-open');
-  const chip = document.getElementById('accountChip');
-  if (chip) chip.setAttribute('aria-expanded', 'false');
+  setAccountChipExpanded(false);
   closeProfilePresencePicker();
 }
 
@@ -12499,10 +12608,12 @@ updateAccountUI = function() {
   const badges = document.getElementById('accountRoleBadges');
   const verify = document.getElementById('accountVerifyState');
   const adminBtn = document.getElementById('adminToolsMenuBtn');
+  document.body.classList.toggle('app-authenticated', !!_accountUser);
   if (chip) chip.classList.toggle('visible', !!_accountUser);
   setAccountAvatarElement(avatar, user);
   setAccountAvatarElement(menuAvatar, user);
   if (chipName) chipName.textContent = name;
+  updateHomeAuthUI();
   const presence = normalizePresenceStatus(user.presence_status || 'online');
   if (menuName) menuName.textContent = name;
   if (menuEmail) menuEmail.textContent = email;
@@ -18012,8 +18123,10 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('click', function(e) {
     const menu = document.getElementById('accountMenu');
     const chip = document.getElementById('accountChip');
-    if (!menu || !chip) return;
-    if (!menu.contains(e.target) && !chip.contains(e.target)) closeAccountMenu();
+    const homeChip = document.getElementById('homeAccountChip');
+    if (!menu) return;
+    const clickedChip = (chip && chip.contains(e.target)) || (homeChip && homeChip.contains(e.target));
+    if (!menu.contains(e.target) && !clickedChip) closeAccountMenu();
   });
   document.addEventListener('click', function(e) {
     const menu = document.getElementById('accountMenu');
