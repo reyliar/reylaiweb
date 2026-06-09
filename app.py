@@ -4042,7 +4042,7 @@ body.account-menu-open .account-menu {
 
 .footer-main {
   display: grid;
-  grid-template-columns: minmax(260px, 1.35fr) repeat(4, minmax(120px, 0.55fr));
+  grid-template-columns: minmax(260px, 1.45fr) repeat(3, minmax(140px, 0.65fr));
   gap: clamp(24px, 4vw, 72px);
   align-items: start;
 }
@@ -7559,7 +7559,7 @@ select {
   position: fixed;
   left: 50%;
   bottom: 42px;
-  z-index: 12;
+  z-index: 340;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7574,7 +7574,10 @@ select {
   overflow: hidden;
   isolation: isolate;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(248, 252, 255, 0.34));
-  box-shadow: 0 18px 52px rgba(37, 53, 78, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  box-shadow:
+    0 26px 76px rgba(0, 0, 0, 0.34),
+    0 8px 28px rgba(15, 42, 95, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(28px) saturate(1.6);
   -webkit-backdrop-filter: blur(28px) saturate(1.6);
 }
@@ -8872,8 +8875,19 @@ body::after {
   animation: dockLiquidIn 0.72s var(--motion-spring) both;
   transition:
     transform 0.42s var(--motion-spring),
+    opacity 0.26s var(--motion-smooth),
+    filter 0.30s var(--motion-smooth),
     border-color 0.30s var(--motion-smooth),
     box-shadow 0.30s var(--motion-smooth);
+}
+
+body:not(.app-ready) .library-bottom-menu,
+body.account-auth-visible .library-bottom-menu,
+body.analysis-mode .library-bottom-menu {
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(2px) saturate(0.8);
+  transform: translateX(-50%) translateY(18px) scale(0.98) !important;
 }
 
 .library-bottom-menu:hover {
@@ -9171,6 +9185,12 @@ body::after {
     gap: 5px;
     border-radius: 22px;
     transform: none !important;
+  }
+
+  body:not(.app-ready) .library-bottom-menu,
+  body.account-auth-visible .library-bottom-menu,
+  body.analysis-mode .library-bottom-menu {
+    transform: translateY(18px) scale(0.98) !important;
   }
 
   .bottom-menu-item {
@@ -10035,7 +10055,7 @@ body::after,
   <div class="book-grid-wrap">
     <div class="book-grid" id="bookGrid"></div>
   </div>
-  <div class="library-bottom-menu" aria-label="Kütüphane kontrolleri">
+  <div class="library-bottom-menu" id="libraryBottomMenu" aria-label="Kütüphane kontrolleri">
     <button class="history-nav-btn bottom-menu-item" type="button" onclick="openChatSidebar()" aria-label="Sohbet geçmişini aç">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
       <span>Sohbetler</span>
@@ -10062,39 +10082,32 @@ body::after,
           <p class="footer-tagline">Ders kitapları, sohbetler ve ReylAI araçları için tek, sakin ve hızlı çalışma alanın.</p>
         </div>
         <nav class="footer-col" aria-label="Site bağlantıları">
-          <div class="footer-col-title">Sites</div>
+          <div class="footer-col-title">Bağlantılar</div>
           <div class="footer-col-list">
-            <a class="footer-link" href="#libraryScreen">Library</a>
+            <a class="footer-link" href="#libraryScreen">Kütüphane</a>
             <a class="footer-link" href="#" onclick="openChatSidebar(); return false;">Sohbetler</a>
             <a class="footer-link" href="#" onclick="openPdfPicker(); return false;">Kitap Yükle</a>
             <a class="footer-link" href="#" onclick="openDmOverlay(); return false;">Mesajlar</a>
           </div>
         </nav>
-        <nav class="footer-col" aria-label="Topluluk bağlantıları">
-          <div class="footer-col-title">Community</div>
-          <div class="footer-col-list">
-            <a class="footer-link" href="mailto:contact@reylai.xyz?subject=ReylAI%20Community">Discord</a>
-            <a class="footer-link" href="mailto:contact@reylai.xyz?subject=ReylAI%20About">About</a>
-          </div>
-        </nav>
         <nav class="footer-col" aria-label="Yasal bağlantılar">
-          <div class="footer-col-title">Legal</div>
+          <div class="footer-col-title">Yasal</div>
           <div class="footer-col-list">
-            <a class="footer-link" href="/privacy">Privacy Policy</a>
-            <a class="footer-link" href="/terms">Terms of Service</a>
+            <a class="footer-link" href="/privacy">Gizlilik Politikası</a>
+            <a class="footer-link" href="/terms">Kullanım Şartları</a>
           </div>
         </nav>
         <nav class="footer-col" aria-label="İletişim bağlantıları">
-          <div class="footer-col-title">Contact</div>
+          <div class="footer-col-title">İletişim</div>
           <div class="footer-col-list">
-            <a class="footer-link" href="mailto:contact@reylai.xyz">Contact us</a>
-            <a class="footer-link" href="mailto:contact@reylai.xyz">Email</a>
+            <a class="footer-link" href="mailto:contact@reyliar.xyz">Bize Ulaş</a>
+            <a class="footer-link" href="mailto:contact@reyliar.xyz">E-posta</a>
           </div>
         </nav>
       </div>
       <div class="footer-divider"></div>
       <div class="footer-bottom">
-        <span class="footer-copy">©2026 All Copyrights Reserved.</span>
+        <span class="footer-copy">©2026 ReylAI. All Rights Reserved.</span>
         <span class="footer-made">made with ❤️ by reyli</span>
       </div>
     </div>
@@ -11107,6 +11120,13 @@ function updateAccountUI() {
 
 function mountAccountMenu() {
   const menu = document.getElementById('accountMenu');
+  if (menu && menu.parentElement !== document.body) {
+    document.body.appendChild(menu);
+  }
+}
+
+function mountLibraryBottomMenu() {
+  const menu = document.getElementById('libraryBottomMenu');
   if (menu && menu.parentElement !== document.body) {
     document.body.appendChild(menu);
   }
@@ -14233,6 +14253,7 @@ async function openAnalysis(book, preferredChatId) {
 
   const lib  = document.getElementById('libraryScreen');
   const anal = document.getElementById('analysisScreen');
+  document.body.classList.add('analysis-mode');
   lib.classList.add('hidden');
   anal.classList.remove('hidden');
   let chat = preferredChatId ? _chatStore.chats.find(function(item) { return item.id === preferredChatId; }) : null;
@@ -14253,6 +14274,7 @@ function goBack() {
   setTimeout(function() {
     anal.classList.add('hidden');
     lib.classList.remove('hidden');
+    document.body.classList.remove('analysis-mode');
     clearChat();
     selectedBook = null;
     _activeChatId = '';
@@ -16597,6 +16619,7 @@ function escHtml(str) {
 // ── Event listeners ────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
   mountAccountMenu();
+  mountLibraryBottomMenu();
   setupEmailCodeInputs();
   setupPasswordCodeInputs();
   const ta = document.getElementById('promptInput');
@@ -16795,7 +16818,7 @@ bootApp();
 </html>
 """
 
-CONTACT_EMAIL = "contact@reylai.xyz"
+CONTACT_EMAIL = "contact@reyliar.xyz"
 
 LEGAL_PAGE_TEMPLATE = """
 <!DOCTYPE html>
@@ -16891,8 +16914,8 @@ h1 { font-family: Manrope, Inter, sans-serif; font-size: clamp(34px, 7vw, 70px);
       </div>
     </article>
     <footer class="legal-footer">
-      <span>©2026 All Copyrights Reserved.  •  made with ❤️ by reyli</span>
-      <span><a class="legal-link" href="/terms">Terms</a> · <a class="legal-link" href="/privacy">Privacy</a> · <a class="legal-link" href="mailto:{{ contact_email }}">{{ contact_email }}</a></span>
+      <span>©2026 ReylAI. All Rights Reserved.</span>
+      <span><a class="legal-link" href="/terms">Kullanım Şartları</a> · <a class="legal-link" href="/privacy">Gizlilik Politikası</a> · <a class="legal-link" href="mailto:{{ contact_email }}">{{ contact_email }}</a></span>
     </footer>
   </main>
 </body>
@@ -16901,7 +16924,7 @@ h1 { font-family: Manrope, Inter, sans-serif; font-size: clamp(34px, 7vw, 70px);
 
 TERMS_BODY = """
 <h2>1. Kabul</h2>
-<p>ReylAI'yi kullanarak bu Terms of Service'i kabul etmiş olursun. Bu şartları kabul etmiyorsan hizmeti kullanmamalısın.</p>
+<p>ReylAI'yi kullanarak bu Kullanım Şartları'nı kabul etmiş olursun. Bu şartları kabul etmiyorsan hizmeti kullanmamalısın.</p>
 <div class="legal-note"><strong>Kısa özet:</strong> ReylAI eğitim ve üretkenlik odaklı bir araçtır; çıktıları kontrol etmek ve kendi kararını vermek kullanıcı sorumluluğundadır.</div>
 
 <h2>2. Hizmetin kapsamı</h2>
@@ -16931,7 +16954,7 @@ TERMS_BODY = """
 <p>Bu şartlar güncellenebilir. Önemli değişikliklerde makul şekilde bildirim yapılır. Güncellenmiş şartlardan sonra hizmeti kullanmaya devam etmen yeni şartları kabul ettiğin anlamına gelir.</p>
 
 <h2>9. İletişim</h2>
-<p>Sorular, kaldırma talepleri veya güvenlik bildirimleri için bize <a class="legal-link" href="mailto:contact@reylai.xyz">contact@reylai.xyz</a> adresinden ulaşabilirsin.</p>
+<p>Sorular, kaldırma talepleri veya güvenlik bildirimleri için bize <a class="legal-link" href="mailto:contact@reyliar.xyz">contact@reyliar.xyz</a> adresinden ulaşabilirsin.</p>
 """
 
 PRIVACY_BODY = """
@@ -16962,13 +16985,13 @@ PRIVACY_BODY = """
 <p>Hesap ve içerik verileri hizmeti sağlamak için gerekli olduğu sürece saklanır. Güvenlik veya yasal nedenlerle bazı kayıtlar daha uzun tutulabilir.</p>
 
 <h2>8. Hakların</h2>
-<p>Hesap bilgilerini güncelleme, belirli verilerin silinmesini isteme veya gizlilikle ilgili soru sorma hakkın vardır. Taleplerini <a class="legal-link" href="mailto:contact@reylai.xyz">contact@reylai.xyz</a> adresine gönderebilirsin.</p>
+<p>Hesap bilgilerini güncelleme, belirli verilerin silinmesini isteme veya gizlilikle ilgili soru sorma hakkın vardır. Taleplerini <a class="legal-link" href="mailto:contact@reyliar.xyz">contact@reyliar.xyz</a> adresine gönderebilirsin.</p>
 
 <h2>9. Güvenlik</h2>
 <p>Parolalar düz metin olarak saklanmaz; oturumlar, doğrulama kodları ve yönetici işlemleri için güvenlik kontrolleri kullanılır. Yine de hiçbir sistem tamamen risksiz değildir.</p>
 
 <h2>10. Güncellemeler</h2>
-<p>Bu Privacy Policy zaman zaman güncellenebilir. Önemli değişikliklerde uygun bir bildirim yöntemi kullanılabilir.</p>
+<p>Bu Gizlilik Politikası zaman zaman güncellenebilir. Önemli değişikliklerde uygun bir bildirim yöntemi kullanılabilir.</p>
 """
 
 
@@ -16976,13 +16999,13 @@ def render_legal_page(kind):
     pdfjs_version = _pdfjs_asset_version()
     page = {
         "terms": {
-            "title": "Terms of Service",
+            "title": "Kullanım Şartları",
             "kicker": "ReylAI yasal",
             "lead": "ReylAI'yi kullanırken geçerli olan temel kurallar, sorumluluklar ve kullanım şartları.",
             "body": TERMS_BODY,
         },
         "privacy": {
-            "title": "Privacy Policy",
+            "title": "Gizlilik Politikası",
             "kicker": "ReylAI gizlilik",
             "lead": "Hangi verileri işlediğimiz, bunları nasıl kullandığımız ve bizimle nasıl iletişime geçebileceğin.",
             "body": PRIVACY_BODY,
