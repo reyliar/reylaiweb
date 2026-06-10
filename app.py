@@ -1768,6 +1768,27 @@ HTML = """
   if (nextPath && nextPath !== path) window.history.replaceState(null, "", nextPath + window.location.search + window.location.hash);
 })();
 </script>
+<script>
+(function() {
+  try {
+    var params = new URLSearchParams(window.location.search || '');
+    var forced = params.get('lite');
+    if (forced === '1') localStorage.setItem('reylai.perfLite', '1');
+    if (forced === '0') localStorage.setItem('reylai.perfLite', '0');
+    var pref = localStorage.getItem('reylai.perfLite');
+    var nav = navigator || {};
+    var conn = nav.connection || nav.mozConnection || nav.webkitConnection || null;
+    var memory = Number(nav.deviceMemory || 0);
+    var cores = Number(nav.hardwareConcurrency || 0);
+    var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    var narrow = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
+    var slowNetwork = !!(conn && (/2g|3g/.test(String(conn.effectiveType || '')) || conn.saveData));
+    var lowHardware = (memory && memory <= 4) || (cores && cores <= 4);
+    var lite = pref === '1' || (pref !== '0' && (slowNetwork || lowHardware || (coarse && narrow)));
+    if (lite) document.documentElement.classList.add('perf-lite');
+  } catch(e) {}
+})();
+</script>
 <style id="reylai-boot-paint">
   html { background: #030712; }
   body {
@@ -1776,11 +1797,28 @@ HTML = """
     opacity: 0;
     animation: reylaiBootIn 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
+  html.perf-lite body { opacity: 1; animation: none; }
   @keyframes reylaiBootIn { to { opacity: 1; } }
 </style>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script>
+(function() {
+  try {
+    if (document.documentElement.classList.contains('perf-lite')) return;
+    if (!window.matchMedia || !window.matchMedia('(min-width: 761px)').matches) return;
+    [
+      ['preconnect', 'https://fonts.googleapis.com', ''],
+      ['preconnect', 'https://fonts.gstatic.com', 'anonymous'],
+      ['stylesheet', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap', '']
+    ].forEach(function(item) {
+      var link = document.createElement('link');
+      link.rel = item[0];
+      link.href = item[1];
+      if (item[2]) link.crossOrigin = item[2];
+      document.head.appendChild(link);
+    });
+  } catch(e) {}
+})();
+</script>
 <style>
 :root {
   --bg-deep:    #07070f;
@@ -10626,6 +10664,127 @@ body:not(.route-library) .library-bottom-menu {
   }
 }
 
+html.perf-lite *,
+html.perf-lite *::before,
+html.perf-lite *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
+}
+
+html.perf-lite body::before,
+html.perf-lite body::after,
+html.perf-lite .account-auth-screen::before,
+html.perf-lite .account-auth-screen::after,
+html.perf-lite .nav-logo-shell::before,
+html.perf-lite .nav-logo-shell::after,
+html.perf-lite .library-bottom-menu::before,
+html.perf-lite .library-bottom-menu::after,
+html.perf-lite .book-card::before,
+html.perf-lite .book-card::after,
+html.perf-lite .search-wrap::before,
+html.perf-lite .loading-orbit::after {
+  display: none !important;
+}
+
+html.perf-lite .navbar,
+html.perf-lite .home-nav,
+html.perf-lite .grade-strip,
+html.perf-lite .book-grid-wrap,
+html.perf-lite .lib-footer,
+html.perf-lite .library-bottom-menu,
+html.perf-lite .bottom-grade-cluster,
+html.perf-lite .account-panel-card,
+html.perf-lite .auth-panel-card,
+html.perf-lite .auth-logo-box,
+html.perf-lite .account-menu,
+html.perf-lite .dm-panel,
+html.perf-lite .dm-thread,
+html.perf-lite .dm-input,
+html.perf-lite .dm-pending,
+html.perf-lite .dm-bubble,
+html.perf-lite .profile-settings-panel,
+html.perf-lite .admin-tools-panel,
+html.perf-lite .email-code-panel,
+html.perf-lite .avatar-crop-panel,
+html.perf-lite .password-change-panel,
+html.perf-lite .verify-required-panel,
+html.perf-lite .chat-sidebar,
+html.perf-lite .analysis-left,
+html.perf-lite .analysis-right,
+html.perf-lite .chat-input-bar,
+html.perf-lite .chat-input-wrap,
+html.perf-lite .book-card,
+html.perf-lite .chat-history-item,
+html.perf-lite .toast,
+html.perf-lite .task-panel,
+html.perf-lite .del-panel,
+html.perf-lite .cfg-panel,
+html.perf-lite .auth-panel,
+html.perf-lite .rename-panel,
+html.perf-lite .add-panel,
+html.perf-lite .upload-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+html.perf-lite .book-card:hover,
+html.perf-lite .bottom-menu-item:hover,
+html.perf-lite .bottom-grade-cluster:hover,
+html.perf-lite .home-cta:hover,
+html.perf-lite .home-auth-btn:hover,
+html.perf-lite .home-account-chip:hover,
+html.perf-lite .account-submit:hover,
+html.perf-lite .dm-send-btn:hover,
+html.perf-lite .message-action-btn:hover,
+html.perf-lite .account-menu-btn:hover,
+html.perf-lite .btn:hover {
+  transform: none !important;
+}
+
+html.perf-lite .nav-logo,
+html.perf-lite .loading-logo,
+html.perf-lite .home-hero-logo,
+html.perf-lite .footer-logo,
+html.perf-lite .school-icon-img,
+html.perf-lite .empty-books-img {
+  filter: none !important;
+}
+
+html.perf-lite .book-card,
+html.perf-lite .chat-history-item,
+html.perf-lite .chat-msg,
+html.perf-lite .dm-thread,
+html.perf-lite .dm-message {
+  content-visibility: auto;
+  contain: layout paint style;
+}
+
+html.perf-lite .book-card {
+  contain-intrinsic-size: 178px 220px;
+}
+
+html.perf-lite .chat-history-item,
+html.perf-lite .dm-thread {
+  contain-intrinsic-size: 320px 72px;
+}
+
+html.perf-lite .chat-msg,
+html.perf-lite .dm-message {
+  contain-intrinsic-size: 320px 64px;
+}
+
+html.perf-lite .home-screen,
+html.perf-lite .account-auth-screen,
+html.perf-lite #libraryScreen,
+html.perf-lite #analysisScreen {
+  background-attachment: scroll !important;
+}
+
 @media (max-width: 720px) {
   .dm-overlay {
     padding: 0;
@@ -10961,7 +11120,7 @@ body::after,
 <div class="app-loading" id="appLoadingOverlay" aria-live="polite">
   <div class="loading-core">
     <div class="loading-orbit">
-      <img src="{{ reylai_icon_src }}" class="loading-logo" alt="ReylAI">
+      <img src="{{ reylai_icon_src }}" class="loading-logo" alt="ReylAI" width="96" height="96" decoding="async">
     </div>
   </div>
 </div>
@@ -10970,7 +11129,7 @@ body::after,
   <div class="home-shell">
     <header class="home-nav" aria-label="Ana navigasyon">
       <a class="home-brand" href="/" onclick="navigateApp('/'); return false;">
-        <img src="{{ reylai_icon_src }}" alt="ReylAI">
+        <img src="{{ reylai_icon_src }}" alt="ReylAI" width="44" height="44" decoding="async">
         <span>ReylAI</span>
       </a>
       <nav class="home-nav-links" aria-label="Site bağlantıları">
@@ -10994,7 +11153,7 @@ body::after,
 
     <section class="home-main">
       <section class="home-hero" aria-labelledby="homeTitle">
-        <img src="{{ reylai_icon_src }}" class="home-hero-logo" alt="ReylAI">
+      <img src="{{ reylai_icon_src }}" class="home-hero-logo" alt="ReylAI" width="120" height="120" decoding="async" fetchpriority="high">
         <div class="home-kicker">MEB ders kitapları için AI çalışma alanı</div>
         <h1 class="home-title" id="homeTitle">ReylAI ile <span>kitaplarınla</span> konuş.</h1>
         <p class="home-lead">Ders kitaplarını seç, sayfa bağlamıyla soru sor, sohbet geçmişini hesabında tut ve gerektiğinde diğer kullanıcılarla DM üzerinden paylaş.</p>
@@ -11060,7 +11219,7 @@ body::after,
       <div class="footer-main">
         <div class="footer-brand-block">
           <div class="footer-logo-row">
-            <img src="{{ reylai_icon_src }}" class="footer-logo" alt="ReylAI">
+            <img src="{{ reylai_icon_src }}" class="footer-logo" alt="ReylAI" width="40" height="40" loading="lazy" decoding="async">
             <div class="footer-brand-name">ReylAI</div>
           </div>
           <p class="footer-tagline">Ders kitapları, sohbetler ve ReylAI araçları için tek, sakin ve hızlı çalışma alanın.</p>
@@ -11101,7 +11260,7 @@ body::after,
   <div class="auth-hero">
     <div class="auth-brand-row">
       <div class="auth-logo-box">
-        <img src="{{ reylai_icon_src }}" alt="ReylAI">
+        <img src="{{ reylai_icon_src }}" alt="ReylAI" width="44" height="44" decoding="async">
       </div>
       <div>
         <div class="auth-brand-name">ReylAI</div>
@@ -11233,7 +11392,7 @@ body::after,
     </div>
     <div class="nav-center">
       <div class="nav-logo-shell" aria-label="ReylAI">
-        <img src="{{ reylai_icon_src }}" class="nav-logo" alt="ReylAI">
+        <img src="{{ reylai_icon_src }}" class="nav-logo" alt="ReylAI" width="46" height="46" decoding="async">
       </div>
     </div>
     <div class="nav-right">
@@ -11317,7 +11476,7 @@ body::after,
       <div class="footer-main">
         <div class="footer-brand-block">
           <div class="footer-logo-row">
-            <img src="{{ reylai_icon_src }}" class="footer-logo" alt="ReylAI">
+            <img src="{{ reylai_icon_src }}" class="footer-logo" alt="ReylAI" width="40" height="40" loading="lazy" decoding="async">
             <div class="footer-brand-name">ReylAI</div>
           </div>
           <p class="footer-tagline">Ders kitapları, sohbetler ve ReylAI araçları için tek, sakin ve hızlı çalışma alanın.</p>
@@ -12070,6 +12229,10 @@ const BOOKS_REMOTE_BASE_URL = {{ books_remote_base_url|tojson }};
 
 const SEND_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
 const STOP_ICON = '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>';
+
+function isPerfLite() {
+  return document.documentElement.classList.contains('perf-lite');
+}
 
 let _loadingStatusTimer = null;
 
@@ -16077,7 +16240,11 @@ async function loadLibrary(fromFade) {
         openRename(bookKeyId, book.title || book.name || '');
       });
 
-      setTimeout(function(){ card.classList.add('visible'); }, Math.min(i * 28, 360));
+      if (isPerfLite()) {
+        card.classList.add('visible');
+      } else {
+        setTimeout(function(){ card.classList.add('visible'); }, Math.min(i * 28, 360));
+      }
       fragment.appendChild(card);
     });
     grid.appendChild(fragment);
@@ -19423,7 +19590,7 @@ h1 { font-family: Manrope, Inter, sans-serif; font-size: clamp(34px, 7vw, 70px);
 <body>
   <main class="legal-shell">
     <nav class="legal-nav">
-      <a class="legal-brand" href="/"><img src="{{ reylai_icon_src }}" alt="ReylAI"><span>ReylAI</span></a>
+      <a class="legal-brand" href="/"><img src="{{ reylai_icon_src }}" alt="ReylAI" width="40" height="40" decoding="async"><span>ReylAI</span></a>
       <a class="legal-back" href="/">Ana sayfaya dön</a>
     </nav>
     <section class="legal-hero">
@@ -19543,7 +19710,7 @@ def render_legal_page(kind):
     }[kind]
     return render_template_string(
         LEGAL_PAGE_TEMPLATE,
-        reylai_icon_src=_asset_data_url("static/reylai_icon.png", "/static/reylai_icon.png"),
+        reylai_icon_src="/static/reylai_icon.png",
         contact_email=CONTACT_EMAIL,
         pdfjs_version=pdfjs_version,
         **page,
@@ -19554,9 +19721,9 @@ def render_app_shell():
     pdfjs_version = _pdfjs_asset_version()
     return render_template_string(
         HTML,
-        meb_logo_src=_asset_data_url("static/meb_logo.png", "/static/meb_logo.png"),
-        reylai_icon_src=_asset_data_url("static/reylai_icon.png", "/static/reylai_icon.png"),
-        books_stack_src=_asset_data_url("static/books_stack.png", "/static/books_stack.png"),
+        meb_logo_src="/static/meb_logo.png",
+        reylai_icon_src="/static/reylai_icon.png",
+        books_stack_src="/static/books_stack.png",
         books_remote_base_url=BOOKS_REMOTE_BASE_URL,
         pdfjs_lib_url=f"/pdfjs/pdf.min.js?v={pdfjs_version}",
         pdfjs_worker_url=f"/pdfjs/pdf.worker.min.js?v={pdfjs_version}",
