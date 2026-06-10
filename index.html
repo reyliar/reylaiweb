@@ -1582,7 +1582,7 @@ body.account-menu-open .account-menu {
 .dm-overlay {
   position: fixed;
   inset: 0;
-  z-index: 330;
+  z-index: 410;
   display: grid;
   place-items: center;
   padding: 18px;
@@ -1590,6 +1590,8 @@ body.account-menu-open .account-menu {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.28s var(--motion-smooth);
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .dm-overlay.active {
@@ -4725,10 +4727,10 @@ body.chat-route-lock #libraryScreen {
 
 .profile-status-toggle {
   position: absolute;
-  left: -7px;
-  bottom: -7px;
-  width: 38px;
-  height: 38px;
+  left: -5px;
+  bottom: -5px;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
   border: 1px solid rgba(147,197,253,0.28);
   background: rgba(6,14,31,0.92);
@@ -4749,8 +4751,8 @@ body.chat-route-lock #libraryScreen {
 }
 
 .profile-status-toggle .presence-mini-dot {
-  width: 11px;
-  height: 11px;
+  width: 9px;
+  height: 9px;
 }
 
 .profile-status-toggle[data-presence="idle"] .presence-mini-dot { background: #facc15; }
@@ -5079,6 +5081,77 @@ body.chat-route-lock #libraryScreen {
 body.school-required .school-picker-overlay .cfg-close-btn,
 body.school-required .school-picker-overlay .school-picker-cancel {
   display: none;
+}
+
+.ai-model-notice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 405;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3,7,18,0.62);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s cubic-bezier(0.22,1,0.36,1);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+}
+
+.ai-model-notice-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.ai-model-notice-panel {
+  width: min(460px, 100%);
+  padding: 22px;
+  border: 1px solid rgba(147,197,253,0.22);
+  border-radius: 26px;
+  background: linear-gradient(145deg, rgba(18,31,58,0.96), rgba(6,14,31,0.93));
+  box-shadow: 0 30px 90px rgba(0,0,0,0.48), 0 0 38px rgba(15,42,95,0.22), inset 0 1px rgba(255,255,255,0.10);
+  transform: translateY(16px) scale(0.97);
+  opacity: 0;
+  transition:
+    transform 0.34s cubic-bezier(0.16,1,0.3,1),
+    opacity 0.26s cubic-bezier(0.22,1,0.36,1);
+}
+
+.ai-model-notice-overlay.active .ai-model-notice-panel {
+  transform: none;
+  opacity: 1;
+}
+
+.ai-model-notice-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 17px;
+  display: grid;
+  place-items: center;
+  color: #bfdbfe;
+  background: rgba(37,99,235,0.18);
+  border: 1px solid rgba(147,197,253,0.20);
+  margin-bottom: 14px;
+}
+
+.ai-model-notice-title {
+  color: var(--text-primary);
+  font-size: 21px;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.ai-model-notice-text {
+  margin-top: 10px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+
+.ai-model-notice-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
 }
 
 .email-code-overlay {
@@ -5496,47 +5569,6 @@ body.school-required .school-picker-overlay .school-picker-cancel {
   color: var(--text-primary);
 }
 
-.admin-school-icon-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.admin-school-icon-editor {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(147,197,253,0.12);
-  background: rgba(6,14,31,0.34);
-}
-
-.admin-school-icon-preview {
-  display: none;
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  object-fit: cover;
-  border: 1px solid rgba(147,197,253,0.22);
-  background: rgba(3,7,18,0.42);
-}
-
-.admin-school-icon-preview.visible {
-  display: block;
-}
-
-.admin-school-icon-copy {
-  min-width: 0;
-}
-
-.admin-school-icon-actions {
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
-
 .admin-message-preview {
   margin-top: 6px;
   color: var(--text-primary);
@@ -5614,13 +5646,6 @@ body.school-required .school-picker-overlay .school-picker-cancel {
     grid-template-columns: 1fr;
   }
 
-  .admin-school-icon-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-school-icon-editor {
-    grid-template-columns: 1fr;
-  }
   .settings-email-control,
   .email-code-actions {
     grid-template-columns: 1fr;
@@ -10056,7 +10081,6 @@ body::after,
             </div>
             <div class="settings-school-actions">
               <button class="account-menu-btn" type="button" onclick="openSchoolPicker({ mode: 'change' })">Okulu değiştir</button>
-              <button class="account-menu-btn" id="settingsSchoolIconRequestBtn" type="button" onclick="requestSchoolIcon()">Okul ikonu talep et</button>
             </div>
           </div>
         </div>
@@ -10233,47 +10257,25 @@ body::after,
       <div class="admin-privacy-title">Okul değişikliği talepleri</div>
       <div class="admin-privacy-list" id="adminSchoolRequestsList"></div>
     </div>
-    <div class="admin-privacy-section" id="adminSchoolIconsSection">
-      <div class="admin-privacy-title">Okul ikonları</div>
-      <div class="admin-school-icon-grid">
-        <label class="settings-field">
-          <span class="settings-label">İl</span>
-          <select class="school-select" id="adminSchoolIconProvince" onchange="handleAdminSchoolIconProvinceChange()"></select>
-        </label>
-        <label class="settings-field">
-          <span class="settings-label">İlçe</span>
-          <select class="school-select" id="adminSchoolIconDistrict" onchange="handleAdminSchoolIconDistrictChange()" disabled></select>
-        </label>
-        <label class="settings-field">
-          <span class="settings-label">Okul ara</span>
-          <input class="school-search" id="adminSchoolIconSearch" type="search" placeholder="Lise adı yaz..." oninput="debouncedLoadAdminSchoolIconSchools()">
-        </label>
-        <label class="settings-field">
-          <span class="settings-label">Okul</span>
-          <select class="school-select" id="adminSchoolIconSchool" onchange="handleAdminSchoolIconSchoolChange()" disabled></select>
-        </label>
-      </div>
-      <div class="admin-school-icon-editor">
-        <img class="admin-school-icon-preview" id="adminSchoolIconPreview" alt="">
-        <div class="admin-school-icon-copy">
-          <div class="admin-account-name" id="adminSchoolIconName">Okul seçilmedi</div>
-          <div class="admin-account-meta" id="adminSchoolIconMeta">İkon eklemek için bir okul seç.</div>
-          <input class="profile-photo-input" id="adminSchoolIconInput" type="file" accept="image/png,image/jpeg,image/webp" onchange="handleAdminSchoolIconFile(event)">
-          <div class="settings-actions admin-school-icon-actions">
-            <button class="account-menu-btn" type="button" onclick="document.getElementById('adminSchoolIconInput').click()">İkon seç</button>
-            <button class="account-menu-btn" type="button" onclick="saveAdminSchoolIcon()">Kaydet</button>
-            <button class="account-menu-btn danger" type="button" onclick="removeAdminSchoolIcon()">Kaldır</button>
-          </div>
-        </div>
-      </div>
-      <div class="settings-hint" id="adminSchoolIconStatus"></div>
-    </div>
     <div class="admin-sensitive-actions">
       <button class="account-menu-btn" type="button" onclick="unlockAdminSensitive()">Kilitli detayları aç</button>
-      <div class="admin-sensitive-note">Şifreler düz metin olarak saklanmaz. Bu kilitli görünüm; profil verisi, sohbet geçmişi, DM özetleri, ek dosya bilgileri ve cihaz oturumlarını gösterir.</div>
+      <div class="admin-sensitive-note">Şifreler düz metin olarak saklanmaz. Bu kilitli görünüm; profil verisi, sohbet geçmişi, DM özetleri, ek dosya bilgileri, cihaz oturumları, IP adresleri ve Cloudflare konum verilerini gösterir.</div>
     </div>
     <div class="admin-sensitive-list" id="adminSensitiveList"></div>
     <div class="admin-account-list" id="adminAccountsList"></div>
+  </div>
+</div>
+
+<div class="ai-model-notice-overlay" id="aiModelNoticeOverlay" onclick="if(event.target===this)closeAiModelNotice()">
+  <div class="ai-model-notice-panel" role="dialog" aria-modal="true" aria-labelledby="aiModelNoticeTitle">
+    <div class="ai-model-notice-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg>
+    </div>
+    <div class="ai-model-notice-title" id="aiModelNoticeTitle">AI modelleri geliştiriliyor</div>
+    <div class="ai-model-notice-text">Uygulamadaki AI modelleri henüz tam olarak optimize edilmedi. Yanıt kalitesi, hız ve model davranışları zamanla geliştirilecek.</div>
+    <div class="ai-model-notice-actions">
+      <button class="btn btn-primary" type="button" onclick="closeAiModelNotice()">Anladım</button>
+    </div>
   </div>
 </div>
 
@@ -10444,6 +10446,7 @@ let _turnstileScriptPromise = null;
 let _appStarted = false;
 let _currentRoute = 'home';
 let _routeAfterAuth = '/library';
+let _pendingAiModelNotice = false;
 let _pendingDmRouteOptions = null;
 let _pendingProfileAvatarDataUrl = '';
 let _profileCropImage = null;
@@ -10486,9 +10489,6 @@ let _dmConversationSeq = 0;
 let _dmPanelLoadSeq = 0;
 let _dmMessagesUserId = '';
 let _dmMessageAbortController = null;
-let _adminSchoolIconSchools = [];
-let _adminSchoolIconDataUrl = '';
-let _adminSchoolIconLoadTimer = null;
 const BOOKS_REMOTE_BASE_URL = "https://thejinx1.github.io/blupblupreylai-books/";
 
 const SEND_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
@@ -10600,6 +10600,8 @@ async function activateAppRoute(route, options) {
   closeAccountMenu();
   if (route === 'home') {
     _routeAfterAuth = '/library';
+    _pendingAiModelNotice = false;
+    closeAiModelNotice();
     hideAccountAuth();
     closeChatSidebar({ preserveRoute: true });
     closeDmOverlay({ preserveRoute: true });
@@ -10630,6 +10632,10 @@ async function activateAppRoute(route, options) {
   else closeDmOverlay({ preserveRoute: true });
 
   if (route === 'library') showLibraryAiModelNotice();
+  else {
+    _pendingAiModelNotice = false;
+    closeAiModelNotice();
+  }
 }
 
 function openAuthForRoute(mode, targetPath) {
@@ -10666,12 +10672,24 @@ function updateHomeAuthUI() {
 }
 
 function showLibraryAiModelNotice() {
-  showToast(
-    'warning',
-    'AI modelleri geliştiriliyor',
-    'Uygulamadaki AI modelleri henüz tam olarak optimize edilmedi; yanıt kalitesi ve hız zamanla geliştirilecek.',
-    8200
-  );
+  _pendingAiModelNotice = true;
+  maybeShowPendingAiModelNotice();
+}
+
+function maybeShowPendingAiModelNotice() {
+  if (!_pendingAiModelNotice) return;
+  if (_currentRoute !== 'library' || !_accountUser || !accountHasSchool()) return;
+  const schoolOverlay = document.getElementById('schoolPickerOverlay');
+  if (schoolOverlay && schoolOverlay.classList.contains('active')) return;
+  const overlay = document.getElementById('aiModelNoticeOverlay');
+  if (!overlay || overlay.classList.contains('active')) return;
+  _pendingAiModelNotice = false;
+  overlay.classList.add('active');
+}
+
+function closeAiModelNotice() {
+  const overlay = document.getElementById('aiModelNoticeOverlay');
+  if (overlay) overlay.classList.remove('active');
 }
 
 function getAppAuthToken() {
@@ -11656,7 +11674,6 @@ function updateSchoolSettingsUI() {
   const name = document.getElementById('settingsSchoolName');
   const meta = document.getElementById('settingsSchoolMeta');
   const icon = document.getElementById('settingsSchoolIcon');
-  const requestBtn = document.getElementById('settingsSchoolIconRequestBtn');
   const school = accountSchool();
   const request = _accountUser && _accountUser.school_change_request;
   if (name) name.textContent = schoolLabel(school);
@@ -11666,7 +11683,6 @@ function updateSchoolSettingsUI() {
     if (src) icon.src = src;
     else icon.removeAttribute('src');
   }
-  if (requestBtn) requestBtn.disabled = !school;
   if (meta) {
     let text = schoolMeta(school);
     if (request && request.status === 'pending' && request.school) {
@@ -11677,26 +11693,6 @@ function updateSchoolSettingsUI() {
     meta.textContent = text;
   }
   updateAccountSchoolBadge();
-}
-
-async function requestSchoolIcon() {
-  const school = accountSchool();
-  if (!school) {
-    showToast('warning', 'Okul seçilmedi', 'İkon talebi göndermek için önce okulunu seç.', 3600);
-    return;
-  }
-  const btn = document.getElementById('settingsSchoolIconRequestBtn');
-  if (btn) btn.disabled = true;
-  try {
-    const res = await apiFetch('/api/auth/school-icon/request', { method: 'POST' });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'Talep gönderilemedi.');
-    showToast('success', 'Talep gönderildi', 'Okul ikonu talebin contact@reyliar.xyz adresine iletildi.', 4200);
-  } catch(e) {
-    showToast('error', 'Talep gönderilemedi', e.message || 'Bağlantı hatası.', 5200);
-  } finally {
-    if (btn) btn.disabled = false;
-  }
 }
 
 function setSchoolPickerStatus(message, type) {
@@ -11774,6 +11770,7 @@ function maybePromptForSchool() {
       document.body.classList.remove('school-required');
       const overlay = document.getElementById('schoolPickerOverlay');
       if (overlay && overlay.classList.contains('active') && _schoolPickerRequired) closeSchoolPicker();
+      maybeShowPendingAiModelNotice();
     }
     return;
   }
@@ -11899,6 +11896,7 @@ async function submitSchoolSelection() {
       showToast('success', 'Okul kaydedildi', 'DM artık kendi okulundaki kullanıcılarla açık.', 3600);
     }
     closeSchoolPicker();
+    maybeShowPendingAiModelNotice();
   } catch(e) {
     setSchoolPickerStatus(e.message || 'Okul kaydedilemedi.', 'error');
   } finally {
@@ -12583,7 +12581,6 @@ async function loadAdminTools() {
     if (!res.ok || !data.success) throw new Error(data.error || 'Admin araçları yüklenemedi.');
     renderAdminTools(data);
     loadAdminSchoolRequests();
-    loadAdminSchoolIconProvinces();
   } catch(e) {
     renderAdminTools({ error: e.message || 'Bağlantı hatası.' });
   }
@@ -12693,188 +12690,6 @@ async function reviewSchoolRequest(userId, action) {
   }
 }
 
-function setAdminSchoolIconStatus(message, type) {
-  const el = document.getElementById('adminSchoolIconStatus');
-  if (!el) return;
-  el.textContent = message || '';
-  el.classList.remove('error', 'success');
-  if (type) el.classList.add(type);
-}
-
-async function loadAdminSchoolIconProvinces() {
-  const select = document.getElementById('adminSchoolIconProvince');
-  if (!select) return;
-  if (select.options && select.options.length > 1) return;
-  setSchoolSelectOptions(select, [], 'İl yükleniyor...');
-  try {
-    const res = await fetch('/api/schools/provinces', { cache: 'force-cache' });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'İller yüklenemedi.');
-    setSchoolSelectOptions(select, data.provinces || [], 'İl seç');
-  } catch(e) {
-    setAdminSchoolIconStatus(e.message || 'İller yüklenemedi.', 'error');
-  }
-}
-
-async function handleAdminSchoolIconProvinceChange() {
-  const province = String((document.getElementById('adminSchoolIconProvince') || {}).value || '');
-  const district = document.getElementById('adminSchoolIconDistrict');
-  const school = document.getElementById('adminSchoolIconSchool');
-  setSchoolSelectOptions(district, [], province ? 'İlçe yükleniyor...' : 'Önce il seç');
-  setSchoolSelectOptions(school, [], 'Önce ilçe seç');
-  if (district) district.disabled = !province;
-  if (school) school.disabled = true;
-  _adminSchoolIconSchools = [];
-  _adminSchoolIconDataUrl = '';
-  updateAdminSchoolIconPreview(null);
-  if (!province) return;
-  try {
-    const res = await fetch('/api/schools/districts?province=' + encodeURIComponent(province), { cache: 'force-cache' });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'İlçeler yüklenemedi.');
-    setSchoolSelectOptions(district, data.districts || [], 'İlçe seç');
-    setAdminSchoolIconStatus('', '');
-  } catch(e) {
-    setAdminSchoolIconStatus(e.message || 'İlçeler yüklenemedi.', 'error');
-  }
-}
-
-async function handleAdminSchoolIconDistrictChange() {
-  await loadAdminSchoolIconSchools();
-}
-
-function debouncedLoadAdminSchoolIconSchools() {
-  clearTimeout(_adminSchoolIconLoadTimer);
-  _adminSchoolIconLoadTimer = setTimeout(loadAdminSchoolIconSchools, 220);
-}
-
-async function loadAdminSchoolIconSchools() {
-  const province = String((document.getElementById('adminSchoolIconProvince') || {}).value || '');
-  const district = String((document.getElementById('adminSchoolIconDistrict') || {}).value || '');
-  const query = String((document.getElementById('adminSchoolIconSearch') || {}).value || '');
-  const select = document.getElementById('adminSchoolIconSchool');
-  setSchoolSelectOptions(select, [], district ? 'Okullar yükleniyor...' : 'Önce ilçe seç');
-  if (select) select.disabled = !district;
-  _adminSchoolIconSchools = [];
-  _adminSchoolIconDataUrl = '';
-  updateAdminSchoolIconPreview(null);
-  if (!province || !district) return;
-  try {
-    const url = '/api/schools?province=' + encodeURIComponent(province) + '&district=' + encodeURIComponent(district) + '&q=' + encodeURIComponent(query);
-    const res = await fetch(url, { cache: 'no-store' });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'Okullar yüklenemedi.');
-    _adminSchoolIconSchools = data.schools || [];
-    setSchoolSelectOptions(select, _adminSchoolIconSchools, 'Okul seç', function(item) {
-      return item.name + (item.icon_data_url ? ' · ikon var' : '');
-    });
-    if (select) select.disabled = !_adminSchoolIconSchools.length;
-    setAdminSchoolIconStatus(_adminSchoolIconSchools.length ? '' : 'Bu ilçede lise bulunamadı.', _adminSchoolIconSchools.length ? '' : 'error');
-  } catch(e) {
-    setAdminSchoolIconStatus(e.message || 'Okullar yüklenemedi.', 'error');
-  }
-}
-
-function selectedAdminSchoolIconSchool() {
-  const id = String((document.getElementById('adminSchoolIconSchool') || {}).value || '');
-  return _adminSchoolIconSchools.find(function(school) { return String(school.id || '') === id; }) || null;
-}
-
-function handleAdminSchoolIconSchoolChange() {
-  const school = selectedAdminSchoolIconSchool();
-  _adminSchoolIconDataUrl = schoolIconUrl(school);
-  updateAdminSchoolIconPreview(school);
-}
-
-function updateAdminSchoolIconPreview(school) {
-  const preview = document.getElementById('adminSchoolIconPreview');
-  const name = document.getElementById('adminSchoolIconName');
-  const meta = document.getElementById('adminSchoolIconMeta');
-  const src = _adminSchoolIconDataUrl || schoolIconUrl(school);
-  if (preview) {
-    preview.classList.toggle('visible', !!src);
-    if (src) preview.src = src;
-    else preview.removeAttribute('src');
-  }
-  if (name) name.textContent = school ? schoolLabel(school) : 'Okul seçilmedi';
-  if (meta) meta.textContent = school ? schoolMeta(school) : 'İkon eklemek için bir okul seç.';
-}
-
-function handleAdminSchoolIconFile(event) {
-  const file = event && event.target && event.target.files ? event.target.files[0] : null;
-  if (!file) return;
-  if (!/^image\/(png|jpeg|webp)$/i.test(file.type || '')) {
-    setAdminSchoolIconStatus('PNG, JPG veya WebP formatında ikon seç.', 'error');
-    return;
-  }
-  if (file.size > 150000) {
-    setAdminSchoolIconStatus('İkon dosyası çok büyük. Daha küçük bir görsel seç.', 'error');
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = function() {
-    _adminSchoolIconDataUrl = String(reader.result || '');
-    updateAdminSchoolIconPreview(selectedAdminSchoolIconSchool());
-    setAdminSchoolIconStatus('İkon hazır. Kaydet ile yayınla.', 'success');
-  };
-  reader.onerror = function() {
-    setAdminSchoolIconStatus('İkon okunamadı.', 'error');
-  };
-  reader.readAsDataURL(file);
-}
-
-async function saveAdminSchoolIcon() {
-  const school = selectedAdminSchoolIconSchool();
-  if (!school) {
-    setAdminSchoolIconStatus('Önce okul seç.', 'error');
-    return;
-  }
-  if (!_adminSchoolIconDataUrl) {
-    setAdminSchoolIconStatus('Kaydetmek için ikon seç.', 'error');
-    return;
-  }
-  try {
-    setAdminSchoolIconStatus('İkon kaydediliyor...', '');
-    const res = await apiFetch('/api/admin/school-icons', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ school_id: school.id, icon_data_url: _adminSchoolIconDataUrl })
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'İkon kaydedilemedi.');
-    Object.assign(school, data.school || {}, { icon_data_url: _adminSchoolIconDataUrl });
-    updateAdminSchoolIconPreview(school);
-    setAdminSchoolIconStatus('İkon kaydedildi.', 'success');
-    showToast('success', 'Okul ikonu kaydedildi', schoolLabel(school), 3200);
-  } catch(e) {
-    setAdminSchoolIconStatus(e.message || 'İkon kaydedilemedi.', 'error');
-  }
-}
-
-async function removeAdminSchoolIcon() {
-  const school = selectedAdminSchoolIconSchool();
-  if (!school) {
-    setAdminSchoolIconStatus('Önce okul seç.', 'error');
-    return;
-  }
-  try {
-    setAdminSchoolIconStatus('İkon kaldırılıyor...', '');
-    const res = await apiFetch('/api/admin/school-icons', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ school_id: school.id, icon_data_url: '' })
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'İkon kaldırılamadı.');
-    school.icon_data_url = '';
-    _adminSchoolIconDataUrl = '';
-    updateAdminSchoolIconPreview(school);
-    setAdminSchoolIconStatus('İkon kaldırıldı.', 'success');
-  } catch(e) {
-    setAdminSchoolIconStatus(e.message || 'İkon kaldırılamadı.', 'error');
-  }
-}
-
 function unlockAdminSensitive() {
   requireAuth(function(turnstileToken) {
     loadAdminSensitive(turnstileToken);
@@ -12905,12 +12720,14 @@ function renderAdminSensitive(accounts) {
   target.innerHTML = (accounts || []).map(function(account) {
     const storage = account.password_storage || {};
     const sessions = Array.isArray(account.sessions) ? account.sessions : [];
-    const sessionHtml = sessions.slice(0, 8).map(function(session) {
+    const sessionHtml = sessions.map(function(session) {
       const device = describeDevice(session.user_agent || '');
       const status = session.active ? 'Aktif' : 'Süresi dolmuş';
+      const location = formatAdminSessionLocation(session);
       return '<div class="admin-session-row">' +
         '<strong>' + escHtml(status) + '</strong> · IP: ' + escHtml(session.ip_address || 'Bilinmiyor') +
-        '<br>' + escHtml(device) +
+        '<br>Konum: ' + escHtml(location || 'Bilinmiyor') +
+        '<br>Cihaz: ' + escHtml(device) +
         '<br>Son görülme: ' + escHtml(session.last_seen_at ? formatAdminDate(session.last_seen_at) : 'Yok') +
         ' · Oluşturulma: ' + escHtml(session.created_at ? formatAdminDate(session.created_at) : 'Yok') +
       '</div>';
@@ -13033,6 +12850,19 @@ function adminFormatBytes(value) {
   if (size >= 1024 * 1024) return (size / (1024 * 1024)).toFixed(1) + ' MB';
   if (size >= 1024) return (size / 1024).toFixed(1) + ' KB';
   return size + ' B';
+}
+
+function formatAdminSessionLocation(session) {
+  const parts = [];
+  if (session.city) parts.push(session.city);
+  if (session.region) parts.push(session.region);
+  if (session.country) parts.push(session.country);
+  const coords = [session.latitude, session.longitude].filter(Boolean).join(', ');
+  const extra = [];
+  if (coords) extra.push(coords);
+  if (session.timezone) extra.push(session.timezone);
+  if (session.colo) extra.push('CF ' + session.colo);
+  return parts.join(' / ') + (extra.length ? (parts.length ? ' · ' : '') + extra.join(' · ') : '');
 }
 
 function describeDevice(userAgent) {
@@ -13857,6 +13687,14 @@ function renderDmThreads() {
 async function openDmConversation(userId) {
   const targetUserId = String(userId || '');
   if (!targetUserId) return;
+  if (targetUserId === _dmActiveUserId) {
+    const overlay = document.getElementById('dmOverlay');
+    if (overlay) overlay.classList.add('chat-open');
+    renderDmThreads();
+    const input = document.getElementById('dmTextInput');
+    if (input) setTimeout(function(){ input.focus(); }, 50);
+    return;
+  }
   const conversationSeq = ++_dmConversationSeq;
   _dmActiveUserId = targetUserId;
   _dmMessages = [];
@@ -17631,6 +17469,7 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     if (document.getElementById('passwordChangeOverlay') && document.getElementById('passwordChangeOverlay').classList.contains('active')) { closePasswordChangeModal(); }
     else if (document.getElementById('contactOverlay') && document.getElementById('contactOverlay').classList.contains('active')) { closeContactForm(); }
+    else if (document.getElementById('aiModelNoticeOverlay') && document.getElementById('aiModelNoticeOverlay').classList.contains('active')) { closeAiModelNotice(); }
     else if (document.getElementById('dmOverlay') && document.getElementById('dmOverlay').classList.contains('active')) { closeDmOverlay(); }
     else if (document.getElementById('avatarCropOverlay') && document.getElementById('avatarCropOverlay').classList.contains('active')) { closeAvatarCropModal(); }
     else if (document.getElementById('verifyRequiredOverlay') && document.getElementById('verifyRequiredOverlay').classList.contains('active')) { closeVerifyRequiredModal(); }

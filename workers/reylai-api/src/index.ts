@@ -51,7 +51,6 @@ const AI_DEFAULT_FETCH_TIMEOUT_MS = 25000;
 const MEB_SCHOOLS_DEFAULT_API_URL = "https://www.meb.gov.tr/baglantilar/okullar/okullar_ajax.php";
 const MEB_SCHOOLS_CACHE_MS = 6 * 60 * 60 * 1000;
 const MEB_SCHOOLS_FETCH_LIMIT = 100000;
-const SCHOOL_ICON_DATA_URL_LIMIT = 220_000;
 const SCHOOL_CHANGE_PENDING = "pending";
 const SCHOOL_CHANGE_APPROVED = "approved";
 const SCHOOL_CHANGE_REJECTED = "rejected";
@@ -318,6 +317,17 @@ type AuthPayload = {
   turnstile_token?: string;
 };
 
+type SessionLocation = {
+  country: string;
+  region: string;
+  city: string;
+  latitude: string;
+  longitude: string;
+  timezone: string;
+  colo: string;
+  location_json: string;
+};
+
 type ProfilePayload = {
   display_name?: string;
   email?: string;
@@ -331,11 +341,6 @@ type SchoolSelectPayload = {
 type SchoolReviewPayload = {
   user_id?: string;
   action?: string;
-};
-
-type SchoolIconPayload = {
-  school_id?: string;
-  icon_data_url?: string;
 };
 
 type MebSchoolApiRow = {
@@ -614,10 +619,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return handleSchoolSelect(request, env);
   }
 
-  if (path === "/api/auth/school-icon/request" && request.method === "POST") {
-    return handleSchoolIconRequest(request, env);
-  }
-
   if (path === "/api/auth/presence" && request.method === "PATCH") {
     return handlePresenceUpdate(request, env);
   }
@@ -676,10 +677,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 
   if (path === "/api/admin/school-requests/review" && request.method === "POST") {
     return handleAdminSchoolRequestReview(request, env);
-  }
-
-  if (path === "/api/admin/school-icons" && request.method === "POST") {
-    return handleAdminSchoolIconSave(request, env);
   }
 
   if (path === "/api/dm/users" && request.method === "GET") {
@@ -944,10 +941,26 @@ async function handleSignup(request: Request, env: Env): Promise<Response> {
   if (validationError) return json({ success: false, error: validationError }, 400);
 
   const now = new Date().toISOString();
+  const ipAddress = clientIp(request);
+  const existingUser = await getUserByEmail(env, email);
+  if (existingUser) {
+    return json({
+      success: false,
+      code: "account_exists",
+      login_email: email,
+      error: "Bu e-posta ile zaten bir hesap var."
+    }, 409);
+  }
+  if (await signupIpAlreadyUsed(env, ipAddress)) {
+    return json({
+      success: false,
+      code: "ip_account_limit",
+      error: "Bu IP adresinden zaten bir hesap oluşturulmuş."
+    }, 409);
+  }
   const userId = crypto.randomUUID();
   const passwordHash = await hashPassword(password);
   const role = roleForEmail(email);
-  const ipAddress = clientIp(request);
 
   try {
     await env.DB.prepare(
@@ -1153,34 +1166,6 @@ async function handleSchoolSelect(request: Request, env: Env): Promise<Response>
   });
 }
 
-async function handleSchoolIconRequest(request: Request, env: Env): Promise<Response> {
-  const auth = await requireAuth(request, env);
-  if (auth instanceof Response) return auth;
-  const user = await getUserById(env, auth.user.id);
-  if (!user) return json({ success: false, error: "Hesap bulunamadı." }, 404);
-  const school = publicSchoolFromRow(user);
-  if (!school) return json({ success: false, error: "İkon talebi için önce okulunu seçmelisin." }, 400);
-  const binding = getEmailBinding(env);
-  if (!binding) return json({ success: false, error: "E-posta servisi şu anda hazır değil." }, 503);
-  const subject = "Okul ikonu talebi";
-  const message =
-    `${user.display_name} (${user.email}) okuluna ikon eklenmesini istedi.\n\n` +
-    `Okul: ${school.name}\nİl/İlçe: ${school.province} / ${school.district}\nOkul ID: ${school.id}\nWeb: ${school.website || "Yok"}`;
-  try {
-    await binding.send({
-      to: CONTACT_EMAIL,
-      from: { email: NO_REPLY_FROM, name: "ReylAI Okul Talebi" },
-      replyTo: { email: user.email, name: user.display_name || user.email },
-      subject: `[ReylAI] ${subject}`,
-      html: contactEmailHtml(user.display_name || user.email, user.email, subject, message),
-      text: message
-    });
-  } catch (error) {
-    return json(emailSendFailure(error, "Okul ikonu talebi gönderilemedi. Lütfen contact@reyliar.xyz adresine e-posta gönder.", "school icon request email failed"), 502);
-  }
-  return json({ success: true });
-}
-
 async function handleAdminSchoolRequests(request: Request, env: Env): Promise<Response> {
   const admin = await requireAdmin(request, env);
   if (admin instanceof Response) return admin;
@@ -1240,49 +1225,6 @@ async function handleAdminSchoolRequestReview(request: Request, env: Env): Promi
     "school_change_status = ?, school_change_reviewed_by = ?, school_change_reviewed_at = ?, updated_at = ? WHERE id = ?"
   ).bind(...bindSchoolValues(school), now, SCHOOL_CHANGE_APPROVED, admin.user.id, now, now, userId).run();
   return json({ success: true, status: SCHOOL_CHANGE_APPROVED });
-}
-
-async function handleAdminSchoolIconSave(request: Request, env: Env): Promise<Response> {
-  const admin = await requireAdmin(request, env);
-  if (admin instanceof Response) return admin;
-  const payload = await readJson<SchoolIconPayload>(request);
-  const school = await findSchoolById(env, String(payload.school_id || ""));
-  if (!school) return json({ success: false, error: "Okul bulunamadı." }, 400);
-  const iconDataUrl = String(payload.icon_data_url || "").trim();
-  const schoolKey = schoolIconKey(school);
-  const now = new Date().toISOString();
-
-  if (!iconDataUrl) {
-    await env.DB.prepare("DELETE FROM school_icons WHERE school_key = ? OR school_id = ?")
-      .bind(schoolKey, school.id).run();
-    return json({ success: true, school: publicSchoolFromRecord({ ...school, icon_data_url: "" }) });
-  }
-
-  const iconError = validateSchoolIconDataUrl(iconDataUrl);
-  if (iconError) return json({ success: false, error: iconError }, 400);
-
-  await env.DB.prepare(
-    "INSERT INTO school_icons (school_key, school_id, school_name, school_province, school_province_code, school_district, school_district_code, icon_data_url, created_at, updated_at, updated_by) " +
-    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
-    "ON CONFLICT(school_key) DO UPDATE SET school_id = excluded.school_id, school_name = excluded.school_name, " +
-    "school_province = excluded.school_province, school_province_code = excluded.school_province_code, " +
-    "school_district = excluded.school_district, school_district_code = excluded.school_district_code, " +
-    "icon_data_url = excluded.icon_data_url, updated_at = excluded.updated_at, updated_by = excluded.updated_by"
-  ).bind(
-    schoolKey,
-    school.id,
-    school.name,
-    school.province,
-    school.province_code,
-    school.district,
-    school.district_code,
-    iconDataUrl,
-    now,
-    now,
-    admin.user.id
-  ).run();
-
-  return json({ success: true, school: publicSchoolFromRecord({ ...school, icon_data_url: iconDataUrl }) });
 }
 
 async function handlePresenceUpdate(request: Request, env: Env): Promise<Response> {
@@ -1717,8 +1659,10 @@ async function handleAdminAccountsSensitive(request: Request, env: Env): Promise
     "FROM users ORDER BY created_at DESC LIMIT 200"
   ).all<UserRow>();
   const sessionsResult = await env.DB.prepare(
-    "SELECT id, user_id, created_at, expires_at, last_seen_at, user_agent, ip_address " +
-    "FROM sessions ORDER BY last_seen_at DESC LIMIT 600"
+    "SELECT id, user_id, created_at, expires_at, last_seen_at, user_agent, ip_address, " +
+    "ip_country, ip_region, ip_city, ip_latitude, ip_longitude, ip_timezone, ip_colo, ip_location_json " +
+    "FROM sessions WHERE user_id IN (SELECT id FROM users ORDER BY created_at DESC LIMIT 200) " +
+    "ORDER BY last_seen_at DESC"
   ).all<Record<string, unknown>>();
   const chatHistoryResult = await env.DB.prepare(
     "SELECT user_id, store_json, updated_at FROM chat_history ORDER BY updated_at DESC LIMIT 300"
@@ -1742,6 +1686,14 @@ async function handleAdminAccountsSensitive(request: Request, env: Env): Promise
     list.push({
       id: String(session.id || ""),
       ip_address: String(session.ip_address || ""),
+      country: String(session.ip_country || ""),
+      region: String(session.ip_region || ""),
+      city: String(session.ip_city || ""),
+      latitude: String(session.ip_latitude || ""),
+      longitude: String(session.ip_longitude || ""),
+      timezone: String(session.ip_timezone || ""),
+      colo: String(session.ip_colo || ""),
+      location_json: String(session.ip_location_json || ""),
       user_agent: String(session.user_agent || ""),
       created_at: String(session.created_at || ""),
       expires_at: String(session.expires_at || ""),
@@ -2272,8 +2224,10 @@ async function createSession(
   const tokenHash = await sha256Base64Url(token);
   const nowDate = new Date();
   const expiresDate = new Date(nowDate.getTime() + (rememberDevice ? SESSION_LONG_DAYS * 24 : SESSION_SHORT_HOURS) * 60 * 60 * 1000);
+  const location = requestLocation(request);
   await env.DB.prepare(
-    "INSERT INTO sessions (id, user_id, token_hash, created_at, expires_at, last_seen_at, user_agent, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO sessions (id, user_id, token_hash, created_at, expires_at, last_seen_at, user_agent, ip_address, ip_country, ip_region, ip_city, ip_latitude, ip_longitude, ip_timezone, ip_colo, ip_location_json) " +
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).bind(
     crypto.randomUUID(),
     user.id,
@@ -2282,7 +2236,15 @@ async function createSession(
     expiresDate.toISOString(),
     nowDate.toISOString(),
     (request.headers.get("user-agent") || "").slice(0, 240),
-    clientIp(request)
+    clientIp(request),
+    location.country,
+    location.region,
+    location.city,
+    location.latitude,
+    location.longitude,
+    location.timezone,
+    location.colo,
+    location.location_json
   ).run();
   return { token };
 }
@@ -2556,22 +2518,68 @@ function clientIp(request: Request): string {
   ).trim().slice(0, 80);
 }
 
+async function signupIpAlreadyUsed(env: Env, ipAddress: string): Promise<boolean> {
+  const ip = String(ipAddress || "").trim();
+  if (!ip || isNonUniqueClientIp(ip)) return false;
+  const row = await env.DB.prepare(
+    "SELECT id FROM users WHERE last_login_ip = ? " +
+    "UNION SELECT user_id AS id FROM sessions WHERE ip_address = ? LIMIT 1"
+  ).bind(ip, ip).first<{ id: string }>();
+  return Boolean(row && row.id);
+}
+
+function isNonUniqueClientIp(ipAddress: string): boolean {
+  const ip = String(ipAddress || "").trim().toLowerCase();
+  if (!ip || ip === "unknown" || ip === "::1" || ip === "localhost") return true;
+  const ipv4 = ip.replace(/^::ffff:/, "");
+  const parts = ipv4.split(".").map((part) => Number(part));
+  if (parts.length === 4 && parts.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) {
+    if (parts[0] === 10 || parts[0] === 127 || parts[0] === 0 || parts[0] === 169 && parts[1] === 254) return true;
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    return false;
+  }
+  return ip.startsWith("fc") || ip.startsWith("fd") || ip.startsWith("fe80:");
+}
+
+function requestLocation(request: Request): SessionLocation {
+  const cf = ((request as Request & { cf?: Record<string, unknown> }).cf || {});
+  const get = (key: string, max = 120) => cleanLocationValue(cf[key], max);
+  const location = {
+    country: get("country", 80) || cleanLocationValue(request.headers.get("CF-IPCountry"), 80),
+    region: get("region", 120) || get("regionCode", 40),
+    city: get("city", 120),
+    latitude: get("latitude", 40),
+    longitude: get("longitude", 40),
+    timezone: get("timezone", 80),
+    colo: get("colo", 20)
+  };
+  const raw: Record<string, string> = {};
+  for (const [key, value] of Object.entries({
+    ...location,
+    postalCode: get("postalCode", 40),
+    continent: get("continent", 40),
+    asn: get("asn", 40),
+    asOrganization: get("asOrganization", 160)
+  })) {
+    if (value) raw[key] = value;
+  }
+  return {
+    ...location,
+    location_json: JSON.stringify(raw).slice(0, 1200)
+  };
+}
+
+function cleanLocationValue(value: unknown, max = 120): string {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
 function validateAvatarDataUrl(value: string): string {
   const avatar = String(value || "").trim();
   if (!avatar) return "";
   if (avatar.length > AVATAR_DATA_URL_LIMIT) return "Profil fotoğrafı çok büyük. Daha küçük bir görsel seçin.";
   if (!/^data:image\/(?:png|jpeg|jpg|webp);base64,[a-z0-9+/=]+$/i.test(avatar)) {
     return "Profil fotoğrafı PNG, JPG veya WEBP olmalı.";
-  }
-  return "";
-}
-
-function validateSchoolIconDataUrl(value: string): string {
-  const icon = String(value || "").trim();
-  if (!icon) return "";
-  if (icon.length > SCHOOL_ICON_DATA_URL_LIMIT) return "Okul ikonu çok büyük. Daha küçük bir görsel seçin.";
-  if (!/^data:image\/(?:png|jpeg|jpg|webp);base64,[a-z0-9+/=]+$/i.test(icon)) {
-    return "Okul ikonu PNG, JPG veya WEBP olmalı.";
   }
   return "";
 }
