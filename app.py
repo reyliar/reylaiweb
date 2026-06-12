@@ -159,11 +159,22 @@ def _is_configured(value, *placeholders):
 
 GAS_WEB_APP_URL     = _env("GAS_WEB_APP_URL")
 GEMINI_API_KEY      = _env("GEMINI_API_KEY")
-GEMINI_MODEL        = _env("GEMINI_MODEL", "gemini-3.5-flash") or "gemini-3.5-flash"
+GEMINI_MODEL        = _env("GEMINI_MODEL", "gemini-3.1-pro") or "gemini-3.1-pro"
+GEMINI_FALLBACK_MODELS = [
+    item.strip()
+    for item in (_env("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite") or "").split(",")
+    if item.strip()
+]
 GEMINI_API_URL      = (
     _env("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta/models")
     or "https://generativelanguage.googleapis.com/v1beta/models"
 ).rstrip("/")
+MISTRAL_API_KEY     = _env("MISTRAL_API_KEY")
+MISTRAL_API_URL     = (
+    _env("MISTRAL_API_URL", "https://api.mistral.ai/v1/chat/completions")
+    or "https://api.mistral.ai/v1/chat/completions"
+).rstrip("/")
+MISTRAL_MODEL       = _env("MISTRAL_MODEL", "mistral-large-latest") or "mistral-large-latest"
 OPENAI_API_KEY      = _env("OPENAI_API_KEY")
 BOOKS_REMOTE_BASE_URL = (
     _env("BOOKS_REMOTE_BASE_URL", "https://thejinx1.github.io/blupblupreylai-books/")
@@ -1071,13 +1082,71 @@ def _gemini_error_message(response):
     return response.text[:500]
 
 
+class AiProviderError(RuntimeError):
+    def __init__(self, message, provider='gemini', model='', status=0, retry_after_seconds=0):
+        super().__init__(message)
+        self.provider = provider
+        self.model = model
+        self.status = int(status or 0)
+        self.retry_after_seconds = int(retry_after_seconds or 0)
+
+
+def _retry_after_seconds(headers):
+    raw = ''
+    try:
+        raw = headers.get('Retry-After') or headers.get('retry-after') or headers.get('x-ratelimit-reset-after') or headers.get('x-ratelimit-reset') or ''
+    except Exception:
+        raw = ''
+    if not raw:
+        return 0
+    try:
+        numeric = float(raw)
+        if numeric > 0:
+            return min(int(numeric + 0.999), 86400)
+    except (TypeError, ValueError):
+        pass
+    try:
+        from email.utils import parsedate_to_datetime
+        parsed = parsedate_to_datetime(raw)
+        return min(max(int((parsed.timestamp() - time.time()) + 0.999), 0), 86400)
+    except Exception:
+        return 0
+
+
+def _normalize_ai_provider_preference(value):
+    clean = str(value or 'auto').strip().lower()
+    return clean if clean in ('auto', 'gemini', 'mistral') else 'auto'
+
+
+def _is_rate_limit_error(exc):
+    status = getattr(exc, 'status', 0)
+    text = str(exc).lower()
+    return status == 429 or any(key in text for key in ('quota', 'rate limit', 'too many requests', 'resource_exhausted'))
+
+
+def _ai_rate_limit_info(exc, fallback_provider='gemini'):
+    retry_after = int(getattr(exc, 'retry_after_seconds', 0) or 0)
+    reset_at = ''
+    if retry_after > 0:
+        reset_at = datetime.fromtimestamp(time.time() + retry_after, UTC).isoformat()
+    return {
+        'provider': getattr(exc, 'provider', fallback_provider) or fallback_provider,
+        'model': getattr(exc, 'model', '') or '',
+        'retry_after_seconds': retry_after or 60,
+        'reset_at': reset_at,
+        'reset_label': (f"{max(1, int((retry_after + 59) / 60))} dk içinde" if retry_after > 0 else "biraz sonra"),
+        'message': str(exc),
+    }
+
+
 def _gemini_generate_content(messages, *, model=None, max_tokens=None, temperature=0.2):
+    selected_model = model or GEMINI_MODEL
     payload = _gemini_contents_from_messages(messages)
     payload['generationConfig'] = _gemini_generation_config(
         max_tokens=max_tokens,
         temperature=temperature,
     )
-    endpoint = f"{GEMINI_API_URL}/{quote(model or GEMINI_MODEL, safe='')}:generateContent"
+    endpoint = f"{GEMINI_API_URL}/{quote(selected_model, safe='')}:generateContent"
     try:
         response = requests.post(
             endpoint,
@@ -1089,14 +1158,137 @@ def _gemini_generate_content(messages, *, model=None, max_tokens=None, temperatu
             timeout=_analysis_timeout_seconds(),
         )
     except requests.RequestException as exc:
-        raise RuntimeError(f'Gemini API baglanti hatasi: {exc}') from exc
+        raise AiProviderError(f'Gemini API baglanti hatasi: {exc}', 'gemini', selected_model) from exc
     if response.status_code >= 400:
         message = _gemini_error_message(response) or response.reason
-        raise RuntimeError(f'Gemini API hatasi ({response.status_code}): {message}')
+        raise AiProviderError(
+            f'Gemini API hatasi ({response.status_code}): {message}',
+            'gemini',
+            selected_model,
+            response.status_code,
+            _retry_after_seconds(response.headers),
+        )
     try:
         return response.json()
     except ValueError as exc:
-        raise RuntimeError('Gemini API gecersiz JSON yaniti dondurdu.') from exc
+        raise AiProviderError('Gemini API gecersiz JSON yaniti dondurdu.', 'gemini', selected_model) from exc
+
+
+def _gemini_model_list():
+    models = []
+    for model in [GEMINI_MODEL] + GEMINI_FALLBACK_MODELS:
+        if model and model not in models:
+            models.append(model)
+    return models or [GEMINI_MODEL]
+
+
+def _gemini_generate_with_fallback(messages, *, max_tokens=None, temperature=0.2):
+    models = _gemini_model_list()
+    last_error = None
+    for index, model in enumerate(models):
+        try:
+            return model, _gemini_generate_content(messages, model=model, max_tokens=max_tokens, temperature=temperature)
+        except AiProviderError as exc:
+            last_error = exc
+            if getattr(exc, 'status', 0) in (400, 404) and index < len(models) - 1:
+                continue
+            raise
+    raise last_error or AiProviderError('Gemini API yaniti alinamadi.', 'gemini', models[0] if models else '')
+
+
+def _mistral_messages_from_messages(messages):
+    output = []
+    for message in messages:
+        role = message.get('role')
+        if role == 'ai':
+            role = 'assistant'
+        if role not in ('system', 'user', 'assistant'):
+            role = 'user'
+        content = str(message.get('content') or '').strip()
+        if content:
+            output.append({'role': role, 'content': content})
+    return output or [{'role': 'user', 'content': ''}]
+
+
+def _mistral_response_text(payload):
+    choices = payload.get('choices') if isinstance(payload, dict) else None
+    if not choices or not isinstance(choices[0], dict):
+        return ''
+    message = choices[0].get('message')
+    if not isinstance(message, dict):
+        return ''
+    content = message.get('content')
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        return ''.join(str(part.get('text') or part.get('content') or '') if isinstance(part, dict) else str(part) for part in content).strip()
+    return ''
+
+
+def _mistral_generate_content(messages, *, model=None, temperature=0.2):
+    selected_model = model or MISTRAL_MODEL
+    if not _is_configured(MISTRAL_API_KEY, "YOUR_MISTRAL_API_KEY"):
+        raise AiProviderError('MISTRAL_API_KEY yapilandirilmamis.', 'mistral', selected_model)
+    payload = {
+        'model': selected_model,
+        'messages': _mistral_messages_from_messages(messages),
+        'temperature': temperature,
+    }
+    try:
+        response = requests.post(
+            MISTRAL_API_URL,
+            headers={
+                'Authorization': 'Bearer ' + MISTRAL_API_KEY,
+                'Content-Type': 'application/json',
+            },
+            json=payload,
+            timeout=_analysis_timeout_seconds(),
+        )
+    except requests.RequestException as exc:
+        raise AiProviderError(f'Mistral API baglanti hatasi: {exc}', 'mistral', selected_model) from exc
+    if response.status_code >= 400:
+        try:
+            payload = response.json()
+            message = payload.get('error') or payload.get('message') or response.text[:500]
+        except ValueError:
+            message = response.text[:500] or response.reason
+        raise AiProviderError(
+            f'Mistral API hatasi ({response.status_code}): {message}',
+            'mistral',
+            selected_model,
+            response.status_code,
+            _retry_after_seconds(response.headers),
+        )
+    try:
+        return selected_model, response.json()
+    except ValueError as exc:
+        raise AiProviderError('Mistral API gecersiz JSON yaniti dondurdu.', 'mistral', selected_model) from exc
+
+
+def _generate_ai_content(messages, *, provider='auto', temperature=0.2):
+    preference = _normalize_ai_provider_preference(provider)
+    if preference == 'mistral':
+        model, raw = _mistral_generate_content(messages, temperature=temperature)
+        return {'provider': 'mistral', 'model': model, 'raw': raw, 'text': _mistral_response_text(raw)}
+    if not _is_configured(GEMINI_API_KEY, "YOUR_GEMINI_API_KEY"):
+        model, raw = _mistral_generate_content(messages, temperature=temperature)
+        return {'provider': 'mistral', 'model': model, 'raw': raw, 'text': _mistral_response_text(raw)}
+    try:
+        model, raw = _gemini_generate_with_fallback(messages, temperature=temperature)
+        return {'provider': 'gemini', 'model': model, 'raw': raw, 'text': _gemini_response_text(raw)}
+    except Exception as exc:
+        if preference == 'auto' and _is_rate_limit_error(exc) and _is_configured(MISTRAL_API_KEY, "YOUR_MISTRAL_API_KEY"):
+            model, raw = _mistral_generate_content(messages, temperature=temperature)
+            return {
+                'provider': 'mistral',
+                'model': model,
+                'raw': raw,
+                'text': _mistral_response_text(raw),
+                'fallback_from': 'gemini',
+                'fallback_reason': 'rate_limit',
+                'rate_limit': _ai_rate_limit_info(exc, 'gemini'),
+            }
+        raise
 
 
 def _sanitize_chat_history(raw_history):
@@ -1790,6 +1982,40 @@ HTML = """
     animation: reylaiBootIn 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
   @keyframes reylaiBootIn { to { opacity: 1; } }
+
+.ai-provider-selector {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px;
+  margin-right: 8px;
+}
+.ai-provider-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 16px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, opacity 0.2s;
+  opacity: 0.6;
+}
+.ai-provider-btn:hover { background: var(--surface-hover); opacity: 0.8; }
+.ai-provider-btn.active { background: var(--surface-hover); opacity: 1; }
+
+.ai-msg-info-tag {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  padding: 2px 6px;
+  background: var(--surface);
+  border-radius: 4px;
+  display: inline-block;
+}
 </style>
 <script>
 (function() {
@@ -11309,9 +11535,7 @@ body::after,
         <span>ReylAI</span>
       </a>
       <nav class="home-nav-links" aria-label="Site bağlantıları">
-        <a class="home-nav-link" href="/library" onclick="navigateApp('/library'); return false;">Kütüphane</a>
-        <a class="home-nav-link" href="/library/chat" onclick="navigateApp('/library/chat'); return false;">Sohbetler</a>
-        <a class="home-nav-link" href="/message" onclick="navigateApp('/message'); return false;">Mesajlar</a>
+        <a class="home-nav-link" href="/terms">Kullanım Koşulları</a>
         <a class="home-nav-link" href="/privacy">Gizlilik</a>
         <button class="home-nav-link" type="button" onclick="openContactForm()">İletişim</button>
       </nav>
@@ -11755,6 +11979,14 @@ body::after,
       </div>
     </div>
     <div class="chat-input-bar">
+      <div class="ai-provider-selector" id="aiProviderSelector" aria-label="AI Sağlayıcı Seçimi">
+        <button type="button" class="ai-provider-btn active" data-provider="auto" onclick="selectAiProvider('auto')" title="Gemini (Otomatik)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#10a37f"><path d="M12 2v20"/><path d="M2 12h20"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 2a10 10 0 0 0-10 10"/><path d="M12 22a10 10 0 0 1 10-10"/><path d="M12 22a10 10 0 0 0-10-10"/></svg>
+        </button>
+        <button type="button" class="ai-provider-btn" data-provider="mistral" onclick="selectAiProvider('mistral')" title="Mistral (Açık Seçim)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#f55036"><path d="M12 2v20"/><path d="M2 12h20"/><path d="M4.93 4.93l14.14 14.14"/><path d="M4.93 19.07L19.07 4.93"/></svg>
+        </button>
+      </div>
       <div class="chat-input-wrap">
         <textarea id="promptInput" placeholder="Bir soru sor ya da görev ver… (Enter ile gönder)" rows="1"></textarea>
       </div>
@@ -12626,17 +12858,19 @@ function discordCdnExt(hash) {
 
 function founderDiscordAvatarUrl(user, size) {
   size = size || 256;
+  let url = DISCORD_CDN_BASE + '/embed/avatars/0.png';
   if (user && user.id && user.avatar) {
-    return DISCORD_CDN_BASE + '/avatars/' + encodeURIComponent(user.id) + '/' + encodeURIComponent(user.avatar) + '.' + discordCdnExt(user.avatar) + '?size=' + size;
+    url = DISCORD_CDN_BASE + '/avatars/' + encodeURIComponent(user.id) + '/' + encodeURIComponent(user.avatar) + '.' + discordCdnExt(user.avatar) + '?size=' + size;
   }
-  return DISCORD_CDN_BASE + '/embed/avatars/0.png';
+  return '/api/discord-image?url=' + encodeURIComponent(url);
 }
 
 function founderDiscordDecorationUrl(user, size) {
   size = size || 256;
   const asset = user && user.avatar_decoration_data && user.avatar_decoration_data.asset;
   if (!asset) return '';
-  return DISCORD_CDN_BASE + '/avatar-decoration-presets/' + encodeURIComponent(asset) + '.png?size=' + size + '&passthrough=true';
+  const url = DISCORD_CDN_BASE + '/avatar-decoration-presets/' + encodeURIComponent(asset) + '.png?size=' + size + '&passthrough=true';
+  return '/api/discord-image?url=' + encodeURIComponent(url);
 }
 
 function founderDiscordName(user) {
@@ -14475,11 +14709,14 @@ function setEmailCodeStatus(message, type) {
 function emailDeliveryFailureMessage(data, fallback) {
   data = data || {};
   if (data.email_delivery_error || data.error) return data.email_delivery_error || data.error;
-  if (data.email_error_code === 'E_RECIPIENT_NOT_ALLOWED') {
-    return 'Cloudflare bu alıcıya e-posta göndermeye izin vermiyor. Email Sending için Workers Paid planı açın veya alıcıyı Cloudflare hesabında doğrulayın.';
+  if (data.email_error_code === 'RESEND_API_KEY_MISSING' || data.email_error_code === 'RESEND_API_KEY_INVALID' || data.email_error_code === 'RESEND_FORBIDDEN') {
+    return 'Resend API anahtarı eksik veya geçersiz. RESEND_API_KEY secret değerini kontrol edin.';
   }
-  if (data.email_error_code === 'E_SENDER_NOT_VERIFIED' || data.email_error_code === 'E_SENDER_DOMAIN_NOT_AVAILABLE') {
-    return 'Gönderici alan adı Cloudflare Email Service için hazır değil. reyliar.xyz Email Sending kurulumunu ve no-reply adresini kontrol edin.';
+  if (data.email_error_code === 'RESEND_DOMAIN_NOT_VERIFIED' || data.email_error_code === 'RESEND_VALIDATION_ERROR') {
+    return 'Resend alan adı veya gönderici adresi hazır değil. reyliar.xyz DNS doğrulamasını ve no-reply adresini kontrol edin.';
+  }
+  if (data.email_error_code === 'RESEND_DAILY_LIMIT_EXCEEDED' || data.email_error_code === 'RESEND_RATE_LIMITED' || data.email_error_code === 'RESEND_HTTP_429') {
+    return 'Resend e-posta gönderim limiti doldu. Bir süre sonra tekrar deneyin.';
   }
   return fallback || 'E-posta kodu gönderilemedi.';
 }
@@ -19268,6 +19505,16 @@ async function appendAiMsg(text, options) {
   div.dataset.messageId = messageId;
   const parts = createMessageBody('chat-text');
   div.appendChild(parts.panel);
+
+  if (options.aiProvider) {
+    const aiInfo = document.createElement('div');
+    aiInfo.className = 'ai-msg-info-tag';
+    aiInfo.innerText = options.aiProvider === 'mistral' ? 'Mistral ile yanıtlandı' : 'Gemini ile yanıtlandı';
+    if (options.aiModel) aiInfo.innerText += ` (${options.aiModel})`;
+    if (options.aiFallbackReason === 'rate_limit') aiInfo.innerText += ' - Limit dolduğu için yedek kullanıldı.';
+    div.appendChild(aiInfo);
+  }
+
   div.appendChild(createMessageActions(text, 'ai', messageId));
   flow.insertBefore(div, typing);
   if (options.animate === false) {
@@ -19372,6 +19619,15 @@ function prepareEditedPrompt(prompt) {
 }
 
 // ── Analyze ────────────────────────────────────────────────────────────────────
+function selectAiProvider(provider) {
+  window._selectedAiProvider = provider;
+  const btns = document.querySelectorAll('.ai-provider-btn');
+  btns.forEach(b => {
+    if (b.dataset.provider === provider) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+}
+
 async function analyze() {
   if (_activeAnalyzeController) {
     stopCurrentAnalysis();
@@ -19436,7 +19692,8 @@ async function analyze() {
         chat_id: chat.id,
         chat_title: chat.title || '',
         title_requested: titleRequested,
-        chat_history: historyForApi
+        chat_history: historyForApi,
+        preferred_provider: window._selectedAiProvider || 'auto'
       })
     });
     const data = await res.json();
@@ -19446,16 +19703,25 @@ async function analyze() {
     if (data.result) {
       if (data.chat_title) updateActiveChatTitle(data.chat_title, prompt);
       const aiMessage = addChatMessage('ai', data.result);
-      await appendAiMsg(data.result, { messageId: aiMessage.id });
+      await appendAiMsg(data.result, { 
+        messageId: aiMessage.id, 
+        aiProvider: data.ai_provider, 
+        aiModel: data.ai_model, 
+        aiFallbackReason: data.ai_fallback_reason 
+      });
       setAnalysisStatus('Hazır', 'green');
       showResponseBanner();
     } else if (data.email_verification_required) {
       setAnalysisStatus('E-posta doğrulaması gerekli.', 'amber');
       showVerifyRequiredModal(data.error || 'AI cevaplarına erişmek için e-postanı doğrula.');
     } else if (data.rate_limit) {
-      setAnalysisStatus('API kotası doldu.', 'red');
-      showToast('warning', 'API kota sınırı aşıldı',
-        'Gemini API istek limiti doldu. Birkaç dakika bekleyip tekrar deneyin.', 9000);
+      if (data.ai_rate_limit && data.ai_rate_limit.reset_label) {
+        setAnalysisStatus(`Limit doldu. ${data.ai_rate_limit.reset_label} tekrar deneyin.`, 'red');
+        showToast('warning', 'API kota sınırı aşıldı', `Gemini API limiti doldu. ${data.ai_rate_limit.reset_label} tekrar deneyin.`, 9000);
+      } else {
+        setAnalysisStatus('API kotası doldu.', 'red');
+        showToast('warning', 'API kota sınırı aşıldı', 'Gemini API istek limiti doldu. Birkaç dakika bekleyip tekrar deneyin.', 9000);
+      }
     } else if (data.temporary_unavailable) {
       setAnalysisStatus('Yapay zekâ servisi yoğun.', 'red');
       showToast('warning', 'Yapay zekâ servisi yoğun',
@@ -20060,7 +20326,7 @@ def api_verify_password():
 def api_contact_local():
     return jsonify({
         'success': False,
-        'error': 'İletişim formu canlı yayında Cloudflare e-posta servisiyle çalışır.'
+        'error': 'İletişim formu canlı yayında Resend e-posta servisiyle çalışır.'
     }), 503
 
 
@@ -20606,8 +20872,8 @@ def api_analyze_start():
 
 @app.route('/api/analyze', methods=['POST'])
 def api_analyze():
-    if not _is_configured(GEMINI_API_KEY, "YOUR_GEMINI_API_KEY"):
-        return jsonify({'error': 'GEMINI_API_KEY yapılandırılmamış. Proje kökündeki .env dosyasına ekleyin.'})
+    if not _is_configured(GEMINI_API_KEY, "YOUR_GEMINI_API_KEY") and not _is_configured(MISTRAL_API_KEY, "YOUR_MISTRAL_API_KEY"):
+        return jsonify({'error': 'GEMINI_API_KEY veya MISTRAL_API_KEY yapılandırılmamış. Proje kökündeki .env dosyasına ekleyin.'})
 
     data        = request.get_json(silent=True) or {}
     book_id     = data.get('book_id') or data.get('drive_id', '')
@@ -20616,6 +20882,7 @@ def api_analyze():
     analysis_id = _clean_analysis_id(data.get('analysis_id'))
     chat_history = _sanitize_chat_history(data.get('chat_history'))
     title_requested = bool(data.get('title_requested'))
+    preferred_provider = _normalize_ai_provider_preference(data.get('preferred_provider') or data.get('ai_provider'))
 
     if not prompt_text:
         _analysis_status_update(analysis_id, 'Prompt eksik.', 'error', True)
@@ -20743,8 +21010,8 @@ def api_analyze():
         for attempt in range(ANALYSIS_RETRY_COUNT):
             try:
                 _analysis_status_update(analysis_id, 'AI yanıt hazırlıyor...', 'ai')
-                response = _gemini_generate_content(messages, temperature=0.2)
-                response_text = _gemini_response_text(response)
+                response = _generate_ai_content(messages, provider=preferred_provider, temperature=0.2)
+                response_text = response.get('text', '')
                 chat_title = ''
                 if title_requested:
                     _analysis_status_update(analysis_id, 'Sohbet başlığı hazırlanıyor...', 'title')
@@ -20756,8 +21023,21 @@ def api_analyze():
                     True,
                     result=response_text,
                     chat_title=chat_title,
+                    ai_provider=response.get('provider', ''),
+                    ai_model=response.get('model', ''),
+                    ai_fallback_from=response.get('fallback_from', ''),
+                    ai_fallback_reason=response.get('fallback_reason', ''),
+                    ai_rate_limit=response.get('rate_limit'),
                 )
-                return jsonify({'result': response_text, 'chat_title': chat_title})
+                return jsonify({
+                    'result': response_text,
+                    'chat_title': chat_title,
+                    'ai_provider': response.get('provider', ''),
+                    'ai_model': response.get('model', ''),
+                    'ai_fallback_from': response.get('fallback_from', ''),
+                    'ai_fallback_reason': response.get('fallback_reason', ''),
+                    'ai_rate_limit': response.get('rate_limit'),
+                })
             except Exception as inner_exc:
                 last_error = inner_exc
                 err_text = str(inner_exc).lower()
@@ -20776,7 +21056,15 @@ def api_analyze():
         if is_quota:
             status_message = 'API kotası doldu.'
         _analysis_status_update(analysis_id, status_message, 'error', True)
-        return jsonify({'error': str(e), 'rate_limit': is_quota, 'temporary_unavailable': is_unavailable})
+        fallback_provider = 'mistral' if preferred_provider == 'mistral' else 'gemini'
+        return jsonify({
+            'error': str(e),
+            'rate_limit': is_quota,
+            'temporary_unavailable': is_unavailable,
+            'ai_rate_limit': _ai_rate_limit_info(e, fallback_provider) if is_quota else None,
+            'ai_provider': getattr(e, 'provider', fallback_provider),
+            'ai_model': getattr(e, 'model', ''),
+        })
 
 
 # ── Extract covers for existing local books on startup ─────────────────────────

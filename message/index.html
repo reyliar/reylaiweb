@@ -44,6 +44,40 @@
     animation: reylaiBootIn 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
   @keyframes reylaiBootIn { to { opacity: 1; } }
+
+.ai-provider-selector {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px;
+  margin-right: 8px;
+}
+.ai-provider-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 16px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, opacity 0.2s;
+  opacity: 0.6;
+}
+.ai-provider-btn:hover { background: var(--surface-hover); opacity: 0.8; }
+.ai-provider-btn.active { background: var(--surface-hover); opacity: 1; }
+
+.ai-msg-info-tag {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  padding: 2px 6px;
+  background: var(--surface);
+  border-radius: 4px;
+  display: inline-block;
+}
 </style>
 <script>
 (function() {
@@ -9563,9 +9597,7 @@ body::after,
         <span>ReylAI</span>
       </a>
       <nav class="home-nav-links" aria-label="Site bağlantıları">
-        <a class="home-nav-link" href="/library" onclick="navigateApp('/library'); return false;">Kütüphane</a>
-        <a class="home-nav-link" href="/library/chat" onclick="navigateApp('/library/chat'); return false;">Sohbetler</a>
-        <a class="home-nav-link" href="/message" onclick="navigateApp('/message'); return false;">Mesajlar</a>
+        <a class="home-nav-link" href="/terms">Kullanım Koşulları</a>
         <a class="home-nav-link" href="/privacy">Gizlilik</a>
         <button class="home-nav-link" type="button" onclick="openContactForm()">İletişim</button>
       </nav>
@@ -10009,6 +10041,14 @@ body::after,
       </div>
     </div>
     <div class="chat-input-bar">
+      <div class="ai-provider-selector" id="aiProviderSelector" aria-label="AI Sağlayıcı Seçimi">
+        <button type="button" class="ai-provider-btn active" data-provider="auto" onclick="selectAiProvider('auto')" title="Gemini (Otomatik)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#10a37f"><path d="M12 2v20"/><path d="M2 12h20"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 2a10 10 0 0 0-10 10"/><path d="M12 22a10 10 0 0 1 10-10"/><path d="M12 22a10 10 0 0 0-10-10"/></svg>
+        </button>
+        <button type="button" class="ai-provider-btn" data-provider="mistral" onclick="selectAiProvider('mistral')" title="Mistral (Açık Seçim)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#f55036"><path d="M12 2v20"/><path d="M2 12h20"/><path d="M4.93 4.93l14.14 14.14"/><path d="M4.93 19.07L19.07 4.93"/></svg>
+        </button>
+      </div>
       <div class="chat-input-wrap">
         <textarea id="promptInput" placeholder="Bir soru sor ya da görev ver… (Enter ile gönder)" rows="1"></textarea>
       </div>
@@ -10880,17 +10920,19 @@ function discordCdnExt(hash) {
 
 function founderDiscordAvatarUrl(user, size) {
   size = size || 256;
+  let url = DISCORD_CDN_BASE + '/embed/avatars/0.png';
   if (user && user.id && user.avatar) {
-    return DISCORD_CDN_BASE + '/avatars/' + encodeURIComponent(user.id) + '/' + encodeURIComponent(user.avatar) + '.' + discordCdnExt(user.avatar) + '?size=' + size;
+    url = DISCORD_CDN_BASE + '/avatars/' + encodeURIComponent(user.id) + '/' + encodeURIComponent(user.avatar) + '.' + discordCdnExt(user.avatar) + '?size=' + size;
   }
-  return DISCORD_CDN_BASE + '/embed/avatars/0.png';
+  return '/api/discord-image?url=' + encodeURIComponent(url);
 }
 
 function founderDiscordDecorationUrl(user, size) {
   size = size || 256;
   const asset = user && user.avatar_decoration_data && user.avatar_decoration_data.asset;
   if (!asset) return '';
-  return DISCORD_CDN_BASE + '/avatar-decoration-presets/' + encodeURIComponent(asset) + '.png?size=' + size + '&passthrough=true';
+  const url = DISCORD_CDN_BASE + '/avatar-decoration-presets/' + encodeURIComponent(asset) + '.png?size=' + size + '&passthrough=true';
+  return '/api/discord-image?url=' + encodeURIComponent(url);
 }
 
 function founderDiscordName(user) {
@@ -12729,11 +12771,14 @@ function setEmailCodeStatus(message, type) {
 function emailDeliveryFailureMessage(data, fallback) {
   data = data || {};
   if (data.email_delivery_error || data.error) return data.email_delivery_error || data.error;
-  if (data.email_error_code === 'E_RECIPIENT_NOT_ALLOWED') {
-    return 'Cloudflare bu alıcıya e-posta göndermeye izin vermiyor. Email Sending için Workers Paid planı açın veya alıcıyı Cloudflare hesabında doğrulayın.';
+  if (data.email_error_code === 'RESEND_API_KEY_MISSING' || data.email_error_code === 'RESEND_API_KEY_INVALID' || data.email_error_code === 'RESEND_FORBIDDEN') {
+    return 'Resend API anahtarı eksik veya geçersiz. RESEND_API_KEY secret değerini kontrol edin.';
   }
-  if (data.email_error_code === 'E_SENDER_NOT_VERIFIED' || data.email_error_code === 'E_SENDER_DOMAIN_NOT_AVAILABLE') {
-    return 'Gönderici alan adı Cloudflare Email Service için hazır değil. reyliar.xyz Email Sending kurulumunu ve no-reply adresini kontrol edin.';
+  if (data.email_error_code === 'RESEND_DOMAIN_NOT_VERIFIED' || data.email_error_code === 'RESEND_VALIDATION_ERROR') {
+    return 'Resend alan adı veya gönderici adresi hazır değil. reyliar.xyz DNS doğrulamasını ve no-reply adresini kontrol edin.';
+  }
+  if (data.email_error_code === 'RESEND_DAILY_LIMIT_EXCEEDED' || data.email_error_code === 'RESEND_RATE_LIMITED' || data.email_error_code === 'RESEND_HTTP_429') {
+    return 'Resend e-posta gönderim limiti doldu. Bir süre sonra tekrar deneyin.';
   }
   return fallback || 'E-posta kodu gönderilemedi.';
 }
@@ -17522,6 +17567,16 @@ async function appendAiMsg(text, options) {
   div.dataset.messageId = messageId;
   const parts = createMessageBody('chat-text');
   div.appendChild(parts.panel);
+
+  if (options.aiProvider) {
+    const aiInfo = document.createElement('div');
+    aiInfo.className = 'ai-msg-info-tag';
+    aiInfo.innerText = options.aiProvider === 'mistral' ? 'Mistral ile yanıtlandı' : 'Gemini ile yanıtlandı';
+    if (options.aiModel) aiInfo.innerText += ` (${options.aiModel})`;
+    if (options.aiFallbackReason === 'rate_limit') aiInfo.innerText += ' - Limit dolduğu için yedek kullanıldı.';
+    div.appendChild(aiInfo);
+  }
+
   div.appendChild(createMessageActions(text, 'ai', messageId));
   flow.insertBefore(div, typing);
   if (options.animate === false) {
@@ -17626,6 +17681,15 @@ function prepareEditedPrompt(prompt) {
 }
 
 // ── Analyze ────────────────────────────────────────────────────────────────────
+function selectAiProvider(provider) {
+  window._selectedAiProvider = provider;
+  const btns = document.querySelectorAll('.ai-provider-btn');
+  btns.forEach(b => {
+    if (b.dataset.provider === provider) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+}
+
 async function analyze() {
   if (_activeAnalyzeController) {
     stopCurrentAnalysis();
@@ -17690,7 +17754,8 @@ async function analyze() {
         chat_id: chat.id,
         chat_title: chat.title || '',
         title_requested: titleRequested,
-        chat_history: historyForApi
+        chat_history: historyForApi,
+        preferred_provider: window._selectedAiProvider || 'auto'
       })
     });
     const data = await res.json();
@@ -17700,16 +17765,25 @@ async function analyze() {
     if (data.result) {
       if (data.chat_title) updateActiveChatTitle(data.chat_title, prompt);
       const aiMessage = addChatMessage('ai', data.result);
-      await appendAiMsg(data.result, { messageId: aiMessage.id });
+      await appendAiMsg(data.result, { 
+        messageId: aiMessage.id, 
+        aiProvider: data.ai_provider, 
+        aiModel: data.ai_model, 
+        aiFallbackReason: data.ai_fallback_reason 
+      });
       setAnalysisStatus('Hazır', 'green');
       showResponseBanner();
     } else if (data.email_verification_required) {
       setAnalysisStatus('E-posta doğrulaması gerekli.', 'amber');
       showVerifyRequiredModal(data.error || 'AI cevaplarına erişmek için e-postanı doğrula.');
     } else if (data.rate_limit) {
-      setAnalysisStatus('API kotası doldu.', 'red');
-      showToast('warning', 'API kota sınırı aşıldı',
-        'Gemini API istek limiti doldu. Birkaç dakika bekleyip tekrar deneyin.', 9000);
+      if (data.ai_rate_limit && data.ai_rate_limit.reset_label) {
+        setAnalysisStatus(`Limit doldu. ${data.ai_rate_limit.reset_label} tekrar deneyin.`, 'red');
+        showToast('warning', 'API kota sınırı aşıldı', `Gemini API limiti doldu. ${data.ai_rate_limit.reset_label} tekrar deneyin.`, 9000);
+      } else {
+        setAnalysisStatus('API kotası doldu.', 'red');
+        showToast('warning', 'API kota sınırı aşıldı', 'Gemini API istek limiti doldu. Birkaç dakika bekleyip tekrar deneyin.', 9000);
+      }
     } else if (data.temporary_unavailable) {
       setAnalysisStatus('Yapay zekâ servisi yoğun.', 'red');
       showToast('warning', 'Yapay zekâ servisi yoğun',
