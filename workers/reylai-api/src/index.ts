@@ -15,9 +15,9 @@ const HTML_HEADERS = {
 
 const VALID_ID = /^[A-Za-z0-9_-]{6,200}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const MAX_CONTEXT_PAGES = 8;
-const CONTEXT_CHAR_LIMIT = 24000;
-const FALLBACK_CHAR_LIMIT = 9000;
+const MAX_CONTEXT_PAGES = 6;
+const CONTEXT_CHAR_LIMIT = 18000;
+const FALLBACK_CHAR_LIMIT = 7000;
 const PASSWORD_ITERATIONS = 100000;
 const SESSION_LONG_DAYS = 30;
 const SESSION_SHORT_HOURS = 12;
@@ -40,8 +40,24 @@ const DM_ATTACHMENT_DATA_URL_LIMIT = 900_000;
 const DM_ATTACHMENT_FILE_LIMIT = 650_000;
 const NO_REPLY_FROM = "no-reply@reyliar.xyz";
 const CONTACT_EMAIL = "contact@reyliar.xyz";
-const GEMINI_DEFAULT_MODEL = "gemini-3.5-flash";
-const GEMINI_DEFAULT_FALLBACK_MODELS = "gemini-flash-latest,gemini-2.5-flash";
+const CONTACT_FORWARD_DEFAULT = "mynamesreyli@gmail.com";
+const REYLAI_PUBLIC_URL = "https://ai.reyliar.xyz";
+const REYLAI_ICON_URL = `${REYLAI_PUBLIC_URL}/static/reylai_icon.png`;
+const MAIL_PANEL_HOST = "mail.reyliar.xyz";
+const MAIL_PANEL_USER_DEFAULT = "reyliar";
+const MAIL_SESSION_COOKIE = "reylai_mail_session";
+const MAIL_SESSION_HOURS = 12;
+const MAIL_REPLY_TEXT_LIMIT = 8000;
+const MAIL_THREAD_FETCH_LIMIT = 360;
+const INBOUND_FORWARD_ALIASES: Record<string, string> = {
+  "reyli@reyliar.xyz": "mynamesreyli@gmail.com",
+  "alkim@reyliar.xyz": "alkimgencali99@gmail.com"
+};
+const RESEND_API_BASE_URL = "https://api.resend.com";
+const RESEND_USER_AGENT = "reylai-api/1.0";
+const RESEND_WEBHOOK_TOLERANCE_SECONDS = 5 * 60;
+const GEMINI_DEFAULT_MODEL = "gemini-3.1-pro";
+const GEMINI_DEFAULT_FALLBACK_MODELS = "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite";
 const GEMINI_PRIMARY_RETRY_DELAYS_MS = [0, 700, 1800];
 const GEMINI_FALLBACK_RETRY_DELAYS_MS = [0, 900];
 const MISTRAL_DEFAULT_API_URL = "https://api.mistral.ai/v1/chat/completions";
@@ -51,6 +67,8 @@ const AI_DEFAULT_FETCH_TIMEOUT_MS = 25000;
 const MEB_SCHOOLS_DEFAULT_API_URL = "https://www.meb.gov.tr/baglantilar/okullar/okullar_ajax.php";
 const MEB_SCHOOLS_CACHE_MS = 6 * 60 * 60 * 1000;
 const MEB_SCHOOLS_FETCH_LIMIT = 100000;
+const DISCORD_IMAGE_PROXY_HOSTS = new Set(["cdn.discordapp.com", "media.discordapp.net"]);
+const DISCORD_IMAGE_PROXY_PATH_RE = /^\/(?:avatars|embed\/avatars|avatar-decoration-presets)\//;
 const SCHOOL_CHANGE_PENDING = "pending";
 const SCHOOL_CHANGE_APPROVED = "approved";
 const SCHOOL_CHANGE_REJECTED = "rejected";
@@ -192,6 +210,8 @@ type AnalyzePayload = {
   prompt?: string;
   title_requested?: boolean;
   chat_history?: Array<{ role?: string; text?: string }>;
+  preferred_provider?: string;
+  ai_provider?: string;
 };
 
 type GeminiMessage = {
@@ -200,18 +220,48 @@ type GeminiMessage = {
 };
 
 type AiProvider = "gemini" | "mistral";
+type AiProviderPreference = AiProvider | "auto";
+
+type AiRateLimitInfo = {
+  provider: AiProvider;
+  model?: string;
+  retry_after_seconds?: number;
+  reset_at?: string;
+  reset_label?: string;
+  message?: string;
+};
 
 type AiCompletion = {
   provider: AiProvider;
   model: string;
   text: string;
   raw: unknown;
+  fallback_from?: AiProvider;
+  fallback_reason?: string;
+  rate_limit?: AiRateLimitInfo;
 };
 
 type AiGenerateOptions = {
   temperature?: number;
   timeoutMs?: number;
+  provider?: AiProviderPreference;
 };
+
+class AiProviderError extends Error {
+  provider: AiProvider;
+  model: string;
+  status: number;
+  retryAfterSeconds: number;
+
+  constructor(message: string, provider: AiProvider, model: string, status = 0, retryAfterSeconds = 0) {
+    super(message);
+    this.name = "AiProviderError";
+    this.provider = provider;
+    this.model = model;
+    this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
 
 type UserRow = {
   id: string;
@@ -389,8 +439,23 @@ type TurnstileResponse = {
   "error-codes"?: string[];
 };
 
-type EmailBinding = {
-  send: (message: Record<string, unknown>) => Promise<unknown>;
+type EmailAddress = string | {
+  email: string;
+  name?: string;
+};
+
+type EmailMessage = {
+  to: string | string[];
+  from: EmailAddress;
+  replyTo?: EmailAddress | EmailAddress[];
+  subject: string;
+  html?: string;
+  text?: string;
+  headers?: Record<string, string>;
+};
+
+type EmailClient = {
+  send: (message: EmailMessage) => Promise<unknown>;
 };
 
 type EmailDeliveryResult = {
@@ -398,6 +463,65 @@ type EmailDeliveryResult = {
   configured: boolean;
   error?: string;
   error_code?: string;
+};
+
+type MailLoginPayload = {
+  username?: string;
+  password?: string;
+};
+
+type MailAuthContext = {
+  username: string;
+  tokenHash: string;
+};
+
+type MailReplyPayload = {
+  body?: string;
+  subject?: string;
+};
+
+type MailAddressParts = {
+  email: string;
+  name: string;
+  raw: string;
+};
+
+type MailMessageRow = {
+  id: string;
+  thread_id: string;
+  resend_email_id?: string | null;
+  direction: "inbound" | "outbound";
+  mailbox: string;
+  from_email: string;
+  from_name?: string | null;
+  to_json: string;
+  reply_to_json?: string | null;
+  subject: string;
+  text_body?: string | null;
+  html_body?: string | null;
+  snippet?: string | null;
+  attachments_json?: string | null;
+  read_at?: string | null;
+  received_at?: string | null;
+  sent_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ResendReceivedEmail = {
+  id?: string;
+  from?: string;
+  to?: string[];
+  subject?: string | null;
+  html?: string | null;
+  text?: string | null;
+  reply_to?: string[];
+  headers?: Record<string, unknown>;
+  message_id?: string | null;
+  attachments?: Array<{
+    filename?: string | null;
+    content_type?: string | null;
+  }>;
 };
 
 type DmMessageRow = {
@@ -565,6 +689,10 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   const url = new URL(request.url);
   const path = url.pathname;
 
+  if (url.hostname.toLowerCase() === MAIL_PANEL_HOST || path === "/mail" || path.startsWith("/mail/")) {
+    return handleMailPanelRequest(request, env, url);
+  }
+
   if (!path.startsWith("/api/")) {
     return text("Not found", 404);
   }
@@ -575,6 +703,14 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 
   if (path === "/api/contact" && request.method === "POST") {
     return handleContactSubmit(request, env);
+  }
+
+  if (path === "/api/discord-image" && request.method === "GET") {
+    return handleDiscordImageProxy(url);
+  }
+
+  if (path === "/api/email/resend/inbound" && request.method === "POST") {
+    return handleResendInboundWebhook(request, env);
   }
 
   if (path === "/api/auth/config" && request.method === "GET") {
@@ -834,6 +970,1141 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   return json({ error: "API endpoint bulunamadı." }, 404);
 }
 
+async function handleMailPanelRequest(request: Request, env: Env, url: URL): Promise<Response> {
+  const path = url.pathname;
+  if (request.method === "GET" && path === "/favicon.ico") return new Response(null, { status: 204 });
+
+  if (path === "/mail/api/login" && request.method === "POST") {
+    return handleMailPanelLogin(request, env);
+  }
+
+  if (path === "/mail/api/logout" && request.method === "POST") {
+    return handleMailPanelLogout(request, env);
+  }
+
+  if (path === "/mail/api/session" && request.method === "GET") {
+    const auth = await requireMailAuth(request, env);
+    if (auth instanceof Response) return auth;
+    return json({ success: true, username: auth.username, mailbox: CONTACT_EMAIL });
+  }
+
+  if (path === "/mail/api/threads" && request.method === "GET") {
+    const auth = await requireMailAuth(request, env);
+    if (auth instanceof Response) return auth;
+    void auth;
+    return handleMailPanelThreads(url, env);
+  }
+
+  if (path.startsWith("/mail/api/threads/")) {
+    const auth = await requireMailAuth(request, env);
+    if (auth instanceof Response) return auth;
+    void auth;
+
+    const parts = path.split("/").filter(Boolean);
+    const threadId = decodeURIComponent(parts[3] || "").trim();
+    const action = parts[4] || "";
+    if (!threadId) return json({ success: false, error: "Thread bulunamadı." }, 400);
+
+    if (!action && request.method === "GET") return handleMailPanelThread(threadId, env);
+    if (action === "read" && request.method === "POST") return handleMailPanelMarkRead(threadId, env);
+    if (action === "reply" && request.method === "POST") return handleMailPanelReply(threadId, request, env);
+  }
+
+  if (path.startsWith("/mail/api/")) {
+    return json({ success: false, error: "Mail endpoint bulunamadı." }, 404);
+  }
+
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return text("Not found", 404);
+  }
+
+  return mailPanelHtmlResponse();
+}
+
+async function handleMailPanelLogin(request: Request, env: Env): Promise<Response> {
+  const payload = await readJson<MailLoginPayload>(request);
+  const username = String(payload.username || "").trim().toLowerCase();
+  const password = String(payload.password || "");
+  const configuredUser = mailPanelUser(env);
+  const configuredPassword = optionalEnv(env, "MAIL_PANEL_PASSWORD");
+  if (!configuredPassword) {
+    return json({ success: false, error: "Mail panel şifresi henüz ayarlanmadı." }, 503);
+  }
+
+  const userOk = constantTimeEqualString(username, configuredUser);
+  const passwordOk = constantTimeEqualString(password, configuredPassword);
+  if (!userOk || !passwordOk) {
+    return json({ success: false, error: "Kullanıcı adı veya şifre hatalı." }, 401);
+  }
+
+  const token = await createMailSession(request, env, configuredUser);
+  return json(
+    { success: true, username: configuredUser, mailbox: CONTACT_EMAIL },
+    200,
+    { "set-cookie": mailSessionCookie(token, MAIL_SESSION_HOURS * 60 * 60) }
+  );
+}
+
+async function handleMailPanelLogout(request: Request, env: Env): Promise<Response> {
+  const token = mailSessionTokenFromRequest(request);
+  if (token) {
+    const tokenHash = await sha256Base64Url(token);
+    await env.DB.prepare("DELETE FROM mail_sessions WHERE token_hash = ?").bind(tokenHash).run();
+  }
+  return json({ success: true }, 200, { "set-cookie": mailExpiredCookie() });
+}
+
+async function handleMailPanelThreads(url: URL, env: Env): Promise<Response> {
+  const search = mailSearchKey(String(url.searchParams.get("q") || "")).slice(0, 120);
+  const unreadOnly = url.searchParams.get("unread") === "1";
+  const rowsResult = await env.DB.prepare(
+    "SELECT * FROM mail_messages WHERE mailbox = ? " +
+    "ORDER BY COALESCE(received_at, sent_at, created_at) DESC LIMIT ?"
+  ).bind(CONTACT_EMAIL, MAIL_THREAD_FETCH_LIMIT).all<MailMessageRow>();
+
+  const grouped = new Map<string, MailMessageRow[]>();
+  for (const row of rowsResult.results || []) {
+    if (search && !mailMessageMatches(row, search)) continue;
+    const list = grouped.get(row.thread_id) || [];
+    list.push(row);
+    grouped.set(row.thread_id, list);
+  }
+
+  let threads = Array.from(grouped.values()).map(publicMailThread);
+  if (unreadOnly) threads = threads.filter((thread) => Number(thread.unread_count || 0) > 0);
+
+  const unread = await env.DB.prepare(
+    "SELECT COUNT(*) AS count FROM mail_messages WHERE mailbox = ? AND direction = 'inbound' AND read_at IS NULL"
+  ).bind(CONTACT_EMAIL).first<{ count: number }>();
+
+  return json({
+    success: true,
+    mailbox: CONTACT_EMAIL,
+    unread_count: Number(unread?.count || 0),
+    threads
+  });
+}
+
+async function handleMailPanelThread(threadId: string, env: Env): Promise<Response> {
+  const rowsResult = await env.DB.prepare(
+    "SELECT * FROM mail_messages WHERE mailbox = ? AND thread_id = ? ORDER BY created_at ASC"
+  ).bind(CONTACT_EMAIL, threadId).all<MailMessageRow>();
+  const rows = rowsResult.results || [];
+  if (!rows.length) return json({ success: false, error: "Thread bulunamadı." }, 404);
+  return json({
+    success: true,
+    thread: publicMailThread([...rows].sort((a, b) => mailRowTime(b).localeCompare(mailRowTime(a)))),
+    messages: rows.map(publicMailMessage)
+  });
+}
+
+async function handleMailPanelMarkRead(threadId: string, env: Env): Promise<Response> {
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE mail_messages SET read_at = ?, updated_at = ? WHERE mailbox = ? AND thread_id = ? AND direction = 'inbound' AND read_at IS NULL"
+  ).bind(now, now, CONTACT_EMAIL, threadId).run();
+  return json({ success: true, read_at: now });
+}
+
+async function handleMailPanelReply(threadId: string, request: Request, env: Env): Promise<Response> {
+  const payload = await readJson<MailReplyPayload>(request);
+  const body = String(payload.body || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim().slice(0, MAIL_REPLY_TEXT_LIMIT);
+  if (body.length < 1) return json({ success: false, error: "Cevap boş olamaz." }, 400);
+
+  const rowsResult = await env.DB.prepare(
+    "SELECT * FROM mail_messages WHERE mailbox = ? AND thread_id = ? ORDER BY created_at DESC"
+  ).bind(CONTACT_EMAIL, threadId).all<MailMessageRow>();
+  const rows = rowsResult.results || [];
+  if (!rows.length) return json({ success: false, error: "Thread bulunamadı." }, 404);
+
+  const latestInbound = rows.find((row) => row.direction === "inbound");
+  if (!latestInbound) return json({ success: false, error: "Cevaplanacak gelen mesaj bulunamadı." }, 400);
+
+  const target = mailReplyTarget(latestInbound);
+  if (!EMAIL_RE.test(target)) return json({ success: false, error: "Cevap hedefi bulunamadı." }, 400);
+
+  const subject = cleanSubjectLine(String(payload.subject || replySubject(latestInbound.subject)), 180);
+  const binding = getEmailClient(env);
+  if (!binding) {
+    return json({ success: false, error: "Resend e-posta servisi henüz hazır değil." }, 503);
+  }
+
+  const htmlBody = contactReplyEmailHtml(body, latestInbound);
+  const textBody = contactReplyEmailText(body, latestInbound);
+  let sendResult: unknown;
+  try {
+    sendResult = await binding.send({
+      to: target,
+      from: { email: CONTACT_EMAIL, name: "ReylAI Contact" },
+      replyTo: { email: CONTACT_EMAIL, name: "ReylAI Contact" },
+      subject,
+      html: htmlBody,
+      text: textBody,
+      headers: {
+        "X-ReylAI-Contact-Thread": threadId,
+        "X-ReylAI-Mail-Panel": MAIL_PANEL_HOST
+      }
+    });
+  } catch (error) {
+    return json(emailSendFailure(error, "Cevap gönderilemedi.", "contact reply email failed"), 502);
+  }
+
+  const now = new Date().toISOString();
+  const id = crypto.randomUUID();
+  const resendId = isRecord(sendResult) && typeof sendResult.id === "string" ? sendResult.id.slice(0, 200) : "";
+  await env.DB.prepare(
+    "INSERT INTO mail_messages (id, thread_id, resend_email_id, direction, mailbox, from_email, from_name, to_json, reply_to_json, subject, text_body, html_body, snippet, attachments_json, read_at, received_at, sent_at, created_at, updated_at) " +
+    "VALUES (?, ?, ?, 'outbound', ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, NULL, ?, ?, ?)"
+  ).bind(
+    id,
+    threadId,
+    resendId || null,
+    CONTACT_EMAIL,
+    CONTACT_EMAIL,
+    "ReylAI Contact",
+    JSON.stringify([target]),
+    JSON.stringify([CONTACT_EMAIL]),
+    subject,
+    body,
+    htmlBody,
+    mailSnippet(body),
+    now,
+    now,
+    now,
+    now
+  ).run();
+
+  const row = await env.DB.prepare("SELECT * FROM mail_messages WHERE id = ?").bind(id).first<MailMessageRow>();
+  return json({ success: true, message: row ? publicMailMessage(row) : null }, 201);
+}
+
+async function requireMailAuth(request: Request, env: Env): Promise<MailAuthContext | Response> {
+  const token = mailSessionTokenFromRequest(request);
+  if (!token) return json({ success: false, auth: false, error: "Oturum gerekli." }, 401);
+
+  const tokenHash = await sha256Base64Url(token);
+  const now = new Date().toISOString();
+  const row = await env.DB.prepare(
+    "SELECT token_hash, username FROM mail_sessions WHERE token_hash = ? AND expires_at > ? LIMIT 1"
+  ).bind(tokenHash, now).first<{ token_hash: string; username: string }>();
+
+  if (!row) {
+    await env.DB.prepare("DELETE FROM mail_sessions WHERE token_hash = ? OR expires_at <= ?").bind(tokenHash, now).run();
+    return json({ success: false, auth: false, error: "Oturum süresi doldu." }, 401, { "set-cookie": mailExpiredCookie() });
+  }
+
+  await env.DB.prepare("UPDATE mail_sessions SET last_seen_at = ? WHERE token_hash = ?").bind(now, tokenHash).run();
+  return { username: row.username, tokenHash: row.token_hash };
+}
+
+async function createMailSession(request: Request, env: Env, username: string): Promise<string> {
+  const token = randomToken(32);
+  const tokenHash = await sha256Base64Url(token);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + MAIL_SESSION_HOURS * 60 * 60 * 1000).toISOString();
+  await env.DB.prepare(
+    "INSERT INTO mail_sessions (token_hash, username, created_at, expires_at, last_seen_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).bind(
+    tokenHash,
+    username,
+    now.toISOString(),
+    expiresAt,
+    now.toISOString(),
+    clientIp(request),
+    (request.headers.get("user-agent") || "").slice(0, 240)
+  ).run();
+  return token;
+}
+
+function mailPanelUser(env: Env): string {
+  return normalizeEmail(optionalEnv(env, "MAIL_PANEL_USER") || MAIL_PANEL_USER_DEFAULT);
+}
+
+function mailSessionTokenFromRequest(request: Request): string {
+  const cookieToken = parseCookies(request.headers.get("cookie") || "")[MAIL_SESSION_COOKIE] || "";
+  const token = cookieToken || bearerToken(request);
+  return /^[A-Za-z0-9_-]{32,200}$/.test(token) ? token : "";
+}
+
+function parseCookies(header: string): Record<string, string> {
+  const cookies: Record<string, string> = {};
+  for (const part of String(header || "").split(";")) {
+    const index = part.indexOf("=");
+    if (index < 0) continue;
+    const name = part.slice(0, index).trim();
+    const value = part.slice(index + 1).trim();
+    if (name) cookies[name] = decodeURIComponent(value);
+  }
+  return cookies;
+}
+
+function mailSessionCookie(token: string, maxAgeSeconds: number): string {
+  return `${MAIL_SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${Math.max(0, Math.floor(maxAgeSeconds))}`;
+}
+
+function mailExpiredCookie(): string {
+  return `${MAIL_SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
+}
+
+function publicMailThread(rows: MailMessageRow[]): Record<string, unknown> {
+  const ordered = [...rows].sort((a, b) => mailRowTime(b).localeCompare(mailRowTime(a)));
+  const latest = ordered[0];
+  const latestInbound = ordered.find((row) => row.direction === "inbound") || latest;
+  const unreadCount = ordered.filter((row) => row.direction === "inbound" && !row.read_at).length;
+  return {
+    id: latest.thread_id,
+    mailbox: latest.mailbox,
+    subject: latest.subject,
+    from_name: mailDisplayName(latestInbound),
+    from_email: latestInbound.from_email,
+    snippet: latest.snippet || mailSnippet(latest.text_body || ""),
+    last_at: mailRowTime(latest),
+    direction: latest.direction,
+    unread_count: unreadCount,
+    message_count: ordered.length,
+    reply_target: latestInbound ? mailReplyTarget(latestInbound) : ""
+  };
+}
+
+function publicMailMessage(row: MailMessageRow): Record<string, unknown> {
+  return {
+    id: row.id,
+    thread_id: row.thread_id,
+    direction: row.direction,
+    mailbox: row.mailbox,
+    from_email: row.from_email,
+    from_name: row.from_name || "",
+    from_display: mailDisplayName(row),
+    to: parseJsonStringArray(row.to_json),
+    reply_to: parseJsonStringArray(row.reply_to_json || "[]"),
+    subject: row.subject,
+    text_body: row.text_body || "",
+    snippet: row.snippet || mailSnippet(row.text_body || ""),
+    attachments: parseJsonValue(row.attachments_json || "[]", []),
+    read_at: row.read_at || "",
+    received_at: row.received_at || "",
+    sent_at: row.sent_at || "",
+    created_at: row.created_at
+  };
+}
+
+function mailMessageMatches(row: MailMessageRow, search: string): boolean {
+  const haystack = [
+    row.subject,
+    row.from_email,
+    row.from_name || "",
+    row.snippet || "",
+    row.text_body || "",
+    parseJsonStringArray(row.to_json).join(" ")
+  ].join(" ");
+  return mailSearchKey(haystack).includes(search);
+}
+
+function mailRowTime(row: MailMessageRow): string {
+  return row.received_at || row.sent_at || row.created_at || "";
+}
+
+function mailDisplayName(row: MailMessageRow): string {
+  return String(row.from_name || "").trim() || row.from_email || "Bilinmiyor";
+}
+
+function mailSearchKey(value: string): string {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i");
+}
+
+function parseJsonStringArray(value: string): string[] {
+  const parsed = parseJsonValue(value, []);
+  return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+}
+
+function parseJsonValue(value: string, fallback: unknown): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function mailReplyTarget(row: MailMessageRow): string {
+  for (const raw of parseJsonStringArray(row.reply_to_json || "[]")) {
+    const parsed = parseEmailAddress(raw).email;
+    if (EMAIL_RE.test(parsed) && parsed !== NO_REPLY_FROM) return parsed;
+  }
+  return EMAIL_RE.test(row.from_email) ? row.from_email : "";
+}
+
+function replySubject(subject: string): string {
+  const clean = cleanSubjectLine(subject || "ReylAI Contact", 180);
+  return /^re:/i.test(clean) ? clean : `Re: ${clean}`;
+}
+
+function mailPanelHtmlResponse(): Response {
+  const headers = new Headers(HTML_HEADERS);
+  headers.set("cache-control", "no-store");
+  headers.set(
+    "content-security-policy",
+    "default-src 'self'; img-src 'self' data:; connect-src 'self' https://cloudflareinsights.com https://*.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+  );
+  headers.set("x-frame-options", "DENY");
+  return new Response(mailPanelHtml(), { headers });
+}
+
+function mailPanelHtml(): string {
+  return `<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>ReylAI Mail</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #05070b;
+        --panel: rgba(10, 18, 31, .84);
+        --panel-2: rgba(15, 25, 42, .92);
+        --line: rgba(226, 232, 240, .14);
+        --text: #edf7ff;
+        --muted: #9fb0c8;
+        --soft: #c7d8f2;
+        --cyan: #42d8c8;
+        --blue: #5fb3ff;
+        --amber: #f5c542;
+        --danger: #fb7185;
+        --ok: #74f0ae;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body { min-height: 100%; }
+      body {
+        margin: 0;
+        background:
+          linear-gradient(180deg, rgba(66, 216, 200, .09), transparent 220px),
+          linear-gradient(135deg, #07111f 0%, #05070b 46%, #10111c 100%);
+        color: var(--text);
+      }
+      button, input, textarea { font: inherit; }
+      button {
+        border: 0;
+        color: inherit;
+        cursor: pointer;
+      }
+      button:disabled { cursor: not-allowed; opacity: .55; }
+      .hidden { display: none !important; }
+      .login-shell {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .login-panel {
+        width: min(420px, 100%);
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(17, 28, 47, .92), rgba(8, 13, 24, .94));
+        border-radius: 8px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, .42);
+        padding: 28px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .mark {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(66, 216, 200, .34);
+        border-radius: 8px;
+        background: linear-gradient(135deg, rgba(66, 216, 200, .20), rgba(95, 179, 255, .14));
+        color: var(--cyan);
+        font-weight: 950;
+      }
+      .brand h1 {
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+      .brand p, .muted {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .login-form {
+        display: grid;
+        gap: 14px;
+        margin-top: 26px;
+      }
+      label {
+        display: grid;
+        gap: 7px;
+        color: var(--soft);
+        font-size: 13px;
+        font-weight: 750;
+      }
+      input, textarea {
+        width: 100%;
+        border: 1px solid rgba(226, 232, 240, .16);
+        border-radius: 8px;
+        background: rgba(3, 7, 18, .58);
+        color: var(--text);
+        outline: none;
+      }
+      input { height: 44px; padding: 0 13px; }
+      textarea {
+        min-height: 132px;
+        resize: vertical;
+        padding: 13px;
+        line-height: 1.55;
+      }
+      input:focus, textarea:focus {
+        border-color: rgba(66, 216, 200, .72);
+        box-shadow: 0 0 0 3px rgba(66, 216, 200, .13);
+      }
+      .primary, .ghost, .icon-btn {
+        min-height: 40px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-weight: 850;
+      }
+      .primary {
+        background: linear-gradient(135deg, var(--cyan), var(--blue));
+        color: #031018;
+        box-shadow: 0 14px 34px rgba(66, 216, 200, .18);
+      }
+      .ghost, .icon-btn {
+        border: 1px solid var(--line);
+        background: rgba(15, 23, 42, .58);
+        color: var(--soft);
+      }
+      .icon-btn {
+        width: 40px;
+        padding: 0;
+        font-size: 18px;
+      }
+      .error {
+        min-height: 20px;
+        margin: 0;
+        color: var(--danger);
+        font-size: 13px;
+      }
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+      .topbar {
+        height: 72px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(5, 7, 11, .74);
+        backdrop-filter: blur(18px);
+      }
+      .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        border: 1px solid rgba(66, 216, 200, .22);
+        border-radius: 999px;
+        padding: 0 12px;
+        color: var(--cyan);
+        background: rgba(66, 216, 200, .08);
+        font-size: 12px;
+        font-weight: 850;
+      }
+      .layout {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 360px minmax(0, 1fr);
+      }
+      .sidebar {
+        min-height: 0;
+        border-right: 1px solid var(--line);
+        background: rgba(7, 12, 22, .74);
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+      .tools {
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .search-row {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 8px;
+      }
+      .segmented {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(3, 7, 18, .42);
+      }
+      .segmented button {
+        min-height: 34px;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--muted);
+        font-weight: 850;
+      }
+      .segmented button.active {
+        background: rgba(66, 216, 200, .16);
+        color: var(--text);
+      }
+      .thread-list {
+        min-height: 0;
+        overflow: auto;
+        padding: 8px;
+      }
+      .thread {
+        width: 100%;
+        text-align: left;
+        display: grid;
+        gap: 7px;
+        padding: 12px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--text);
+      }
+      .thread + .thread { margin-top: 6px; }
+      .thread:hover { background: rgba(148, 163, 184, .08); }
+      .thread.active {
+        border-color: rgba(66, 216, 200, .32);
+        background: linear-gradient(135deg, rgba(66, 216, 200, .13), rgba(95, 179, 255, .08));
+      }
+      .thread-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .sender, .subject {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .sender { font-weight: 900; }
+      .subject { color: var(--soft); font-size: 14px; }
+      .snippet {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.4;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+      .meta-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .badge {
+        min-width: 22px;
+        height: 22px;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 999px;
+        background: var(--amber);
+        color: #151000;
+        padding: 0 7px;
+        font-size: 12px;
+        font-weight: 950;
+      }
+      .detail {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        background: rgba(5, 7, 11, .45);
+      }
+      .detail-head {
+        min-height: 92px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(10, 18, 31, .62);
+      }
+      .detail-title {
+        min-width: 0;
+      }
+      .detail-title h2 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.18;
+        letter-spacing: 0;
+      }
+      .message-scroll {
+        min-height: 0;
+        overflow: auto;
+        padding: 18px 22px;
+      }
+      .message {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+      .message + .message { margin-top: 14px; }
+      .message.outbound {
+        border-color: rgba(66, 216, 200, .24);
+        background: linear-gradient(135deg, rgba(66, 216, 200, .09), rgba(15, 23, 42, .86));
+      }
+      .message-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 13px 15px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .message-body {
+        padding: 16px;
+        color: var(--text);
+        line-height: 1.65;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .attachments {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        padding: 0 16px 16px;
+      }
+      .attachment {
+        border: 1px solid rgba(245, 197, 66, .28);
+        border-radius: 999px;
+        color: var(--amber);
+        padding: 5px 9px;
+        font-size: 12px;
+      }
+      .composer {
+        border-top: 1px solid var(--line);
+        background: rgba(7, 12, 22, .82);
+        padding: 14px 22px 18px;
+      }
+      .composer-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 10px;
+      }
+      .empty {
+        min-height: 100%;
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        text-align: center;
+        padding: 24px;
+      }
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 22px;
+        transform: translateX(-50%);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(8, 13, 24, .96);
+        color: var(--text);
+        padding: 11px 14px;
+        box-shadow: 0 18px 50px rgba(0,0,0,.35);
+        z-index: 20;
+      }
+      @media (max-width: 900px) {
+        .topbar { height: auto; padding: 14px; align-items: flex-start; }
+        .layout { grid-template-columns: 1fr; grid-template-rows: minmax(260px, 42vh) minmax(0, 1fr); }
+        .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+        .detail-head { min-height: auto; align-items: flex-start; }
+      }
+      @media (max-width: 560px) {
+        .login-shell { padding: 14px; }
+        .login-panel { padding: 20px; }
+        .topbar, .detail-head, .composer { padding-left: 14px; padding-right: 14px; }
+        .brand h1 { font-size: 20px; }
+        .top-actions { flex-wrap: wrap; justify-content: flex-end; }
+        .message-scroll { padding: 14px; }
+        .search-row { grid-template-columns: 1fr auto; }
+        .search-row .icon-btn:last-child { grid-column: 2; }
+        .composer-actions { align-items: stretch; flex-direction: column; }
+      }
+    </style>
+  </head>
+  <body>
+    <section id="loginView" class="login-shell">
+      <div class="login-panel">
+        <div class="brand">
+          <div class="mark">R</div>
+          <div>
+            <h1>ReylAI Mail</h1>
+            <p>contact@reyliar.xyz</p>
+          </div>
+        </div>
+        <form id="loginForm" class="login-form">
+          <label>Kullanıcı adı
+            <input id="username" name="username" autocomplete="username" required>
+          </label>
+          <label>Şifre
+            <input id="password" name="password" type="password" autocomplete="current-password" required>
+          </label>
+          <button id="loginButton" class="primary" type="submit">Giriş yap</button>
+          <p id="loginError" class="error"></p>
+        </form>
+      </div>
+    </section>
+
+    <section id="appView" class="app hidden">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark">R</div>
+          <div>
+            <h1>ReylAI Mail</h1>
+            <p id="mailboxLabel">contact@reyliar.xyz</p>
+          </div>
+        </div>
+        <div class="top-actions">
+          <span id="unreadBadge" class="pill">0 okunmamış</span>
+          <button id="refreshButton" class="icon-btn" type="button" title="Yenile" aria-label="Yenile">↻</button>
+          <button id="logoutButton" class="ghost" type="button">Çıkış</button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <aside class="sidebar">
+          <div class="tools">
+            <div class="search-row">
+              <input id="searchInput" placeholder="Ara" autocomplete="off">
+              <button id="searchButton" class="icon-btn" type="button" title="Ara" aria-label="Ara">⌕</button>
+              <button id="clearSearchButton" class="icon-btn" type="button" title="Temizle" aria-label="Temizle">×</button>
+            </div>
+            <div class="segmented" role="tablist" aria-label="Filtre">
+              <button id="allFilter" class="active" type="button">Tüm</button>
+              <button id="unreadFilter" type="button">Okunmamış</button>
+            </div>
+          </div>
+          <div id="threadList" class="thread-list"></div>
+        </aside>
+
+        <section class="detail">
+          <div class="detail-head">
+            <div class="detail-title">
+              <h2 id="threadSubject">Gelen kutusu</h2>
+              <p id="threadMeta" class="muted">contact@reyliar.xyz</p>
+            </div>
+            <span id="threadCount" class="pill">0 mesaj</span>
+          </div>
+          <div id="messageScroll" class="message-scroll">
+            <div class="empty">Bir mesaj seç.</div>
+          </div>
+          <form id="replyForm" class="composer hidden">
+            <label>Cevap
+              <textarea id="replyBody" maxlength="${MAIL_REPLY_TEXT_LIMIT}" placeholder="contact@reyliar.xyz olarak yanıtla"></textarea>
+            </label>
+            <div class="composer-actions">
+              <span id="replyTarget" class="muted"></span>
+              <button id="sendReplyButton" class="primary" type="submit">Gönder</button>
+            </div>
+            <p id="replyError" class="error"></p>
+          </form>
+        </section>
+      </main>
+    </section>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script>
+      (function () {
+        var state = {
+          mailbox: "contact@reyliar.xyz",
+          threads: [],
+          activeThreadId: "",
+          activeThread: null,
+          unreadOnly: false,
+          loading: false
+        };
+
+        var el = {
+          loginView: document.getElementById("loginView"),
+          appView: document.getElementById("appView"),
+          loginForm: document.getElementById("loginForm"),
+          username: document.getElementById("username"),
+          password: document.getElementById("password"),
+          loginButton: document.getElementById("loginButton"),
+          loginError: document.getElementById("loginError"),
+          mailboxLabel: document.getElementById("mailboxLabel"),
+          unreadBadge: document.getElementById("unreadBadge"),
+          refreshButton: document.getElementById("refreshButton"),
+          logoutButton: document.getElementById("logoutButton"),
+          searchInput: document.getElementById("searchInput"),
+          searchButton: document.getElementById("searchButton"),
+          clearSearchButton: document.getElementById("clearSearchButton"),
+          allFilter: document.getElementById("allFilter"),
+          unreadFilter: document.getElementById("unreadFilter"),
+          threadList: document.getElementById("threadList"),
+          threadSubject: document.getElementById("threadSubject"),
+          threadMeta: document.getElementById("threadMeta"),
+          threadCount: document.getElementById("threadCount"),
+          messageScroll: document.getElementById("messageScroll"),
+          replyForm: document.getElementById("replyForm"),
+          replyBody: document.getElementById("replyBody"),
+          replyTarget: document.getElementById("replyTarget"),
+          replyError: document.getElementById("replyError"),
+          sendReplyButton: document.getElementById("sendReplyButton"),
+          toast: document.getElementById("toast")
+        };
+
+        function showLogin() {
+          el.appView.classList.add("hidden");
+          el.loginView.classList.remove("hidden");
+          el.password.value = "";
+          setTimeout(function () { el.username.focus(); }, 0);
+        }
+
+        function showApp() {
+          el.loginView.classList.add("hidden");
+          el.appView.classList.remove("hidden");
+        }
+
+        function toast(message) {
+          el.toast.textContent = message;
+          el.toast.classList.remove("hidden");
+          clearTimeout(toast.timer);
+          toast.timer = setTimeout(function () { el.toast.classList.add("hidden"); }, 2600);
+        }
+
+        async function api(path, options) {
+          var response = await fetch(path, Object.assign({
+            headers: { "content-type": "application/json" },
+            credentials: "same-origin"
+          }, options || {}));
+          var data = {};
+          try { data = await response.json(); } catch (error) {}
+          if (response.status === 401) {
+            showLogin();
+            throw new Error(data.error || "Oturum gerekli.");
+          }
+          if (!response.ok || data.success === false) {
+            throw new Error(data.error || "İşlem tamamlanamadı.");
+          }
+          return data;
+        }
+
+        function escapeHtml(value) {
+          return String(value || "").replace(/[&<>"']/g, function (char) {
+            return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] || char;
+          });
+        }
+
+        function formatTime(value) {
+          if (!value) return "";
+          var date = new Date(value);
+          if (Number.isNaN(date.getTime())) return "";
+          return new Intl.DateTimeFormat("tr-TR", {
+            day: "2-digit",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit"
+          }).format(date);
+        }
+
+        async function checkSession() {
+          try {
+            var data = await api("/mail/api/session");
+            state.mailbox = data.mailbox || state.mailbox;
+            el.mailboxLabel.textContent = state.mailbox;
+            showApp();
+            await loadThreads();
+          } catch (error) {
+            showLogin();
+          }
+        }
+
+        async function loadThreads() {
+          if (state.loading) return;
+          state.loading = true;
+          try {
+            var q = el.searchInput.value.trim();
+            var params = new URLSearchParams();
+            if (q) params.set("q", q);
+            if (state.unreadOnly) params.set("unread", "1");
+            var data = await api("/mail/api/threads" + (params.toString() ? "?" + params.toString() : ""));
+            state.threads = data.threads || [];
+            el.unreadBadge.textContent = String(data.unread_count || 0) + " okunmamış";
+            renderThreads();
+          } catch (error) {
+            toast(error.message);
+          } finally {
+            state.loading = false;
+          }
+        }
+
+        function renderThreads() {
+          if (!state.threads.length) {
+            el.threadList.innerHTML = '<div class="empty">Mesaj yok.</div>';
+            return;
+          }
+          el.threadList.innerHTML = state.threads.map(function (thread) {
+            var active = thread.id === state.activeThreadId ? " active" : "";
+            var unread = Number(thread.unread_count || 0);
+            return '<button class="thread' + active + '" type="button" data-thread="' + escapeHtml(thread.id) + '">' +
+              '<div class="thread-head"><span class="sender">' + escapeHtml(thread.from_name || thread.from_email || "Bilinmiyor") + '</span>' +
+              (unread ? '<span class="badge">' + unread + '</span>' : '<span class="muted">' + escapeHtml(formatTime(thread.last_at)) + '</span>') + '</div>' +
+              '<div class="subject">' + escapeHtml(thread.subject || "Konu yok") + '</div>' +
+              '<div class="snippet">' + escapeHtml(thread.snippet || "") + '</div>' +
+              '<div class="meta-row"><span>' + escapeHtml(thread.direction === "outbound" ? "Gönderildi" : "Geldi") + '</span><span>' + escapeHtml(formatTime(thread.last_at)) + '</span></div>' +
+              '</button>';
+          }).join("");
+        }
+
+        async function openThread(threadId) {
+          state.activeThreadId = threadId;
+          renderThreads();
+          try {
+            var data = await api("/mail/api/threads/" + encodeURIComponent(threadId));
+            state.activeThread = data.thread || null;
+            renderThread(data.thread, data.messages || []);
+            await api("/mail/api/threads/" + encodeURIComponent(threadId) + "/read", { method: "POST", body: "{}" });
+            await loadThreads();
+          } catch (error) {
+            toast(error.message);
+          }
+        }
+
+        function renderThread(thread, messages) {
+          el.threadSubject.textContent = (thread && thread.subject) || "Konu yok";
+          el.threadMeta.textContent = thread ? ((thread.from_name || thread.from_email || "") + " -> " + state.mailbox) : state.mailbox;
+          el.threadCount.textContent = String(messages.length) + " mesaj";
+          el.replyTarget.textContent = thread && thread.reply_target ? "Hedef: " + thread.reply_target : "";
+          el.replyForm.classList.toggle("hidden", !thread || !thread.reply_target);
+          el.replyError.textContent = "";
+          if (!messages.length) {
+            el.messageScroll.innerHTML = '<div class="empty">Mesaj yok.</div>';
+            return;
+          }
+          el.messageScroll.innerHTML = messages.map(function (message) {
+            var attachments = Array.isArray(message.attachments) ? message.attachments : [];
+            var attachmentHtml = attachments.length ? '<div class="attachments">' + attachments.map(function (item) {
+              return '<span class="attachment">' + escapeHtml(item.filename || "dosya") + '</span>';
+            }).join("") + '</div>' : "";
+            return '<article class="message ' + escapeHtml(message.direction || "") + '">' +
+              '<div class="message-meta"><span>' + escapeHtml(message.from_display || message.from_email || "") + '</span><span>' + escapeHtml(formatTime(message.created_at || message.received_at || message.sent_at)) + '</span></div>' +
+              '<div class="message-body">' + escapeHtml(message.text_body || "(boş mesaj)") + '</div>' +
+              attachmentHtml +
+              '</article>';
+          }).join("");
+          el.messageScroll.scrollTop = el.messageScroll.scrollHeight;
+        }
+
+        el.loginForm.addEventListener("submit", async function (event) {
+          event.preventDefault();
+          el.loginError.textContent = "";
+          el.loginButton.disabled = true;
+          try {
+            var data = await api("/mail/api/login", {
+              method: "POST",
+              body: JSON.stringify({ username: el.username.value, password: el.password.value })
+            });
+            state.mailbox = data.mailbox || state.mailbox;
+            el.mailboxLabel.textContent = state.mailbox;
+            showApp();
+            await loadThreads();
+          } catch (error) {
+            el.loginError.textContent = error.message;
+          } finally {
+            el.loginButton.disabled = false;
+          }
+        });
+
+        el.logoutButton.addEventListener("click", async function () {
+          try { await api("/mail/api/logout", { method: "POST", body: "{}" }); } catch (error) {}
+          showLogin();
+        });
+
+        el.refreshButton.addEventListener("click", loadThreads);
+        el.searchButton.addEventListener("click", loadThreads);
+        el.clearSearchButton.addEventListener("click", function () {
+          el.searchInput.value = "";
+          loadThreads();
+        });
+        el.searchInput.addEventListener("keydown", function (event) {
+          if (event.key === "Enter") loadThreads();
+        });
+        el.allFilter.addEventListener("click", function () {
+          state.unreadOnly = false;
+          el.allFilter.classList.add("active");
+          el.unreadFilter.classList.remove("active");
+          loadThreads();
+        });
+        el.unreadFilter.addEventListener("click", function () {
+          state.unreadOnly = true;
+          el.unreadFilter.classList.add("active");
+          el.allFilter.classList.remove("active");
+          loadThreads();
+        });
+        el.threadList.addEventListener("click", function (event) {
+          var button = event.target.closest("[data-thread]");
+          if (button) openThread(button.getAttribute("data-thread"));
+        });
+        el.replyForm.addEventListener("submit", async function (event) {
+          event.preventDefault();
+          if (!state.activeThreadId) return;
+          el.replyError.textContent = "";
+          el.sendReplyButton.disabled = true;
+          try {
+            await api("/mail/api/threads/" + encodeURIComponent(state.activeThreadId) + "/reply", {
+              method: "POST",
+              body: JSON.stringify({ body: el.replyBody.value })
+            });
+            el.replyBody.value = "";
+            toast("Cevap gönderildi.");
+            await openThread(state.activeThreadId);
+          } catch (error) {
+            el.replyError.textContent = error.message;
+          } finally {
+            el.sendReplyButton.disabled = false;
+          }
+        });
+
+        checkSession();
+      }());
+    </script>
+  </body>
+</html>`;
+}
+
 function handleAuthConfig(env: Env): Response {
   const siteKey = optionalEnv(env, "TURNSTILE_SITE_KEY");
   const secretConfigured = Boolean(optionalEnv(env, "TURNSTILE_SECRET_KEY"));
@@ -907,26 +2178,53 @@ async function handleContactSubmit(request: Request, env: Env): Promise<Response
   if (!EMAIL_RE.test(email) || email.length > 254) return json({ success: false, error: "Geçerli bir e-posta gir." }, 400);
   if (message.length < 10) return json({ success: false, error: "Mesajını biraz daha detaylandır." }, 400);
 
-  const binding = getEmailBinding(env);
-  if (!binding) {
-    return json({ success: false, error: "E-posta servisi şu anda hazır değil." }, 503);
-  }
-
   const cleanSubject = subject || "ReylAI iletişim";
   try {
-    await binding.send({
-      to: CONTACT_EMAIL,
-      from: { email: NO_REPLY_FROM, name: "ReylAI İletişim" },
-      replyTo: { email, name },
-      subject: `[ReylAI] ${cleanSubject}`,
-      html: contactEmailHtml(name, email, cleanSubject, message),
-      text: `ReylAI iletişim formu\n\nAd: ${name}\nE-posta: ${email}\nKonu: ${cleanSubject}\n\n${message}`
-    });
+    await storeContactFormMail(env, name, email, cleanSubject, message);
   } catch (error) {
-    return json(emailSendFailure(error, "Mesaj gönderilemedi. Lütfen contact@reyliar.xyz adresine e-posta gönder.", "contact email failed"), 502);
+    console.error(JSON.stringify({
+      level: "error",
+      message: "contact form store failed",
+      detail: error instanceof Error ? error.message : String(error)
+    }));
+    return json({ success: false, error: "Mesaj kaydedilemedi. Lütfen contact@reyliar.xyz adresine e-posta gönder." }, 502);
   }
 
   return json({ success: true });
+}
+
+async function storeContactFormMail(
+  env: Env,
+  name: string,
+  email: string,
+  subject: string,
+  message: string
+): Promise<void> {
+  const now = new Date().toISOString();
+  const id = crypto.randomUUID();
+  const cleanSubject = cleanSubjectLine(subject || "ReylAI iletişim", 180);
+  const textBody = message.slice(0, 12000);
+  const replyAddress = formatEmailAddress({ email, name });
+  const threadId = await findMailThreadId(env, CONTACT_EMAIL, email, cleanSubject, id);
+
+  await env.DB.prepare(
+    "INSERT INTO mail_messages (id, thread_id, resend_email_id, direction, mailbox, from_email, from_name, to_json, reply_to_json, subject, text_body, html_body, snippet, attachments_json, read_at, received_at, sent_at, created_at, updated_at) " +
+    "VALUES (?, ?, NULL, 'inbound', ?, ?, ?, ?, ?, ?, ?, '', ?, '[]', NULL, ?, NULL, ?, ?)"
+  ).bind(
+    id,
+    threadId,
+    CONTACT_EMAIL,
+    email,
+    name,
+    JSON.stringify([CONTACT_EMAIL]),
+    JSON.stringify([replyAddress]),
+    cleanSubject,
+    textBody,
+    mailSnippet(textBody),
+    now,
+    now,
+    now
+  ).run();
 }
 
 async function handleSignup(request: Request, env: Env): Promise<Response> {
@@ -2585,7 +3883,7 @@ function validateAvatarDataUrl(value: string): string {
 }
 
 async function sendVerificationCode(env: Env, user: UserRow): Promise<EmailDeliveryResult> {
-  const binding = getEmailBinding(env);
+  const binding = getEmailClient(env);
   if (!binding) {
     return { sent: false, configured: false, error: "E-postana kod göndermek için servis henüz hazır değil." };
   }
@@ -2615,7 +3913,7 @@ async function sendVerificationCode(env: Env, user: UserRow): Promise<EmailDeliv
 
 async function sendEmailChangeCode(env: Env, user: UserRow, nextEmail: string): Promise<EmailDeliveryResult> {
   const email = normalizeEmail(nextEmail);
-  const binding = getEmailBinding(env);
+  const binding = getEmailClient(env);
   if (!binding) {
     return { sent: false, configured: false, error: "E-postana kod göndermek için servis henüz hazır değil." };
   }
@@ -2644,7 +3942,7 @@ async function sendEmailChangeCode(env: Env, user: UserRow, nextEmail: string): 
 }
 
 async function sendPasswordChangeCode(env: Env, user: UserRow): Promise<EmailDeliveryResult> {
-  const binding = getEmailBinding(env);
+  const binding = getEmailClient(env);
   if (!binding) {
     return { sent: false, configured: false, error: "E-postana kod göndermek için servis henüz hazır değil." };
   }
@@ -2680,7 +3978,7 @@ async function sendDmNotificationEmail(
   unreadCount: number,
   message: Record<string, unknown> | null
 ): Promise<void> {
-  const binding = getEmailBinding(env);
+  const binding = getEmailClient(env);
   if (!binding) return;
 
   const to = normalizeEmail(String(recipient.email || ""));
@@ -2753,33 +4051,82 @@ function dmNotificationEmailHtml(senderName: string, countText: string, snippet:
 </html>`;
 }
 
-function contactEmailHtml(name: string, email: string, subject: string, message: string): string {
-  const safeName = escapeHtml(name);
-  const safeEmail = escapeHtml(email);
-  const safeSubject = escapeHtml(subject);
-  const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
+function contactReplyEmailHtml(message: string, original: MailMessageRow): string {
+  const safeSubject = escapeHtml(original.subject || "ReylAI Contact");
+  const greeting = `Selam ${escapeHtml(contactRecipientName(original))},`;
+  return contactEmailDocument(
+    safeSubject,
+    greeting,
+    contactTextParagraphs(message),
+    "ReylAI",
+    "ReylAI",
+    `<a href="${REYLAI_PUBLIC_URL}" style="color:#93c5fd;text-decoration:none;">ai.reyliar.xyz</a> &bull; <a href="mailto:${CONTACT_EMAIL}" style="color:#93c5fd;text-decoration:none;">${CONTACT_EMAIL}</a>`,
+    `Bu e-posta ReylAI Contact tarafından gönderildi. Soruların için <a href="mailto:${CONTACT_EMAIL}" style="color:#93c5fd;">${CONTACT_EMAIL}</a> adresine cevap verebilirsin.`
+  );
+}
+
+function contactReplyEmailText(message: string, original: MailMessageRow): string {
+  return [
+    `Selam ${contactRecipientName(original)},`,
+    "",
+    message,
+    "",
+    "- ReylAI",
+    "",
+    `ReylAI | ai.reyliar.xyz | ${CONTACT_EMAIL}`
+  ].join("\n");
+}
+
+function contactEmailDocument(
+  title: string,
+  greeting: string,
+  bodyHtml: string,
+  signatureName: string,
+  cardName: string,
+  cardMetaHtml: string,
+  footerHtml: string
+): string {
   return `<!doctype html>
 <html lang="tr">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>ReylAI iletişim formu</title>
+    <title>ReylAI Contact</title>
   </head>
   <body style="margin:0;background:#030712;color:#eef5ff;font-family:Inter,Segoe UI,Arial,sans-serif;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:linear-gradient(135deg,#061a3a,#030712);padding:32px 14px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;border:1px solid rgba(255,255,255,.16);border-radius:26px;background:rgba(18,31,58,.88);overflow:hidden;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;border:1px solid rgba(255,255,255,.16);border-radius:26px;background:rgba(18,31,58,.88);overflow:hidden;">
             <tr>
-              <td style="padding:28px 28px 18px;">
-                <div style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#93c5fd;font-weight:900;">ReylAI İletişim</div>
-                <h1 style="margin:10px 0 8px;font-size:26px;line-height:1.12;color:#fff;">${safeSubject}</h1>
-                <p style="margin:0;color:#c7d8f2;font-size:15px;line-height:1.65;">${safeName} (${safeEmail}) iletişim formundan mesaj gönderdi.</p>
+              <td align="center" style="background:linear-gradient(135deg,rgba(96,165,250,.22),rgba(66,216,200,.14));padding:24px 24px 26px;color:#ffffff;">
+                <img src="${REYLAI_ICON_URL}" width="58" height="58" alt="ReylAI" style="display:block;width:58px;height:58px;border-radius:16px;margin:0 auto 12px;object-fit:cover;">
+                <div style="font-size:25px;line-height:1;font-family:Georgia,serif;font-style:italic;color:#ffffff;">ReylAI</div>
+                <div style="margin-top:18px;font-size:25px;font-weight:900;letter-spacing:0;">Contact</div>
               </td>
             </tr>
             <tr>
-              <td style="padding:10px 28px 30px;">
-                <div style="border:1px solid rgba(96,165,250,.24);border-radius:22px;background:rgba(15,23,42,.58);padding:18px;color:#eef5ff;font-size:15px;line-height:1.65;">${safeMessage}</div>
+              <td style="padding:36px 28px 28px;">
+                <h1 style="margin:0 0 22px;color:#ffffff;font-size:24px;line-height:1.25;font-weight:900;">${title}</h1>
+                <p style="margin:0 0 18px;color:#c7d8f2;font-size:16px;line-height:1.7;">${greeting}</p>
+                ${bodyHtml}
+                <p style="margin:28px 0 0;color:#8ea0bd;font-size:15px;line-height:1.7;">- ${signatureName}</p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:34px;border:1px solid rgba(96,165,250,.24);border-radius:22px;background:rgba(15,23,42,.58);">
+                  <tr>
+                    <td style="width:76px;padding:20px 0 20px 24px;vertical-align:middle;">
+                      <img src="${REYLAI_ICON_URL}" width="44" height="44" alt="ReylAI" style="display:block;width:44px;height:44px;border-radius:12px;object-fit:cover;">
+                    </td>
+                    <td style="padding:20px 24px 20px 18px;vertical-align:middle;">
+                      <div style="font-size:16px;font-weight:900;color:#ffffff;">${cardName}</div>
+                      <div style="margin-top:6px;font-size:14px;line-height:1.55;color:#c7d8f2;">${cardMetaHtml}</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="border-top:1px solid rgba(255,255,255,.12);background:rgba(3,7,18,.28);padding:20px 28px;color:#8ea0bd;font-size:13px;line-height:1.6;">
+                ${footerHtml}
               </td>
             </tr>
           </table>
@@ -2790,9 +4137,547 @@ function contactEmailHtml(name: string, email: string, subject: string, message:
 </html>`;
 }
 
-function getEmailBinding(env: Env): EmailBinding | null {
-  const value = (env as unknown as Record<string, unknown>).EMAIL;
-  return isRecord(value) && typeof value.send === "function" ? value as EmailBinding : null;
+function contactTextParagraphs(value: string): string {
+  const text = String(value || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+  if (!text) return `<p style="margin:0 0 18px;color:#c7d8f2;font-size:16px;line-height:1.7;">(boş mesaj)</p>`;
+  return text.split(/\n{2,}/).map((part) => {
+    const safePart = escapeHtml(part.trim()).replace(/\n/g, "<br>");
+    return `<p style="margin:0 0 18px;color:#c7d8f2;font-size:16px;line-height:1.7;">${safePart}</p>`;
+  }).join("");
+}
+
+function contactRecipientName(original: MailMessageRow): string {
+  const name = String(original.from_name || "").trim();
+  if (name) return name.replace(/\s+/g, " ").slice(0, 80);
+  const email = normalizeEmail(original.from_email || "");
+  return (email.split("@")[0] || "kullanıcı").slice(0, 48);
+}
+
+async function handleResendInboundWebhook(request: Request, env: Env): Promise<Response> {
+  const payload = await request.text();
+  const verification = await verifyResendWebhookRequest(request.headers, payload, env);
+  if (!verification.ok) {
+    return json({ success: false, error: verification.error }, verification.status);
+  }
+
+  let event: unknown;
+  try {
+    event = JSON.parse(payload);
+  } catch {
+    return json({ success: false, error: "Geçersiz Resend webhook gövdesi." }, 400);
+  }
+
+  if (!isRecord(event) || event.type !== "email.received") {
+    return json({ success: true, ignored: true });
+  }
+
+  const eventData = isRecord(event.data) ? event.data : {};
+  const recipients = stringArray(eventData.to).map(normalizeEmail);
+  const route = inboundForwardRoute(env, recipients);
+  if (!route) {
+    return json({ success: true, ignored: true });
+  }
+
+  const emailId = cleanEmailHeaderValue(String(eventData.email_id || "")).slice(0, 200);
+  if (!emailId) {
+    return json({ success: false, error: "Resend webhook e-posta id'si eksik." }, 400);
+  }
+
+  try {
+    const received = await getResendReceivedEmail(env, emailId);
+    const subject = cleanSubjectLine(String(received.subject || eventData.subject || "Konu yok"), 180);
+    const sender = inboundLogicalSender(received, eventData);
+    if (route.recipient === CONTACT_EMAIL) {
+      await storeInboundMail(env, route.recipient, emailId, received, eventData);
+      return json({ success: true, stored: true, forwarded: false });
+    }
+
+    const binding = getEmailClient(env);
+    if (!binding) {
+      return json({ success: false, error: "Resend e-posta servisi henüz hazır değil." }, 503);
+    }
+
+    const replyTo = inboundReplyTo(received, eventData);
+    const message: EmailMessage = {
+      to: route.forwardTo,
+      from: { email: route.recipient, name: inboundSenderName(sender) },
+      subject: `[ReylAI ${route.recipient}] ${subject}`,
+      html: inboundContactForwardHtml(received, eventData),
+      text: inboundContactForwardText(received, eventData),
+      headers: {
+        "X-ReylAI-Inbound-Email-Id": emailId,
+        "X-ReylAI-Inbound-To": route.recipient
+      }
+    };
+    if (replyTo) message.replyTo = replyTo;
+
+    await binding.send(message);
+    return json({ success: true, forwarded: true });
+  } catch (error) {
+    const fallback = route.recipient === CONTACT_EMAIL ? "Gelen e-posta kaydedilemedi." : "Gelen e-posta iletilemedi.";
+    const logMessage = route.recipient === CONTACT_EMAIL ? "resend inbound store failed" : "resend inbound forward failed";
+    return json(emailSendFailure(error, fallback, logMessage), 502);
+  }
+}
+
+function getEmailClient(env: Env): EmailClient | null {
+  const apiKey = optionalEnv(env, "RESEND_API_KEY").trim();
+  if (!apiKey) return null;
+  return {
+    send: (message: EmailMessage) => sendResendEmail(env, apiKey, message)
+  };
+}
+
+async function sendResendEmail(env: Env, apiKey: string, message: EmailMessage): Promise<unknown> {
+  const body: Record<string, unknown> = {
+    from: formatEmailAddress(message.from),
+    to: message.to,
+    subject: cleanSubjectLine(message.subject, 998)
+  };
+  if (typeof message.html === "string") body.html = message.html;
+  if (typeof message.text === "string") body.text = message.text;
+  if (message.replyTo) {
+    body.reply_to = Array.isArray(message.replyTo)
+      ? message.replyTo.map(formatEmailAddress)
+      : formatEmailAddress(message.replyTo);
+  }
+  if (message.headers && Object.keys(message.headers).length) {
+    body.headers = Object.fromEntries(
+      Object.entries(message.headers).map(([key, value]) => [
+        cleanEmailHeaderValue(key).slice(0, 128),
+        cleanEmailHeaderValue(value).slice(0, 998)
+      ]).filter(([key]) => key)
+    );
+  }
+
+  const response = await fetch(`${resendApiBaseUrl(env)}/emails`, {
+    method: "POST",
+    headers: resendHeaders(apiKey),
+    body: JSON.stringify(body)
+  });
+  const responseBody = await readResendResponseBody(response);
+  if (!response.ok) throw createResendError(response.status, responseBody);
+  return responseBody;
+}
+
+async function getResendReceivedEmail(env: Env, emailId: string): Promise<ResendReceivedEmail> {
+  const apiKey = optionalEnv(env, "RESEND_API_KEY").trim();
+  if (!apiKey) throw createCodedError("RESEND_API_KEY_MISSING", "Resend API anahtarı eksik.");
+
+  const response = await fetch(
+    `${resendApiBaseUrl(env)}/emails/receiving/${encodeURIComponent(emailId)}?html_format=cid`,
+    { headers: resendHeaders(apiKey) }
+  );
+  const responseBody = await readResendResponseBody(response);
+  if (!response.ok) throw createResendError(response.status, responseBody);
+  return isRecord(responseBody) ? responseBody as ResendReceivedEmail : {};
+}
+
+function resendApiBaseUrl(env: Env): string {
+  return (optionalEnv(env, "RESEND_API_URL") || RESEND_API_BASE_URL).replace(/\/+$/, "");
+}
+
+function resendHeaders(apiKey: string): HeadersInit {
+  return {
+    "authorization": `Bearer ${apiKey}`,
+    "content-type": "application/json",
+    "user-agent": RESEND_USER_AGENT
+  };
+}
+
+async function readResendResponseBody(response: Response): Promise<unknown> {
+  const body = await response.text();
+  if (!body) return {};
+  try {
+    return JSON.parse(body);
+  } catch {
+    return { message: body };
+  }
+}
+
+function createResendError(status: number, body: unknown): Error {
+  const detail = resendErrorDetail(body) || `Resend API HTTP ${status}`;
+  return createCodedError(resendErrorCode(status, body, detail), detail, status);
+}
+
+function createCodedError(code: string, message: string, status?: number): Error {
+  const error = new Error(message) as Error & { code?: string; status?: number };
+  error.code = code;
+  error.status = status;
+  return error;
+}
+
+function resendErrorDetail(body: unknown): string {
+  if (!isRecord(body)) return "";
+  if (typeof body.message === "string") return body.message;
+  if (typeof body.error === "string") return body.error;
+  if (typeof body.name === "string") return body.name;
+  return "";
+}
+
+function resendErrorCode(status: number, body: unknown, detail: string): string {
+  const name = isRecord(body) && typeof body.name === "string" ? body.name : "";
+  const haystack = `${name} ${detail}`.toLowerCase();
+  if (status === 401) return "RESEND_API_KEY_MISSING";
+  if (status === 403) return "RESEND_API_KEY_INVALID";
+  if (status === 429 || haystack.includes("rate limit")) return "RESEND_RATE_LIMITED";
+  if (haystack.includes("daily") && haystack.includes("limit")) return "RESEND_DAILY_LIMIT_EXCEEDED";
+  if (haystack.includes("domain") && (haystack.includes("verify") || haystack.includes("verified"))) return "RESEND_DOMAIN_NOT_VERIFIED";
+  if (haystack.includes("suppression") || haystack.includes("suppressed")) return "RESEND_RECIPIENT_SUPPRESSED";
+  if (name) return `RESEND_${name.toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`;
+  return `RESEND_HTTP_${status}`;
+}
+
+function formatEmailAddress(address: EmailAddress): string {
+  if (typeof address === "string") return cleanEmailHeaderValue(address);
+  const email = cleanEmailHeaderValue(address.email);
+  const name = cleanEmailHeaderValue(address.name || "").replace(/[<>]/g, "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return name ? `"${name}" <${email}>` : email;
+}
+
+function cleanEmailHeaderValue(value: string): string {
+  return String(value || "").replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function cleanSubjectLine(value: string, max: number): string {
+  return cleanEmailHeaderValue(value || "Konu yok").slice(0, max);
+}
+
+function inboundForwardRoute(env: Env, recipients: string[]): { recipient: string; forwardTo: string } | null {
+  for (const recipient of recipients.map(normalizeEmail)) {
+    if (recipient === CONTACT_EMAIL) {
+      const configured = normalizeEmail(optionalEnv(env, "CONTACT_FORWARD_TO"));
+      return {
+        recipient,
+        forwardTo: EMAIL_RE.test(configured) ? configured : CONTACT_FORWARD_DEFAULT
+      };
+    }
+
+    const forwardTo = INBOUND_FORWARD_ALIASES[recipient];
+    if (forwardTo) return { recipient, forwardTo };
+  }
+  return null;
+}
+
+async function storeInboundMail(
+  env: Env,
+  mailbox: string,
+  emailId: string,
+  email: ResendReceivedEmail,
+  eventData: Record<string, unknown>
+): Promise<void> {
+  if (mailbox !== CONTACT_EMAIL) return;
+  const now = new Date().toISOString();
+  const subject = cleanSubjectLine(String(email.subject || eventData.subject || "Konu yok"), 180);
+  const from = inboundLogicalSender(email, eventData);
+  const toValues = stringArray(email.to || eventData.to).map(cleanEmailHeaderValue).filter(Boolean);
+  const replyToValues = stringArray(email.reply_to || eventData.reply_to).map(cleanEmailHeaderValue).filter(Boolean);
+  const preferredReply = replyToValues.map((value) => parseEmailAddress(value).email).find((value) => EMAIL_RE.test(value));
+  const participant = preferredReply || from.email;
+  const threadId = await findMailThreadId(env, mailbox, participant, subject, emailId);
+  const textBody = inboundBodyText(email).slice(0, 12000);
+  const htmlBody = typeof email.html === "string" ? email.html.slice(0, 60000) : "";
+  const attachments = mailAttachmentSummary(email);
+  const receivedAt = mailEventTimestamp(email, eventData) || now;
+
+  await env.DB.prepare(
+    "INSERT OR IGNORE INTO mail_messages (id, thread_id, resend_email_id, direction, mailbox, from_email, from_name, to_json, reply_to_json, subject, text_body, html_body, snippet, attachments_json, read_at, received_at, sent_at, created_at, updated_at) " +
+    "VALUES (?, ?, ?, 'inbound', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, ?)"
+  ).bind(
+    crypto.randomUUID(),
+    threadId,
+    emailId,
+    mailbox,
+    from.email || cleanEmailHeaderValue(String(email.from || eventData.from || "unknown")).slice(0, 254),
+    from.name,
+    JSON.stringify(toValues),
+    JSON.stringify(replyToValues),
+    subject,
+    textBody,
+    htmlBody,
+    mailSnippet(textBody),
+    JSON.stringify(attachments),
+    receivedAt,
+    receivedAt,
+    now
+  ).run();
+}
+
+async function findMailThreadId(
+  env: Env,
+  mailbox: string,
+  participantEmail: string,
+  subject: string,
+  fallback: string
+): Promise<string> {
+  const subjectKey = mailSubjectKey(subject);
+  const participant = normalizeEmail(participantEmail);
+  if (!participant || !subjectKey) return fallback;
+
+  const rows = await env.DB.prepare(
+    "SELECT thread_id, subject, from_email, to_json, reply_to_json FROM mail_messages " +
+    "WHERE mailbox = ? AND (from_email = ? OR to_json LIKE ? OR reply_to_json LIKE ?) " +
+    "ORDER BY created_at DESC LIMIT 80"
+  ).bind(mailbox, participant, `%${participant}%`, `%${participant}%`).all<Pick<MailMessageRow, "thread_id" | "subject" | "from_email" | "to_json" | "reply_to_json">>();
+
+  for (const row of rows.results || []) {
+    if (mailSubjectKey(row.subject) === subjectKey) return row.thread_id;
+  }
+  return fallback;
+}
+
+function parseEmailAddress(value: string): MailAddressParts {
+  const raw = decodeEmailHeaderWords(cleanEmailHeaderValue(value));
+  const bracket = raw.match(/^(.*?)<([^<>]+)>$/);
+  const emailValue = bracket ? bracket[2] : (raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "");
+  const nameValue = bracket ? bracket[1] : "";
+  return {
+    email: normalizeEmail(emailValue.replace(/[<>,;]/g, "")),
+    name: cleanEmailHeaderValue(nameValue.trim().replace(/^"+|"+$/g, "").replace(/[<>]/g, "")).slice(0, 160),
+    raw
+  };
+}
+
+function decodeEmailHeaderWords(value: string): string {
+  return String(value || "").replace(/=\?([^?]+)\?([bqBQ])\?([^?]+)\?=/g, (_match, charsetRaw, encodingRaw, textRaw) => {
+    const charset = String(charsetRaw || "").toLowerCase();
+    const encoding = String(encodingRaw || "").toUpperCase();
+    try {
+      let bytes: Uint8Array;
+      if (encoding === "B") {
+        bytes = base64ToBytes(String(textRaw || ""));
+      } else {
+        const decoded = String(textRaw || "")
+          .replace(/_/g, " ")
+          .replace(/=([0-9A-F]{2})/gi, (_hexMatch, hex) => String.fromCharCode(parseInt(hex, 16)));
+        bytes = Uint8Array.from(decoded, (char) => char.charCodeAt(0));
+      }
+      const label = charset.includes("8859-9") ? "iso-8859-9" : (charset || "utf-8");
+      return new TextDecoder(label).decode(bytes);
+    } catch {
+      return String(textRaw || "");
+    }
+  });
+}
+
+function inboundLogicalSender(email: ResendReceivedEmail, eventData: Record<string, unknown>): MailAddressParts {
+  const from = parseEmailAddress(resendReceivedHeader(email, "from") || String(email.from || eventData.from || ""));
+  const replyTo = [
+    resendReceivedHeader(email, "reply-to"),
+    ...stringArray(email.reply_to || eventData.reply_to)
+  ]
+    .filter(Boolean)
+    .map(parseEmailAddress)
+    .find((item) => EMAIL_RE.test(item.email) && item.email !== CONTACT_EMAIL && item.email !== NO_REPLY_FROM);
+  if (replyTo && (!from.email || from.email === CONTACT_EMAIL || from.email === NO_REPLY_FROM)) {
+    return {
+      ...replyTo,
+      name: replyTo.name || from.name
+    };
+  }
+  return from.email ? from : (replyTo || from);
+}
+
+function resendReceivedHeader(email: ResendReceivedEmail, key: string): string {
+  const headers = isRecord(email.headers) ? email.headers : {};
+  const lowerKey = key.toLowerCase();
+  for (const [name, value] of Object.entries(headers)) {
+    if (name.toLowerCase() === lowerKey) return cleanEmailHeaderValue(String(value || ""));
+  }
+  return "";
+}
+
+function inboundSenderName(sender: MailAddressParts): string {
+  return cleanEmailHeaderValue(sender.name || sender.email || "ReylAI Contact").slice(0, 120);
+}
+
+function mailAddressDisplay(address: MailAddressParts): string {
+  if (address.name && address.email) return `${address.name} <${address.email}>`;
+  return address.name || address.email || "Bilinmiyor";
+}
+
+function mailSubjectKey(subject: string): string {
+  return cleanSubjectLine(subject || "", 180)
+    .replace(/^(\[[^\]]+\]\s*)+/i, "")
+    .replace(/^((re|fw|fwd)\s*:\s*)+/i, "")
+    .replace(/^(\[[^\]]+\]\s*)+/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function mailAttachmentSummary(email: ResendReceivedEmail): Array<Record<string, string>> {
+  const attachments = Array.isArray(email.attachments) ? email.attachments : [];
+  return attachments.slice(0, 20).map((attachment) => ({
+    filename: cleanEmailHeaderValue(String(attachment.filename || "dosya")).slice(0, 180),
+    content_type: cleanEmailHeaderValue(String(attachment.content_type || "")).slice(0, 120)
+  }));
+}
+
+function mailEventTimestamp(email: ResendReceivedEmail, eventData: Record<string, unknown>): string {
+  const emailRecord = email as Record<string, unknown>;
+  const candidates = [
+    String(emailRecord.created_at || ""),
+    String(eventData.created_at || ""),
+    String(eventData.createdAt || "")
+  ];
+  for (const candidate of candidates) {
+    const value = candidate.slice(0, 40);
+    if (value && !Number.isNaN(Date.parse(value))) return new Date(value).toISOString();
+  }
+  return "";
+}
+
+function mailSnippet(value: string): string {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, 260);
+}
+
+function inboundReplyTo(email: ResendReceivedEmail, eventData: Record<string, unknown>): string {
+  const replyTo = stringArray(email.reply_to).find(Boolean) || String(email.from || eventData.from || "");
+  return cleanEmailHeaderValue(replyTo);
+}
+
+function inboundContactForwardHtml(email: ResendReceivedEmail, eventData: Record<string, unknown>): string {
+  const sender = inboundLogicalSender(email, eventData);
+  const fromRaw = mailAddressDisplay(sender);
+  const from = escapeHtml(fromRaw);
+  const toRaw = stringArray(email.to || eventData.to).join(", ") || CONTACT_EMAIL;
+  const to = escapeHtml(toRaw);
+  const subject = escapeHtml(cleanSubjectLine(String(email.subject || eventData.subject || "Konu yok"), 180));
+  const body = contactTextParagraphs(inboundBodyText(email));
+  const attachments = Array.isArray(email.attachments) ? email.attachments : [];
+  const attachmentNote = attachments.length
+    ? `<p style="margin:0 0 18px;color:#8ea0bd;font-size:14px;line-height:1.7;">${attachments.length} ek var.</p>`
+    : "";
+  return contactEmailDocument(
+    subject,
+    "Merhaba ReylAI,",
+    [
+      `<p style="margin:0 0 18px;color:#c7d8f2;font-size:16px;line-height:1.7;">${from}, ${to} adresine mesaj gönderdi.</p>`,
+      body,
+      attachmentNote
+    ].join(""),
+    "ReylAI Contact",
+    "ReylAI",
+    `<a href="${REYLAI_PUBLIC_URL}" style="color:#93c5fd;text-decoration:none;">ai.reyliar.xyz</a> &bull; <a href="mailto:${CONTACT_EMAIL}" style="color:#93c5fd;text-decoration:none;">${CONTACT_EMAIL}</a>`,
+    `${from} adresine cevap vermek için bu e-postayı yanıtla.`
+  );
+}
+
+function inboundContactForwardText(email: ResendReceivedEmail, eventData: Record<string, unknown>): string {
+  const attachments = Array.isArray(email.attachments) ? email.attachments.length : 0;
+  const from = mailAddressDisplay(inboundLogicalSender(email, eventData));
+  const to = stringArray(email.to || eventData.to).join(", ") || CONTACT_EMAIL;
+  return [
+    "Merhaba ReylAI,",
+    "",
+    `${from}, ${to} adresine mesaj gönderdi.`,
+    "",
+    inboundBodyText(email) || "(boş mesaj)",
+    "",
+    attachments ? `${attachments} ek var.` : "",
+    "",
+    "- ReylAI Contact"
+  ].filter((line) => line !== "").join("\n");
+}
+
+function inboundBodyText(email: ResendReceivedEmail): string {
+  const text = typeof email.text === "string" ? email.text.trim() : "";
+  if (text) return text.slice(0, 12000);
+  const html = typeof email.html === "string" ? email.html : "";
+  return htmlToPlainText(html).slice(0, 12000);
+}
+
+function htmlToPlainText(html: string): string {
+  return String(html || "")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s+/g, "\n")
+    .trim();
+}
+
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string");
+  return typeof value === "string" ? [value] : [];
+}
+
+async function verifyResendWebhookRequest(
+  headers: Headers,
+  payload: string,
+  env: Env
+): Promise<{ ok: true; status: 200 } | { ok: false; status: number; error: string }> {
+  const secret = optionalEnv(env, "RESEND_WEBHOOK_SECRET").trim();
+  if (!secret) {
+    return { ok: false, status: 503, error: "Resend webhook secret henüz yapılandırılmadı." };
+  }
+
+  const id = headers.get("svix-id") || "";
+  const timestamp = headers.get("svix-timestamp") || "";
+  const signature = headers.get("svix-signature") || "";
+  if (!id || !timestamp || !signature) {
+    return { ok: false, status: 400, error: "Resend webhook imza başlıkları eksik." };
+  }
+
+  const timestampSeconds = Number(timestamp);
+  if (!Number.isFinite(timestampSeconds)) {
+    return { ok: false, status: 400, error: "Resend webhook timestamp geçersiz." };
+  }
+
+  const age = Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds);
+  if (age > RESEND_WEBHOOK_TOLERANCE_SECONDS) {
+    return { ok: false, status: 400, error: "Resend webhook imzasının süresi doldu." };
+  }
+
+  const expected = await svixSignature(secret, `${id}.${timestamp}.${payload}`);
+  const provided = signature.split(" ").map((item) => item.trim()).filter(Boolean);
+  const valid = provided.some((item) => item.startsWith("v1,") && constantTimeEqualString(item.slice(3), expected));
+  return valid ? { ok: true, status: 200 } : { ok: false, status: 400, error: "Resend webhook imzası geçersiz." };
+}
+
+async function svixSignature(secret: string, signedContent: string): Promise<string> {
+  const secretBytes = decodeBase64Url(secret.startsWith("whsec_") ? secret.slice(6) : secret);
+  const keyData = new ArrayBuffer(secretBytes.byteLength);
+  new Uint8Array(keyData).set(secretBytes);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signedContent));
+  return encodeBase64(new Uint8Array(signature));
+}
+
+function decodeBase64Url(value: string): Uint8Array {
+  let normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  normalized += "=".repeat((4 - (normalized.length % 4)) % 4);
+  return Uint8Array.from(atob(normalized), (char) => char.charCodeAt(0));
+}
+
+function encodeBase64(bytes: Uint8Array): string {
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary);
+}
+
+function constantTimeEqualString(left: string, right: string): boolean {
+  const max = Math.max(left.length, right.length);
+  let diff = left.length ^ right.length;
+  for (let index = 0; index < max; index += 1) {
+    diff |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
+  }
+  return diff === 0;
 }
 
 function emailSendFailure(error: unknown, fallback: string, logMessage: string): EmailDeliveryResult {
@@ -2814,22 +4699,24 @@ function emailSendFailure(error: unknown, fallback: string, logMessage: string):
 function emailSendErrorCode(error: unknown): string {
   if (isRecord(error) && typeof error.code === "string") return error.code;
   const detail = error instanceof Error ? error.message : String(error);
+  const resendMatch = detail.match(/\bRESEND_[A-Z0-9_]+\b/);
+  if (resendMatch) return resendMatch[0];
   const match = detail.match(/\bE_[A-Z0-9_]+\b/);
   return match ? match[0] : "";
 }
 
 function emailSendErrorMessage(code: string, fallback: string): string {
-  if (code === "E_RECIPIENT_NOT_ALLOWED") {
-    return "Cloudflare bu alıcıya e-posta göndermeye izin vermiyor. Email Sending'i Workers Paid planda açın veya alıcıyı Cloudflare hesabında doğrulayın.";
+  if (code === "RESEND_API_KEY_MISSING" || code === "RESEND_API_KEY_INVALID" || code === "RESEND_FORBIDDEN") {
+    return "Resend API anahtarı eksik veya geçersiz. RESEND_API_KEY secret'ını kontrol edin.";
   }
-  if (code === "E_SENDER_NOT_VERIFIED" || code === "E_SENDER_DOMAIN_NOT_AVAILABLE") {
-    return "Gönderici alan adı Cloudflare Email Service için hazır değil. reyliar.xyz Email Sending kurulumunu ve no-reply adresini kontrol edin.";
+  if (code === "RESEND_DOMAIN_NOT_VERIFIED" || code === "RESEND_VALIDATION_ERROR") {
+    return "Resend alan adı veya gönderici adresi hazır değil. reyliar.xyz DNS doğrulamasını ve gönderici adresini kontrol edin.";
   }
-  if (code === "E_RECIPIENT_SUPPRESSED") {
-    return "Bu alıcı Cloudflare suppression listesinde. Adresi kontrol edip listeden çıkarmadan kod gönderilemez.";
+  if (code === "RESEND_RECIPIENT_SUPPRESSED") {
+    return "Bu alıcı e-posta servisi suppression listesinde. Adresi kontrol edip listeden çıkarmadan kod gönderilemez.";
   }
-  if (code === "E_DAILY_LIMIT_EXCEEDED" || code === "E_RATE_LIMIT_EXCEEDED") {
-    return "Cloudflare e-posta gönderim limiti doldu. Bir süre sonra tekrar deneyin.";
+  if (code === "RESEND_DAILY_LIMIT_EXCEEDED" || code === "RESEND_RATE_LIMITED" || code === "RESEND_HTTP_429") {
+    return "Resend e-posta gönderim limiti doldu. Bir süre sonra tekrar deneyin.";
   }
   return fallback;
 }
@@ -3586,6 +5473,48 @@ async function handleDebugGas(env: Env): Promise<Response> {
   return json(results);
 }
 
+async function handleDiscordImageProxy(url: URL): Promise<Response> {
+  const rawUrl = String(url.searchParams.get("url") || "").trim();
+  if (!rawUrl || rawUrl.length > 1200) return text("Discord gorsel URL'si eksik.", 400);
+
+  let target: URL;
+  try {
+    target = new URL(rawUrl);
+  } catch {
+    return text("Gecersiz Discord gorsel URL'si.", 400);
+  }
+
+  const host = target.hostname.toLowerCase();
+  if (target.protocol !== "https:" || !DISCORD_IMAGE_PROXY_HOSTS.has(host) || !DISCORD_IMAGE_PROXY_PATH_RE.test(target.pathname)) {
+    return text("Bu gorsel proxy icin izinli degil.", 403);
+  }
+
+  if (target.searchParams.has("size")) {
+    const size = Math.max(32, Math.min(Number(target.searchParams.get("size") || 256) || 256, 512));
+    target.searchParams.set("size", String(size));
+  }
+
+  const response = await fetch(target.toString(), {
+    headers: {
+      "accept": "image/avif,image/webp,image/png,image/*,*/*;q=0.8",
+      "user-agent": "ReylAI image proxy"
+    },
+    cf: { cacheTtl: 86400, cacheEverything: true }
+  });
+
+  if (!response.ok) return text("", response.status);
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().startsWith("image/")) return text("Discord yaniti gorsel degil.", 502);
+
+  const headers = new Headers();
+  headers.set("content-type", contentType);
+  headers.set("cache-control", "public, max-age=86400, stale-while-revalidate=604800");
+  headers.set("access-control-allow-origin", "*");
+  const etag = response.headers.get("etag");
+  if (etag) headers.set("etag", etag);
+  return new Response(response.body, { status: 200, headers });
+}
+
 async function handleAnalyze(request: Request, env: Env): Promise<Response> {
   const payload = await readJson<AnalyzePayload>(request);
   const response = await analyzePayload(payload, env);
@@ -3596,6 +5525,7 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
   const prompt = String(payload.prompt || "").trim();
   const selectedId = safeId(payload.book_id || payload.drive_id || "");
   const bookName = String(payload.book_name || "Kitap").trim() || "Kitap";
+  const preferredProvider = normalizeAiProviderPreference(payload.preferred_provider || payload.ai_provider);
 
   if (!env.GEMINI_API_KEY && !env.MISTRAL_API_KEY) {
     return { error: "GEMINI_API_KEY veya MISTRAL_API_KEY yapılandırılmamış." };
@@ -3664,7 +5594,8 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
     const aiStartedAt = Date.now();
     const aiResponse = await generateAiContent(env, messages, {
       temperature: 0.2,
-      timeoutMs: configuredPositiveInt(env.AI_FETCH_TIMEOUT_MS, AI_DEFAULT_FETCH_TIMEOUT_MS, 5000, 55000)
+      timeoutMs: configuredPositiveInt(env.AI_FETCH_TIMEOUT_MS, AI_DEFAULT_FETCH_TIMEOUT_MS, 5000, 55000),
+      provider: preferredProvider
     });
     const aiElapsedMs = Date.now() - aiStartedAt;
     const result = aiResponse.text;
@@ -3674,13 +5605,26 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
     if (payload.title_requested) {
       chatTitle = fallbackChatTitle(prompt);
     }
-    return { result, chat_title: chatTitle, ai_provider: aiResponse.provider, ai_model: aiResponse.model, ai_elapsed_ms: aiElapsedMs };
+    return {
+      result,
+      chat_title: chatTitle,
+      ai_provider: aiResponse.provider,
+      ai_model: aiResponse.model,
+      ai_elapsed_ms: aiElapsedMs,
+      ai_fallback_from: aiResponse.fallback_from || "",
+      ai_fallback_reason: aiResponse.fallback_reason || "",
+      ai_rate_limit: aiResponse.rate_limit || null
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const lower = message.toLowerCase();
+    const rateLimit = lower.includes("429") || lower.includes("quota") || lower.includes("rate limit");
     return {
       error: message,
-      rate_limit: lower.includes("429") || lower.includes("quota") || lower.includes("rate limit"),
+      rate_limit: rateLimit,
+      ai_rate_limit: rateLimit ? rateLimitInfoFromError(error, preferredProvider === "mistral" ? "mistral" : "gemini") : null,
+      ai_provider: aiProviderFromError(error, preferredProvider === "mistral" ? "mistral" : "gemini"),
+      ai_model: aiModelFromError(error),
       temporary_unavailable: lower.includes("503") || lower.includes("unavailable") || lower.includes("high demand")
     };
   }
@@ -4059,7 +6003,8 @@ function providerFetch(url: string, init: RequestInit, timeoutMs: number): Promi
   });
 }
 
-function geminiErrorStatus(error: unknown): number {
+function aiErrorStatus(error: unknown): number {
+  if (error instanceof AiProviderError) return error.status;
   const message = error instanceof Error ? error.message : String(error);
   const match = message.match(/\((\d{3})\)/);
   return match ? Number(match[1]) : 0;
@@ -4070,9 +6015,46 @@ function aiProviderLabel(provider: AiProvider): string {
 }
 
 function isRateLimitError(error: unknown): boolean {
-  const status = geminiErrorStatus(error);
+  const status = aiErrorStatus(error);
   const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
   return status === 429 || message.includes("quota") || message.includes("rate limit") || message.includes("resource_exhausted") || message.includes("too many requests");
+}
+
+function aiProviderFromError(error: unknown, fallback: AiProvider = "gemini"): AiProvider {
+  return error instanceof AiProviderError ? error.provider : fallback;
+}
+
+function aiModelFromError(error: unknown): string {
+  return error instanceof AiProviderError ? error.model : "";
+}
+
+function normalizeAiProviderPreference(value: unknown): AiProviderPreference {
+  const clean = String(value || "auto").trim().toLowerCase();
+  if (clean === "gemini" || clean === "mistral") return clean;
+  return "auto";
+}
+
+function retryAfterSecondsFromHeaders(headers: Headers): number {
+  const raw = headers.get("retry-after") || headers.get("x-ratelimit-reset") || headers.get("x-ratelimit-reset-after") || "";
+  if (!raw) return 0;
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric) && numeric > 0) return Math.min(Math.ceil(numeric), 86400);
+  const dateMs = Date.parse(raw);
+  if (!Number.isFinite(dateMs)) return 0;
+  return Math.min(Math.max(Math.ceil((dateMs - Date.now()) / 1000), 0), 86400);
+}
+
+function rateLimitInfoFromError(error: unknown, fallbackProvider: AiProvider = "gemini"): AiRateLimitInfo {
+  const retryAfter = error instanceof AiProviderError ? error.retryAfterSeconds : 0;
+  const resetAt = retryAfter > 0 ? new Date(Date.now() + retryAfter * 1000).toISOString() : "";
+  return {
+    provider: aiProviderFromError(error, fallbackProvider),
+    model: aiModelFromError(error),
+    retry_after_seconds: retryAfter || 60,
+    reset_at: resetAt,
+    reset_label: retryAfter > 0 ? `${Math.ceil(retryAfter / 60)} dk icinde` : "biraz sonra",
+    message: error instanceof Error ? error.message : String(error)
+  };
 }
 
 async function generateAiContent(
@@ -4080,6 +6062,8 @@ async function generateAiContent(
   messages: GeminiMessage[],
   options: AiGenerateOptions = {}
 ): Promise<AiCompletion> {
+  const preference = normalizeAiProviderPreference(options.provider);
+  if (preference === "mistral") return mistralGenerateContent(env, messages, options);
   if (!env.GEMINI_API_KEY) return mistralGenerateContent(env, messages, options);
   try {
     const geminiResponse = await geminiGenerateContent(env, messages, options);
@@ -4090,8 +6074,14 @@ async function generateAiContent(
       text: geminiResponseText(geminiResponse.payload)
     };
   } catch (error) {
-    if (isRateLimitError(error) && env.MISTRAL_API_KEY) {
-      return mistralGenerateContent(env, messages, options);
+    if (preference === "auto" && isRateLimitError(error) && env.MISTRAL_API_KEY) {
+      const fallback = await mistralGenerateContent(env, messages, options);
+      return {
+        ...fallback,
+        fallback_from: "gemini",
+        fallback_reason: "rate_limit",
+        rate_limit: rateLimitInfoFromError(error, "gemini")
+      };
     }
     throw error;
   }
@@ -4112,7 +6102,10 @@ async function geminiGenerateContent(
         return { model, payload };
       } catch (error) {
         lastError = error;
-        if (!geminiStatusIsRetryable(geminiErrorStatus(error))) throw error;
+        const status = aiErrorStatus(error);
+        const canTryNextModel = modelIndex < geminiModelList(env).length - 1 && (status === 400 || status === 404);
+        if (!geminiStatusIsRetryable(status) && !canTryNextModel) throw error;
+        if (canTryNextModel) break;
       }
     }
   }
@@ -4148,7 +6141,7 @@ async function mistralGenerateContent(
       };
     } catch (error) {
       lastError = error;
-      if (!geminiStatusIsRetryable(geminiErrorStatus(error))) throw error;
+      if (!geminiStatusIsRetryable(aiErrorStatus(error))) throw error;
     }
   }
   throw lastError || new Error("Mistral API yaniti alinamadi.");
@@ -4176,7 +6169,13 @@ async function mistralGenerateContentOnce(
 
   if (!response.ok) {
     const snippet = await readTextSnippet(response, 500);
-    throw new Error(`Mistral API hatasi (${response.status}): ${snippet || response.statusText}`);
+    throw new AiProviderError(
+      `Mistral API hatasi (${response.status}): ${snippet || response.statusText}`,
+      "mistral",
+      String(options.model || env.MISTRAL_MODEL || MISTRAL_DEFAULT_MODEL),
+      response.status,
+      retryAfterSecondsFromHeaders(response.headers)
+    );
   }
 
   return await response.json();
@@ -4207,7 +6206,13 @@ async function geminiGenerateContentOnce(
 
   if (!response.ok) {
     const snippet = await readTextSnippet(response, 500);
-    throw new Error(`Gemini API hatası (${response.status}): ${snippet || response.statusText}`);
+    throw new AiProviderError(
+      `Gemini API hatası (${response.status}): ${snippet || response.statusText}`,
+      "gemini",
+      model,
+      response.status,
+      retryAfterSecondsFromHeaders(response.headers)
+    );
   }
 
   return await response.json();

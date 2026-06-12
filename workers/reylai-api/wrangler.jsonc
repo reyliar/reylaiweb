@@ -9,6 +9,10 @@
     {
       "pattern": "ai.reyliar.xyz/api/*",
       "zone_name": "reyliar.xyz"
+    },
+    {
+      "pattern": "mail.reyliar.xyz",
+      "custom_domain": true
     }
   ],
   "vars": {
@@ -16,13 +20,16 @@
     "BOOKS_REMOTE_BASE_URL": "https://thejinx1.github.io/blupblupreylai-books/",
     "MEB_SCHOOLS_API_URL": "https://www.meb.gov.tr/baglantilar/okullar/okullar_ajax.php",
     "GEMINI_API_URL": "https://generativelanguage.googleapis.com/v1beta/models",
-    "GEMINI_MODEL": "gemini-3.5-flash",
-    "GEMINI_FALLBACK_MODELS": "gemini-flash-latest,gemini-2.5-flash",
+    "GEMINI_MODEL": "gemini-3.1-pro",
+    "GEMINI_FALLBACK_MODELS": "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite",
     "MISTRAL_API_URL": "https://api.mistral.ai/v1/chat/completions",
     "MISTRAL_MODEL": "mistral-large-latest",
     "AI_FETCH_TIMEOUT_MS": "25000",
     "TURNSTILE_SITE_KEY": "0x4AAAAAADf7TXMs0rMZvUad",
-    "AUTH_REQUIRE_TURNSTILE": "true"
+    "AUTH_REQUIRE_TURNSTILE": "true",
+    "RESEND_API_URL": "https://api.resend.com",
+    "CONTACT_FORWARD_TO": "mynamesreyli@gmail.com",
+    "MAIL_PANEL_USER": "reyliar"
   },
   "d1_databases": [
     {
@@ -32,14 +39,8 @@
       "migrations_dir": "./migrations"
     }
   ],
-  "send_email": [
-    {
-      "name": "EMAIL",
-      "allowed_sender_addresses": ["no-reply@reyliar.xyz"]
-    }
-  ],
   "secrets": {
-    "required": ["GEMINI_API_KEY", "MISTRAL_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY"]
+    "required": ["GEMINI_API_KEY", "MISTRAL_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY", "RESEND_API_KEY", "RESEND_WEBHOOK_SECRET", "MAIL_PANEL_PASSWORD"]
   },
   "observability": {
     "enabled": true,
