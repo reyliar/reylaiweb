@@ -48,6 +48,8 @@
 .ai-provider-selector {
   position: relative;
   margin-right: 4px;
+  z-index: 120;
+  isolation: isolate;
 }
 .ai-provider-toggle {
   width: 38px;
@@ -72,11 +74,13 @@
   background: rgba(37,99,235,0.18);
   border-color: rgba(96,165,250,0.44);
 }
+.ai-provider-toggle svg,
 .ai-provider-toggle img {
   width: 22px;
   height: 22px;
   border-radius: 6px;
   object-fit: contain;
+  color: #60a5fa;
 }
 .ai-provider-dropdown {
   position: absolute;
@@ -94,7 +98,7 @@
   transform: translateY(6px) scale(0.96);
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1);
-  z-index: 40;
+  z-index: 999;
 }
 .ai-provider-dropdown.open {
   opacity: 1;
@@ -126,6 +130,7 @@
   background: rgba(37,99,235,0.18);
   color: #93c5fd;
 }
+.ai-provider-btn svg,
 .ai-provider-btn img {
   width: 22px;
   height: 22px;
@@ -7409,13 +7414,7 @@ select {
   border-top-color: rgba(32, 48, 74, 0.10);
   backdrop-filter: blur(28px) saturate(1.45);
   -webkit-backdrop-filter: blur(28px) saturate(1.45);
-  overflow: hidden;
-}
-
-.chat-input-wrap,
-#promptInput {
-  background: transparent;
-}
+    overflow: visible;
 
 .chat-input-wrap {
   border-color: rgba(32, 48, 74, 0.12);
@@ -10121,16 +10120,16 @@ body::after,
     <div class="chat-input-bar">
       <div class="ai-provider-selector" id="aiProviderSelector" aria-label="AI Sağlayıcı Seçimi">
         <button type="button" class="ai-provider-toggle" id="aiProviderToggle" onclick="toggleAiProviderMenu(event)" title="Model Seç" aria-expanded="false">
-          <img id="aiProviderToggleIcon" src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690b6.svg" alt="Gemini" width="22" height="22">
+          <svg id="aiProviderToggleIcon" class="ai-provider-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M2 12h20"/><path d="M5 5l14 14"/><path d="M19 5L5 19"/></svg>
         </button>
         <div class="ai-provider-dropdown" id="aiProviderDropdown">
           <button type="button" class="ai-provider-btn active" data-provider="auto" onclick="selectAiProvider('auto')" title="Gemini (Otomatik)">
-            <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690b6.svg" alt="Gemini" width="22" height="22">
+            <svg class="ai-provider-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M2 12h20"/><path d="M5 5l14 14"/><path d="M19 5L5 19"/></svg>
             <span class="ai-provider-name">Gemini</span>
             <svg class="ai-provider-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
           <button type="button" class="ai-provider-btn" data-provider="mistral" onclick="selectAiProvider('mistral')" title="Mistral (Açık Seçim)">
-            <img src="https://avatars.githubusercontent.com/u/132372032?s=200&v=4" alt="Mistral" width="22" height="22">
+            <svg class="ai-provider-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8v8H8z"/></svg>
             <span class="ai-provider-name">Mistral</span>
             <svg class="ai-provider-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
@@ -17813,9 +17812,9 @@ function selectAiProvider(provider) {
     else b.classList.remove('active');
   });
   var toggleIcon = document.getElementById('aiProviderToggleIcon');
-  if (toggleIcon && _aiProviderIcons[provider]) {
-    toggleIcon.src = _aiProviderIcons[provider];
-    toggleIcon.alt = provider === 'auto' ? 'Gemini' : 'Mistral';
+  if (toggleIcon) {
+    toggleIcon.setAttribute('data-provider', provider);
+    toggleIcon.style.color = provider === 'mistral' ? '#f8b84e' : '#60a5fa';
   }
   closeAiProviderMenu();
 }
