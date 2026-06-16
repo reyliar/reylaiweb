@@ -175,6 +175,12 @@ MISTRAL_API_URL     = (
     or "https://api.mistral.ai/v1/chat/completions"
 ).rstrip("/")
 MISTRAL_MODEL       = _env("MISTRAL_MODEL", "mistral-large-latest") or "mistral-large-latest"
+DEEPSEEK_API_KEY    = _env("DEEPSEEK_API_KEY")
+DEEPSEEK_API_URL    = (
+    _env("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions")
+    or "https://api.deepseek.com/v1/chat/completions"
+).rstrip("/")
+DEEPSEEK_MODEL      = _env("DEEPSEEK_MODEL", "deepseek-chat") or "deepseek-chat"
 OPENAI_API_KEY      = _env("OPENAI_API_KEY")
 BOOKS_REMOTE_BASE_URL = (
     _env("BOOKS_REMOTE_BASE_URL", "https://thejinx1.github.io/blupblupreylai-books/")
@@ -1115,7 +1121,7 @@ def _retry_after_seconds(headers):
 
 def _normalize_ai_provider_preference(value):
     clean = str(value or 'auto').strip().lower()
-    return clean if clean in ('auto', 'gemini', 'mistral') else 'auto'
+    return clean if clean in ('auto', 'gemini', 'mistral', 'deepseek') else 'auto'
 
 
 def _is_rate_limit_error(exc):
@@ -1265,8 +1271,51 @@ def _mistral_generate_content(messages, *, model=None, temperature=0.2):
         raise AiProviderError('Mistral API gecersiz JSON yaniti dondurdu.', 'mistral', selected_model) from exc
 
 
+def _deepseek_generate_content(messages, *, model=None, temperature=0.2):
+    selected_model = model or DEEPSEEK_MODEL
+    if not _is_configured(DEEPSEEK_API_KEY):
+        raise AiProviderError('DEEPSEEK_API_KEY yapilandirilmamis.', 'deepseek', selected_model)
+    payload = {
+        'model': selected_model,
+        'messages': _mistral_messages_from_messages(messages),
+        'temperature': temperature,
+    }
+    try:
+        response = requests.post(
+            DEEPSEEK_API_URL,
+            headers={
+                'Authorization': 'Bearer ' + DEEPSEEK_API_KEY,
+                'Content-Type': 'application/json',
+            },
+            json=payload,
+            timeout=_analysis_timeout_seconds(),
+        )
+    except requests.RequestException as exc:
+        raise AiProviderError(f'DeepSeek API baglanti hatasi: {exc}', 'deepseek', selected_model) from exc
+    if response.status_code >= 400:
+        try:
+            payload = response.json()
+            message = payload.get('error') or payload.get('message') or response.text[:500]
+        except ValueError:
+            message = response.text[:500] or response.reason
+        raise AiProviderError(
+            f'DeepSeek API hatasi ({response.status_code}): {message}',
+            'deepseek',
+            selected_model,
+            response.status_code,
+            _retry_after_seconds(response.headers),
+        )
+    try:
+        return selected_model, response.json()
+    except ValueError as exc:
+        raise AiProviderError('DeepSeek API gecersiz JSON yaniti dondurdu.', 'deepseek', selected_model) from exc
+
+
 def _generate_ai_content(messages, *, provider='auto', temperature=0.2):
     preference = _normalize_ai_provider_preference(provider)
+    if preference == 'deepseek':
+        model, raw = _deepseek_generate_content(messages, temperature=temperature)
+        return {'provider': 'deepseek', 'model': model, 'raw': raw, 'text': _mistral_response_text(raw)}
     if preference == 'mistral':
         model, raw = _mistral_generate_content(messages, temperature=temperature)
         return {'provider': 'mistral', 'model': model, 'raw': raw, 'text': _mistral_response_text(raw)}
@@ -1277,17 +1326,29 @@ def _generate_ai_content(messages, *, provider='auto', temperature=0.2):
         model, raw = _gemini_generate_with_fallback(messages, temperature=temperature)
         return {'provider': 'gemini', 'model': model, 'raw': raw, 'text': _gemini_response_text(raw)}
     except Exception as exc:
-        if preference == 'auto' and _is_rate_limit_error(exc) and _is_configured(MISTRAL_API_KEY, "YOUR_MISTRAL_API_KEY"):
-            model, raw = _mistral_generate_content(messages, temperature=temperature)
-            return {
-                'provider': 'mistral',
-                'model': model,
-                'raw': raw,
-                'text': _mistral_response_text(raw),
-                'fallback_from': 'gemini',
-                'fallback_reason': 'rate_limit',
-                'rate_limit': _ai_rate_limit_info(exc, 'gemini'),
-            }
+        if preference == 'auto' and _is_rate_limit_error(exc):
+            if _is_configured(DEEPSEEK_API_KEY):
+                model, raw = _deepseek_generate_content(messages, temperature=temperature)
+                return {
+                    'provider': 'deepseek',
+                    'model': model,
+                    'raw': raw,
+                    'text': _mistral_response_text(raw),
+                    'fallback_from': 'gemini',
+                    'fallback_reason': 'rate_limit',
+                    'rate_limit': _ai_rate_limit_info(exc, 'gemini'),
+                }
+            if _is_configured(MISTRAL_API_KEY, "YOUR_MISTRAL_API_KEY"):
+                model, raw = _mistral_generate_content(messages, temperature=temperature)
+                return {
+                    'provider': 'mistral',
+                    'model': model,
+                    'raw': raw,
+                    'text': _mistral_response_text(raw),
+                    'fallback_from': 'gemini',
+                    'fallback_reason': 'rate_limit',
+                    'rate_limit': _ai_rate_limit_info(exc, 'gemini'),
+                }
         raise
 
 
@@ -12074,6 +12135,11 @@ body::after,
             <span class="ai-provider-name">Mistral</span>
             <svg class="ai-provider-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
+          <button type="button" class="ai-provider-btn" data-provider="deepseek" onclick="selectAiProvider('deepseek')" title="DeepSeek (Hızlı)">
+            <img src="https://cdn.simpleicons.org/deepseek/eee" alt="DeepSeek" width="22" height="22">
+            <span class="ai-provider-name">DeepSeek</span>
+            <svg class="ai-provider-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
         </div>
       </div>
       <div class="chat-input-wrap">
@@ -19717,7 +19783,8 @@ function prepareEditedPrompt(prompt) {
 // ── Analyze ────────────────────────────────────────────────────────────────────
 var _aiProviderIcons = {
   auto: 'https://cdn.simpleicons.org/googlegemini/eee',
-  mistral: 'https://avatars.githubusercontent.com/u/132372032?s=48&v=4'
+  mistral: 'https://avatars.githubusercontent.com/u/132372032?s=48&v=4',
+  deepseek: 'https://cdn.simpleicons.org/deepseek/eee'
 };
 
 function toggleAiProviderMenu(e) {
@@ -19772,7 +19839,7 @@ function selectAiProvider(provider) {
   var toggleIcon = document.getElementById('aiProviderToggleIcon');
   if (toggleIcon && _aiProviderIcons[provider]) {
     toggleIcon.src = _aiProviderIcons[provider];
-    toggleIcon.alt = provider === 'auto' ? 'Gemini' : 'Mistral';
+    toggleIcon.alt = provider === 'auto' ? 'Gemini' : provider === 'mistral' ? 'Mistral' : 'DeepSeek';
   }
   closeAiProviderMenu();
 }
@@ -21107,8 +21174,8 @@ def api_analyze_start():
 
 @app.route('/api/analyze', methods=['POST'])
 def api_analyze():
-    if not _is_configured(GEMINI_API_KEY, "YOUR_GEMINI_API_KEY") and not _is_configured(MISTRAL_API_KEY, "YOUR_MISTRAL_API_KEY"):
-        return jsonify({'error': 'GEMINI_API_KEY veya MISTRAL_API_KEY yapılandırılmamış. Proje kökündeki .env dosyasına ekleyin.'})
+    if not _is_configured(GEMINI_API_KEY, "YOUR_GEMINI_API_KEY") and not _is_configured(MISTRAL_API_KEY, "YOUR_MISTRAL_API_KEY") and not _is_configured(DEEPSEEK_API_KEY):
+        return jsonify({'error': 'GEMINI_API_KEY, MISTRAL_API_KEY veya DEEPSEEK_API_KEY yapılandırılmamış. Proje kökündeki .env dosyasına ekleyin.'})
 
     data        = request.get_json(silent=True) or {}
     book_id     = data.get('book_id') or data.get('drive_id', '')

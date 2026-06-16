@@ -24,6 +24,8 @@
     "GEMINI_FALLBACK_MODELS": "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite",
     "MISTRAL_API_URL": "https://api.mistral.ai/v1/chat/completions",
     "MISTRAL_MODEL": "mistral-large-latest",
+    "DEEPSEEK_API_URL": "https://api.deepseek.com/chat/completions",
+    "DEEPSEEK_MODEL": "deepseek-chat",
     "AI_FETCH_TIMEOUT_MS": "25000",
     "TURNSTILE_SITE_KEY": "0x4AAAAAADf7TXMs0rMZvUad",
     "AUTH_REQUIRE_TURNSTILE": "true",
@@ -40,7 +42,7 @@
     }
   ],
   "secrets": {
-    "required": ["GEMINI_API_KEY", "MISTRAL_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY", "RESEND_API_KEY", "RESEND_WEBHOOK_SECRET", "MAIL_PANEL_PASSWORD"]
+    "required": ["GEMINI_API_KEY", "MISTRAL_API_KEY", "DEEPSEEK_API_KEY", "GAS_WEB_APP_URL", "TURNSTILE_SECRET_KEY", "RESEND_API_KEY", "RESEND_WEBHOOK_SECRET", "MAIL_PANEL_PASSWORD"]
   },
   "observability": {
     "enabled": true,
