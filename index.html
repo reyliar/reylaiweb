@@ -17762,8 +17762,8 @@ function prepareEditedPrompt(prompt) {
 
 // ── Analyze ────────────────────────────────────────────────────────────────────
 var _aiProviderIcons = {
-  auto: '/static/model-gemini.svg',
-  mistral: '/static/model-mistral.svg'
+  auto: 'https://cdn.simpleicons.org/googlegemini/eee',
+  mistral: 'https://avatars.githubusercontent.com/u/132372032?s=48&v=4'
 };
 
 function toggleAiProviderMenu(e) {
@@ -17771,10 +17771,15 @@ function toggleAiProviderMenu(e) {
   var dropdown = document.getElementById('aiProviderDropdown');
   var toggle = document.getElementById('aiProviderToggle');
   if (!dropdown || !toggle) return;
-  var isOpen = dropdown.classList.contains('open');
-  if (isOpen) {
+  if (dropdown.classList.contains('open')) {
     closeAiProviderMenu();
   } else {
+    var rect = toggle.getBoundingClientRect();
+    dropdown.style.position = 'fixed';
+    dropdown.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+    dropdown.style.left = Math.max(8, rect.left) + 'px';
+    dropdown.style.right = 'auto';
+    dropdown.style.top = 'auto';
     dropdown.classList.add('open');
     toggle.classList.add('open');
     toggle.setAttribute('aria-expanded', 'true');
@@ -17784,7 +17789,14 @@ function toggleAiProviderMenu(e) {
 function closeAiProviderMenu() {
   var dropdown = document.getElementById('aiProviderDropdown');
   var toggle = document.getElementById('aiProviderToggle');
-  if (dropdown) dropdown.classList.remove('open');
+  if (dropdown) {
+    dropdown.classList.remove('open');
+    dropdown.style.position = '';
+    dropdown.style.bottom = '';
+    dropdown.style.left = '';
+    dropdown.style.right = '';
+    dropdown.style.top = '';
+  }
   if (toggle) {
     toggle.classList.remove('open');
     toggle.setAttribute('aria-expanded', 'false');
