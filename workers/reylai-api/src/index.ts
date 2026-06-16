@@ -63,9 +63,6 @@ const GEMINI_FALLBACK_RETRY_DELAYS_MS = [0, 900];
 const MISTRAL_DEFAULT_API_URL = "https://api.mistral.ai/v1/chat/completions";
 const MISTRAL_DEFAULT_MODEL = "mistral-large-latest";
 const MISTRAL_RETRY_DELAYS_MS = [0, 900];
-const DEEPSEEK_DEFAULT_API_URL = "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_DEFAULT_MODEL = "deepseek-chat";
-const DEEPSEEK_RETRY_DELAYS_MS = [0, 900];
 const AI_DEFAULT_FETCH_TIMEOUT_MS = 25000;
 const MEB_SCHOOLS_DEFAULT_API_URL = "https://www.meb.gov.tr/baglantilar/okullar/okullar_ajax.php";
 const MEB_SCHOOLS_CACHE_MS = 6 * 60 * 60 * 1000;
@@ -222,7 +219,7 @@ type GeminiMessage = {
   content: string;
 };
 
-type AiProvider = "gemini" | "mistral" | "deepseek";
+type AiProvider = "gemini" | "mistral";
 type AiProviderPreference = AiProvider | "auto";
 
 type AiRateLimitInfo = {
@@ -5530,8 +5527,8 @@ async function analyzePayload(payload: AnalyzePayload, env: Env): Promise<Record
   const bookName = String(payload.book_name || "Kitap").trim() || "Kitap";
   const preferredProvider = normalizeAiProviderPreference(payload.preferred_provider || payload.ai_provider);
 
-  if (!env.GEMINI_API_KEY && !env.MISTRAL_API_KEY && !env.DEEPSEEK_API_KEY) {
-    return { error: "GEMINI_API_KEY, MISTRAL_API_KEY veya DEEPSEEK_API_KEY yapılandırılmamış." };
+  if (!env.GEMINI_API_KEY && !env.MISTRAL_API_KEY) {
+    return { error: "GEMINI_API_KEY veya MISTRAL_API_KEY yapılandırılmamış." };
   }
   if (!prompt) return { error: "Prompt eksik." };
   if (!selectedId) return { error: "book_id eksik." };
@@ -6014,7 +6011,7 @@ function aiErrorStatus(error: unknown): number {
 }
 
 function aiProviderLabel(provider: AiProvider): string {
-  return provider === "mistral" ? "Mistral" : provider === "deepseek" ? "DeepSeek" : "Gemini";
+  return provider === "mistral" ? "Mistral" : "Gemini";
 }
 
 function isRateLimitError(error: unknown): boolean {
@@ -6033,7 +6030,7 @@ function aiModelFromError(error: unknown): string {
 
 function normalizeAiProviderPreference(value: unknown): AiProviderPreference {
   const clean = String(value || "auto").trim().toLowerCase();
-  if (clean === "gemini" || clean === "mistral" || clean === "deepseek") return clean;
+  if (clean === "gemini" || clean === "mistral") return clean;
   return "auto";
 }
 
@@ -6066,12 +6063,7 @@ async function generateAiContent(
   options: AiGenerateOptions = {}
 ): Promise<AiCompletion> {
   const preference = normalizeAiProviderPreference(options.provider);
-  if (preference === "deepseek") return deepseekGenerateContent(env, messages, options);
   if (preference === "mistral") return mistralGenerateContent(env, messages, options);
-  if (!env.GEMINI_API_KEY && preference === "auto") {
-    if (env.MISTRAL_API_KEY) return mistralGenerateContent(env, messages, options);
-    if (env.DEEPSEEK_API_KEY) return deepseekGenerateContent(env, messages, options);
-  }
   if (!env.GEMINI_API_KEY) return mistralGenerateContent(env, messages, options);
   try {
     const geminiResponse = await geminiGenerateContent(env, messages, options);
@@ -6082,25 +6074,14 @@ async function generateAiContent(
       text: geminiResponseText(geminiResponse.payload)
     };
   } catch (error) {
-    if (preference === "auto" && isRateLimitError(error)) {
-      if (env.MISTRAL_API_KEY) {
-        const fallback = await mistralGenerateContent(env, messages, options);
-        return {
-          ...fallback,
-          fallback_from: "gemini",
-          fallback_reason: "rate_limit",
-          rate_limit: rateLimitInfoFromError(error, "gemini")
-        };
-      }
-      if (env.DEEPSEEK_API_KEY) {
-        const fallback = await deepseekGenerateContent(env, messages, options);
-        return {
-          ...fallback,
-          fallback_from: "gemini",
-          fallback_reason: "rate_limit",
-          rate_limit: rateLimitInfoFromError(error, "gemini")
-        };
-      }
+    if (preference === "auto" && isRateLimitError(error) && env.MISTRAL_API_KEY) {
+      const fallback = await mistralGenerateContent(env, messages, options);
+      return {
+        ...fallback,
+        fallback_from: "gemini",
+        fallback_reason: "rate_limit",
+        rate_limit: rateLimitInfoFromError(error, "gemini")
+      };
     }
     throw error;
   }
@@ -6192,66 +6173,6 @@ async function mistralGenerateContentOnce(
       `Mistral API hatasi (${response.status}): ${snippet || response.statusText}`,
       "mistral",
       String(options.model || env.MISTRAL_MODEL || MISTRAL_DEFAULT_MODEL),
-      response.status,
-      retryAfterSecondsFromHeaders(response.headers)
-    );
-  }
-
-  return await response.json();
-}
-
-async function deepseekGenerateContent(
-  env: Env,
-  messages: GeminiMessage[],
-  options: AiGenerateOptions = {}
-): Promise<AiCompletion> {
-  if (!env.DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY yapilandirilmamis.");
-  let lastError: unknown = null;
-  const model = env.DEEPSEEK_MODEL || DEEPSEEK_DEFAULT_MODEL;
-  for (const delay of DEEPSEEK_RETRY_DELAYS_MS) {
-    if (delay) await sleep(retryDelay(delay));
-    try {
-      const raw = await deepseekGenerateContentOnce(env, messages, { ...options, model });
-      return {
-        provider: "deepseek",
-        model,
-        raw,
-        text: mistralResponseText(raw)
-      };
-    } catch (error) {
-      lastError = error;
-      if (!geminiStatusIsRetryable(aiErrorStatus(error))) throw error;
-    }
-  }
-  throw lastError || new Error("DeepSeek API yaniti alinamadi.");
-}
-
-async function deepseekGenerateContentOnce(
-  env: Env,
-  messages: GeminiMessage[],
-  options: AiGenerateOptions & { model?: string } = {}
-): Promise<unknown> {
-  const payload: Record<string, unknown> = {
-    model: options.model || env.DEEPSEEK_MODEL || DEEPSEEK_DEFAULT_MODEL,
-    messages: mistralMessagesFromMessages(messages),
-    temperature: options.temperature ?? 0.2
-  };
-
-  const response = await providerFetch(env.DEEPSEEK_API_URL || DEEPSEEK_DEFAULT_API_URL, {
-    method: "POST",
-    headers: {
-      "authorization": `Bearer ${env.DEEPSEEK_API_KEY}`,
-      "content-type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  }, options.timeoutMs || AI_DEFAULT_FETCH_TIMEOUT_MS);
-
-  if (!response.ok) {
-    const snippet = await readTextSnippet(response, 500);
-    throw new AiProviderError(
-      `DeepSeek API hatasi (${response.status}): ${snippet || response.statusText}`,
-      "deepseek",
-      String(options.model || env.DEEPSEEK_MODEL || DEEPSEEK_DEFAULT_MODEL),
       response.status,
       retryAfterSecondsFromHeaders(response.headers)
     );

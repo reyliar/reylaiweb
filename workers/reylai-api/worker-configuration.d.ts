@@ -11,8 +11,6 @@ interface __BaseEnv_Env {
 	GEMINI_FALLBACK_MODELS: "gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite";
 	MISTRAL_API_URL: "https://api.mistral.ai/v1/chat/completions";
 	MISTRAL_MODEL: "mistral-large-latest";
-	DEEPSEEK_API_URL: "https://api.deepseek.com/chat/completions";
-	DEEPSEEK_MODEL: "deepseek-chat";
 	AI_FETCH_TIMEOUT_MS: "25000";
 	TURNSTILE_SITE_KEY: "0x4AAAAAADf7TXMs0rMZvUad";
 	AUTH_REQUIRE_TURNSTILE: "true";
@@ -21,7 +19,6 @@ interface __BaseEnv_Env {
 	MAIL_PANEL_USER: "reyliar";
 	GEMINI_API_KEY: string;
 	MISTRAL_API_KEY: string;
-	DEEPSEEK_API_KEY: string;
 	GAS_WEB_APP_URL: string;
 	TURNSTILE_SECRET_KEY: string;
 	RESEND_API_KEY: string;
@@ -39,7 +36,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "STATIC_ORIGIN" | "BOOKS_REMOTE_BASE_URL" | "MEB_SCHOOLS_API_URL" | "GEMINI_API_URL" | "GEMINI_MODEL" | "GEMINI_FALLBACK_MODELS" | "MISTRAL_API_URL" | "MISTRAL_MODEL" | "DEEPSEEK_API_URL" | "DEEPSEEK_MODEL" | "AI_FETCH_TIMEOUT_MS" | "TURNSTILE_SITE_KEY" | "AUTH_REQUIRE_TURNSTILE" | "RESEND_API_URL" | "CONTACT_FORWARD_TO" | "MAIL_PANEL_USER" | "GEMINI_API_KEY" | "MISTRAL_API_KEY" | "DEEPSEEK_API_KEY" | "GAS_WEB_APP_URL" | "TURNSTILE_SECRET_KEY" | "RESEND_API_KEY" | "RESEND_WEBHOOK_SECRET" | "MAIL_PANEL_PASSWORD">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "STATIC_ORIGIN" | "BOOKS_REMOTE_BASE_URL" | "MEB_SCHOOLS_API_URL" | "GEMINI_API_URL" | "GEMINI_MODEL" | "GEMINI_FALLBACK_MODELS" | "MISTRAL_API_URL" | "MISTRAL_MODEL" | "AI_FETCH_TIMEOUT_MS" | "TURNSTILE_SITE_KEY" | "AUTH_REQUIRE_TURNSTILE" | "RESEND_API_URL" | "CONTACT_FORWARD_TO" | "MAIL_PANEL_USER" | "GEMINI_API_KEY" | "MISTRAL_API_KEY" | "GAS_WEB_APP_URL" | "TURNSTILE_SECRET_KEY" | "RESEND_API_KEY" | "RESEND_WEBHOOK_SECRET" | "MAIL_PANEL_PASSWORD">> {}
 }
 
 // Begin runtime types
